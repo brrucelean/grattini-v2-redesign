@@ -188,9 +188,10 @@ export const DEFAULT_ENEMY_STATS = { hp: 60, shieldPerDef: 12 };
 // Mappa effetto → danno inflitto all'HP nemico (carte COMBATTIMENTO del player).
 // Gli effetti che hanno un `value` (stealMoney/damage) derivano il danno dal value.
 export const EFFECT_DAMAGE = {
-  lightDamage: 12,  // Schiaffo — danno base
-  damageNail:  30,  // Strappa! — danno pesante
-  berserk:     34,  // Berserk — danno pesante ma degrada 1 unghia tua
+  lightDamage: 18,  // Schiaffo — danno base
+  damageNail:  42,  // Strappa! — danno pesante
+  berserk:     46,  // Berserk — danno pesante ma degrada 1 unghia tua
+  stealMoney:  22,  // Furto! — danno + rubi soldi
 };
 
 // ─── TAUNTS ─────────────────────────────────────────────────

@@ -216,7 +216,7 @@ function resolvePlayerCell(c) {
     case "berserk":
       return { dmg: EFFECT_DAMAGE.berserk, self: 1, log: `💢 ${c.name}: ${EFFECT_DAMAGE.berserk} danni — ma degradi 1 unghia!` };
     case "stealMoney": {
-      const dmg = Math.round(val * 0.8);
+      const dmg = EFFECT_DAMAGE.stealMoney;
       return { dmg, loot: val, log: `🗡️ ${c.name}: ${dmg} danni + rubi €${val}!` };
     }
     case "allIn":
@@ -238,11 +238,11 @@ function resolvePlayerCell(c) {
     case "adrenaline":
       return { heals: 1, altLoot: val, log: `💉 ${c.name}: cura 1 unghia (o +€${val} se sane)` };
     case "block":
-      return { block: true, log: `🛡 ${c.name}: scudo — pari gli attacchi di questo turno!` };
+      return { block: true, log: `🛡 ${c.name}: PARATA pronta — para l'attacco in arrivo!` };
     case "fortress":
-      return { block: true, loot: -(c.cost || 0), log: `🏰 ${c.name}: scudo totale (−€${c.cost || 0})` };
+      return { block: true, loot: -(c.cost || 0), log: `🏰 ${c.name}: PARATA pronta (−€${c.cost || 0})` };
     case "dodge":
-      return { dodge: 1, log: `💨 ${c.name}: schivata pronta` };
+      return { dodge: 1, log: `💨 ${c.name}: PARATA pronta — schiva l'attacco!` };
     default:
       return { log: `${c.name}` };
   }
@@ -378,8 +378,7 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
   const hpRef = useRef(Math.round(stats.hp * bossMult));
   const shieldRef = useRef(0);
   const lootRef = useRef(0);
-  const pendingBlockRef = useRef(false); // difesa dello scambio corrente (scudo)
-  const pendingDodgeRef = useRef(0);     // schivate dello scambio corrente
+  const pendingParryRef = useRef(false); // true se il player ha giocato una carta DIFESA in questo scambio
   const atkDmgRef = useRef(0);     // danno d'attacco cumulato (per combo)
   const playedRef = useRef([]);    // indici giocati questo turno
   const turnLogRef = useRef([]);   // log del turno (cresce live)
@@ -391,7 +390,7 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
     setHand(generateCombatHand(9));
     playedRef.current = [];
     setRevealedIdxs([]);
-    pendingBlockRef.current = false; pendingDodgeRef.current = 0; atkDmgRef.current = 0;
+    pendingParryRef.current = false; atkDmgRef.current = 0;
     turnLogRef.current = []; setLog([]);
     resolvingRef.current = false;
     const plan = generateCombatCard(false, enemy.name).cells;
@@ -415,7 +414,7 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
     setRevealedIdxs([...playedRef.current]);
     setCurrentExchange(exchangeIdx);
     resolvingRef.current = true;             // blocca lo scratch durante lo scambio
-    pendingBlockRef.current = false; pendingDodgeRef.current = 0; // difesa di QUESTO scambio
+    pendingParryRef.current = false;         // difesa di QUESTO scambio
     onCellScratch?.(false);
     const cell = hand[idx];
     if (!cell) { resolvingRef.current = false; return; }
@@ -476,27 +475,21 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
     const ec = enemyPlan[exchangeIdx];
     const isEnemyAttack = ec && ec.category === "COMBATTIMENTO";
     if (isEnemyAttack) {
-      // Se il player ha giocato scudo/schivata questo scambio → negato senza minigioco
-      if (pendingBlockRef.current) {
-        pushLog(`${enemy.name} 🗡 ${ec.name}: 🛡 BLOCCATO dallo scudo!`, C.blue);
-        setTimeout(() => finishExchange(exchangeIdx, isLast), 450);
-        return;
+      // La PARATA (minigioco) parte SOLO se hai giocato una carta di difesa in questo scambio.
+      if (pendingParryRef.current) {
+        setActiveTiming({
+          mode: "parry",
+          onResult: (quality) => {
+            setActiveTiming(null);
+            applyEnemyAttack(ec, quality);
+            finishExchange(exchangeIdx, isLast);
+          },
+        });
+      } else {
+        // Nessuna difesa giocata → l'attacco colpisce pieno, senza minigioco.
+        applyEnemyAttack(ec, "miss");
+        setTimeout(() => finishExchange(exchangeIdx, isLast), 550);
       }
-      if (pendingDodgeRef.current > 0) {
-        pendingDodgeRef.current--;
-        pushLog(`${enemy.name} 🗡 ${ec.name}: 💨 SCHIVATO!`, C.cyan);
-        setTimeout(() => finishExchange(exchangeIdx, isLast), 450);
-        return;
-      }
-      // Minigioco di parata: prova a parare al momento giusto
-      setActiveTiming({
-        mode: "parry",
-        onResult: (quality) => {
-          setActiveTiming(null);
-          applyEnemyAttack(ec, quality);
-          finishExchange(exchangeIdx, isLast);
-        },
-      });
     } else {
       // Difesa/cura nemico
       if (ec) applyEnemyNonAttack(ec);
@@ -509,7 +502,7 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
       shieldRef.current += stats.shieldPerDef; setEnemyShield(shieldRef.current);
       pushLog(`${enemy.name} 🛡 ${c.name}: +${stats.shieldPerDef} scudo`, C.blue);
     } else if (c.category === "DENARO") {
-      const healAmt = Math.round((c.value || 20) * 0.4);
+      const healAmt = Math.round((c.value || 20) * 0.2);
       hpRef.current = Math.min(enemyMaxHp, hpRef.current + healAmt); setEnemyHp(hpRef.current);
       pushLog(`${enemy.name} 💰 ${c.name}: si cura +${healAmt} HP`, C.orange);
     } else {
@@ -652,8 +645,8 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
         AudioEngine.heal?.(); spawnFloater(`+${r.heals}💚`, C.green, "player");
       }
     }
-    if (r.block) pendingBlockRef.current = true;
-    if (r.dodge) pendingDodgeRef.current += r.dodge;
+    // Carta di difesa (scudo/schivata/fortezza): abilita la PARATA per questo scambio
+    if (r.block || r.dodge) pendingParryRef.current = true;
     if (r.enemyShield) { shieldRef.current += r.enemyShield; setEnemyShield(shieldRef.current); }
     if (r.self) { onNailDamage?.(r.self); setPainFlash(0.35); setTimeout(() => setPainFlash(0), 400); }
     pushLog(r.log, CAT_COLORS[c.category] || C.dim);
