@@ -367,7 +367,10 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
   const [activeTiming, setActiveTiming] = useState(null); // {mode, onResult} minigioco tempismo
   const [currentExchange, setCurrentExchange] = useState(-1); // scambio in corso (per telegrafo)
   const [coins, setCoins] = useState([]); // monete che volano
+  const [floaters, setFloaters] = useState([]); // numeri/testi fluttuanti {id, text, color, zone, big}
+  const [shake, setShake] = useState(false); // screen shake su danno subìto
   const coinId = useRef(0);
+  const floaterId = useRef(0);
   const logScrollRef = useRef(null);
   const dead = useRef(false);
 
@@ -445,8 +448,12 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
     const mult = quality === "perfect" ? 1.6 : quality === "good" ? 1.0 : 0.5;
     const dmg = Math.max(1, Math.round(r.dmg * mult));
     atkDmgRef.current += dmg;
-    if (quality === "perfect") { pushLog(`⚔️ ${cell.name}: COLPO PERFETTO! ${dmg} danni (×1.6)`, C.green); setEnemyHitFlash(1.4); }
-    else if (quality === "good") pushLog(`⚔️ ${cell.name}: ${dmg} danni`, C.gold);
+    if (quality === "perfect") {
+      pushLog(`⚔️ ${cell.name}: COLPO PERFETTO! ${dmg} danni (×1.6)`, C.green);
+      setEnemyHitFlash(1.4);
+      AudioEngine.perfectHit?.();
+      spawnFloater("PERFETTO!", C.green, "enemy", true);
+    } else if (quality === "good") pushLog(`⚔️ ${cell.name}: ${dmg} danni`, C.gold);
     else pushLog(`⚔️ ${cell.name}: colpo maldestro, solo ${dmg} danni`, C.dim);
     flyCoins(2);
     dealDamage(dmg);
@@ -521,6 +528,8 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
     if (quality === "perfect") {
       // Annulla il danno + contrattacco
       pushLog(`${enemy.name} 🗡 ${c.name}: 🛡 PARATA PERFETTA! Nessun danno`, C.green);
+      AudioEngine.parry?.();
+      spawnFloater("PARATA!", C.blue, "player", true);
       const counter = 14;
       pushLog(`↩️ Contrattacco! ${counter} danni a ${enemy.name}`, C.cyan);
       dealDamage(counter);
@@ -532,9 +541,12 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
         const v = Math.round(stealVal * 0.5);
         lootRef.current = Math.max(0, lootRef.current - v); setLoot(lootRef.current);
         pushLog(`${enemy.name} 🗡 ${c.name}: parata parziale — ti ruba solo €${v}`, C.gold);
+        spawnFloater(`−€${v}`, C.orange, "loot");
       } else {
         onNailDamage?.(1);
+        AudioEngine.nailCrack?.();
         setPainFlash(0.3); setTimeout(() => setPainFlash(0), 350);
+        spawnFloater("−1", C.orange, "player");
         pushLog(`${enemy.name} 🗡 ${c.name}: parata parziale — 1 danno`, C.gold);
         checkDefeat();
       }
@@ -544,10 +556,13 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
     if (stealsMoney) {
       lootRef.current = Math.max(0, lootRef.current - stealVal); setLoot(lootRef.current);
       pushLog(`${enemy.name} 🗡 ${c.name}: ti ruba €${stealVal}!`, C.red);
+      spawnFloater(`−€${stealVal}`, C.red, "loot");
     } else {
       onNailDamage?.(baseSteps);
       setPainFlash(0.5); setTimeout(() => setPainFlash(0.2), 150); setTimeout(() => setPainFlash(0), 500);
       AudioEngine.painScream?.();
+      triggerShake();
+      spawnFloater(`−${baseSteps}💢`, C.red, "player", true);
       pushLog(`${enemy.name} 🗡 ${c.name}: COLPITO! ${baseSteps} danno alle unghie`, C.red);
       checkDefeat();
     }
@@ -586,6 +601,14 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
     setTimeout(() => setCoins(prev => prev.filter(c => !batch.find(b => b.id === c.id))), 1100);
   };
 
+  // Testo/numero fluttuante ancorato a una zona: "enemy" | "player" | "loot"
+  const spawnFloater = (text, color, zone = "enemy", big = false) => {
+    const id = floaterId.current++;
+    setFloaters(prev => [...prev, { id, text, color, zone, big }]);
+    setTimeout(() => setFloaters(prev => prev.filter(f => f.id !== id)), 1100);
+  };
+  const triggerShake = () => { setShake(true); setTimeout(() => setShake(false), 380); };
+
   // Aggiunge una riga al log del turno (mostrato live in turnEnd)
   const pushLog = (text, color = C.dim) => {
     turnLogRef.current = [...turnLogRef.current, { text, color }];
@@ -604,7 +627,9 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
     if (remaining > 0) {
       hpRef.current = Math.max(0, hpRef.current - remaining);
       setEnemyHp(hpRef.current);
-      AudioEngine.scratch(); setEnemyHitFlash(1); setTimeout(() => setEnemyHitFlash(0), 350);
+      AudioEngine.hitEnemy?.(); // suono impatto
+      setEnemyHitFlash(1); setTimeout(() => setEnemyHitFlash(0), 350);
+      spawnFloater(`-${remaining}`, C.red, "enemy"); // numero danno sul nemico
     }
   };
 
@@ -615,14 +640,16 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
     if (r.loot) {
       lootRef.current = Math.max(0, lootRef.current + r.loot);
       setLoot(lootRef.current);
-      if (r.loot > 0) flyCoins(Math.ceil(r.loot / 6));
+      if (r.loot > 0) { flyCoins(Math.ceil(r.loot / 6)); AudioEngine.cash?.(); spawnFloater(`+€${r.loot}`, C.gold, "loot"); }
+      else { spawnFloater(`−€${Math.abs(r.loot)}`, C.red, "loot"); }
     }
     if (r.heals) {
       if (c.effect === "adrenaline" && !damaged) {
         lootRef.current += (r.altLoot || 0); setLoot(lootRef.current);
-        if (r.altLoot) flyCoins(Math.ceil(r.altLoot / 6));
+        if (r.altLoot) { flyCoins(Math.ceil(r.altLoot / 6)); AudioEngine.cash?.(); spawnFloater(`+€${r.altLoot}`, C.gold, "loot"); }
       } else {
         onNailHeal?.(r.heals);
+        AudioEngine.heal?.(); spawnFloater(`+${r.heals}💚`, C.green, "player");
       }
     }
     if (r.block) pendingBlockRef.current = true;
@@ -635,6 +662,7 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
   const winNow = () => {
     setActiveTiming(null);
     pushLog(`💥 ${enemy.name} è al tappeto!`, C.green);
+    AudioEngine.win?.();
     setTimeout(() => setPhase("win"), 600);
   };
 
@@ -679,17 +707,40 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
 
   const hpPct = Math.max(0, Math.round((enemyHp / enemyMaxHp) * 100));
 
+  // Floater per zona (ancoraggi in % nel container combat)
+  const FLOATER_ANCHOR = {
+    enemy: { left: "50%", top: "20%" },
+    loot: { left: "88%", top: "24%" },
+    player: { left: "16%", top: "24%" },
+  };
+
   // ─── RENDER ───────────────────────────────────────────────
   return (
     <div style={{
       position: "relative", flex: 1, minHeight: 0, width: "100%",
       display: "flex", flexDirection: "column", gap: "10px",
       fontFamily: FONT, color: C.text, padding: "10px", overflow: "hidden",
+      animation: shake ? "screenShake 0.38s" : "none",
     }}>
       {/* Pain flash overlay */}
       {painFlash > 0 && (
         <div style={{ position: "absolute", inset: 0, background: `rgba(255,0,0,${painFlash})`, pointerEvents: "none", zIndex: 50, transition: "background 0.1s" }} />
       )}
+
+      {/* Numeri/testi fluttuanti (danno, soldi, cura, parata) */}
+      {floaters.map(f => {
+        const a = FLOATER_ANCHOR[f.zone] || FLOATER_ANCHOR.enemy;
+        return (
+          <div key={f.id} style={{
+            position: "absolute", left: a.left, top: a.top, zIndex: 55,
+            pointerEvents: "none", whiteSpace: "nowrap",
+            color: f.color, fontWeight: "bold",
+            fontSize: f.big ? "22px" : "16px",
+            textShadow: `0 0 8px ${f.color}, 0 1px 2px #000`,
+            animation: "combatFloat 1.1s ease-out forwards",
+          }}>{f.text}</div>
+        );
+      })}
 
       {/* ── SCHEDA NEMICO ── */}
       <div style={{

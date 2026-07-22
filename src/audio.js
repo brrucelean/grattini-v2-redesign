@@ -106,6 +106,40 @@ export const AudioEngine = (() => {
       playTone(2400, 0.12, "triangle", 0.06, 0.12);
       playHarp(1568, 0.08, 0.10); // G6 shimmer
     },
+    // ─── SFX COMBATTIMENTO ─────────────────────────────────────
+    heal: () => {
+      // Cura: chime caldo ascendente + sparkle — sensazione positiva
+      [523, 659, 880].forEach((f, i) => playHarp(f, 0.06, i * 0.07));
+      playTone(1760, 0.18, "sine", 0.05, 0.14);
+    },
+    hitEnemy: () => {
+      // Colpo inflitto: impatto secco "thud" + crack corto (diverso dal dolore player)
+      playTone(180, 0.07, "square", 0.16);
+      playTone(95, 0.13, "sawtooth", 0.13, 0.02);
+      if (masterVolume === 0) return;
+      try {
+        const ac = getCtx();
+        const bufSize = Math.floor(ac.sampleRate * 0.05);
+        const buf = ac.createBuffer(1, bufSize, ac.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let i = 0; i < bufSize; i++) d[i] = (Math.random() * 2 - 1) * 0.35 * (1 - i / bufSize);
+        const src = ac.createBufferSource(); src.buffer = buf;
+        const g = ac.createGain(); g.gain.value = 0.5;
+        src.connect(g); g.connect(getMaster()); src.start();
+      } catch {}
+    },
+    perfectHit: () => {
+      // Colpo PERFETTO: doppio ding brillante + shimmer
+      playTone(1320, 0.08, "triangle", 0.12);
+      playTone(1980, 0.14, "triangle", 0.09, 0.06);
+      playHarp(2637, 0.06, 0.02);
+    },
+    parry: () => {
+      // Parata riuscita: "cling" metallico acuto e corto
+      playTone(2400, 0.05, "square", 0.10);
+      playTone(3300, 0.10, "triangle", 0.07, 0.03);
+      playTone(1600, 0.06, "square", 0.05, 0.01);
+    },
     nailCrack: () => {
       // Crack secco + eco quando un'unghia si rompe
       playTone(80, 0.15, "sawtooth", 0.20);
