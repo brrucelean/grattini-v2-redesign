@@ -361,7 +361,6 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
   const [loot, setLoot] = useState(0); // € bottino accumulato
   const [log, setLog] = useState([]); // [{text, color}]
   const [enemyPlan, setEnemyPlan] = useState([]); // carte nemico del turno
-  const [enemyIntent, setEnemyIntent] = useState(null); // "ATTACCA" | "SCUDO" | "CURA"
   const [enemyHitFlash, setEnemyHitFlash] = useState(0);
   const [painFlash, setPainFlash] = useState(0);
   const [activeTiming, setActiveTiming] = useState(null); // {mode, onResult} minigioco tempismo
@@ -396,11 +395,6 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
     setCurrentExchange(-1);
     const plan = generateCombatCard(false, enemy.name).cells;
     setEnemyPlan(plan);
-    // Telegrafo intento: categoria dominante nel piano nemico
-    const cats = plan.map(c => c.category);
-    const nAtk = cats.filter(c => c === "COMBATTIMENTO").length;
-    const nDef = cats.filter(c => c === "DIFESA").length;
-    setEnemyIntent(nAtk >= nDef && nAtk > 0 ? "ATTACCA" : nDef > 0 ? "SCUDO" : "CURA");
   };
 
   const startCombat = () => { setPhase("player"); dealTurn(); };
@@ -762,15 +756,6 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
           <div style={{ fontWeight: "bold", fontSize: "15px", color: C.red, letterSpacing: "1px" }}>
             {enemy.isBoss ? "👑 " : ""}{enemy.name}
           </div>
-          {enemyIntent && phase === "player" && (
-            <div style={{
-              fontSize: "11px", fontWeight: "bold", padding: "2px 8px", borderRadius: "3px",
-              color: enemyIntent === "ATTACCA" ? C.red : enemyIntent === "SCUDO" ? C.blue : C.orange,
-              border: `1px solid ${enemyIntent === "ATTACCA" ? C.red : enemyIntent === "SCUDO" ? C.blue : C.orange}`,
-            }}>
-              {enemyIntent === "ATTACCA" ? "🗡️ ATTACCA" : enemyIntent === "SCUDO" ? "🛡 SI COPRE" : "💰 SI CURA"}
-            </div>
-          )}
         </div>
         {/* Barra HP rossa */}
         <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
@@ -833,9 +818,9 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
             <div style={{ display: "flex", justifyContent: "center", gap: "6px", fontSize: "10px" }}>
               <span style={{ color: C.dim, alignSelf: "center" }}>NEMICO:</span>
               {enemyPlan.slice(0, 3).map((ec, i) => {
-                const tel = ec.category === "COMBATTIMENTO" ? { ic: "🗡️", lb: "ATTACCA", col: C.red }
-                  : ec.category === "DIFESA" ? { ic: "🛡", lb: "SCUDO", col: C.blue }
-                  : { ic: "💰", lb: "SI CURA", col: C.orange };
+                const tel = ec.category === "COMBATTIMENTO" ? { ic: "🗡️", lb: "ATTACCO", col: C.red }
+                  : ec.category === "DIFESA" ? { ic: "🛡", lb: "DIFESA", col: C.blue }
+                  : { ic: "💰", lb: "DENARO", col: C.orange };
                 const activeEx = currentExchange >= 0 ? currentExchange : revealedIdxs.length;
                 const done = i < activeEx;   // scambi già passati
                 const active = i === activeEx; // scambio attuale (in risoluzione o appena risolto)
