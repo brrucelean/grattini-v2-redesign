@@ -366,6 +366,7 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
   const [painFlash, setPainFlash] = useState(0);
   const [activeTiming, setActiveTiming] = useState(null); // {mode, onResult} minigioco tempismo
   const [currentExchange, setCurrentExchange] = useState(-1); // scambio in corso (per telegrafo)
+  const [busy, setBusy] = useState(false); // uno scambio è in risoluzione → blocca la grattata delle altre carte
   const [coins, setCoins] = useState([]); // monete che volano
   const [floaters, setFloaters] = useState([]); // numeri/testi fluttuanti {id, text, color, zone, big}
   const [shake, setShake] = useState(false); // screen shake su danno subìto
@@ -393,7 +394,7 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
     setRevealedIdxs([]);
     pendingParryRef.current = false; pendingGuardRef.current = false; atkDmgRef.current = 0;
     turnLogRef.current = []; setLog([]);
-    resolvingRef.current = false;
+    resolvingRef.current = false; setBusy(false);
     setCurrentExchange(-1);
     const plan = generateCombatCard(false, enemy.name).cells;
     setEnemyPlan(plan);
@@ -410,11 +411,11 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
     playedRef.current = [...playedRef.current, idx];
     setRevealedIdxs([...playedRef.current]);
     setCurrentExchange(exchangeIdx);
-    resolvingRef.current = true;             // blocca lo scratch durante lo scambio
+    resolvingRef.current = true; setBusy(true); // blocca lo scratch delle altre carte durante lo scambio
     pendingParryRef.current = false; pendingGuardRef.current = false; // difesa di QUESTO scambio
     onCellScratch?.(false);
     const cell = hand[idx];
-    if (!cell) { resolvingRef.current = false; return; }
+    if (!cell) { resolvingRef.current = false; setBusy(false); return; }
     if (cell.variant && onVariantRevealed) onVariantRevealed(cell.variant);
 
     const r = resolvePlayerCell(cell);
@@ -589,7 +590,7 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
       // Avanza l'evidenziazione allo scambio SUCCESSIVO (quello ancora da grattare),
       // così il player sa cosa arriva. Lo scambio appena risolto diventa ✓ fatto.
       setCurrentExchange(-1);
-      resolvingRef.current = false; // sblocca lo scratch per la prossima carta
+      resolvingRef.current = false; setBusy(false); // sblocca lo scratch per la prossima carta
     }
   };
 
@@ -884,7 +885,10 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "6px" }}>
               {hand.map((cell, i) => {
                 const isRevealed = revealedIdxs.includes(i);
-                const locked = revealedIdxs.length >= 3 && !isRevealed;
+                // Bloccate se: hai già giocato 3 carte, OPPURE uno scambio è in
+                // risoluzione (evita di grattare la carta successiva "a raffica"
+                // mentre quella precedente non è ancora stata conteggiata).
+                const locked = (revealedIdxs.length >= 3 || busy) && !isRevealed;
                 return (
                   <CombatCardScratch
                     key={`${turn}-${i}`}
