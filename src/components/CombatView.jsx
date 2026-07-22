@@ -203,6 +203,7 @@ export function CombatCardScratch({ cell, onRevealed, catColors, disabled, nailS
 
 // ─── V2: helper effetti duello HP ────────────────────────────
 const CAT_COLORS = { COMBATTIMENTO: C.red, DIFESA: C.blue, DENARO: C.gold };
+const FURY_TURN = 3; // dal turno 3 il nemico va in FURIA (enrage): +danno, niente cura
 
 // Risolve UNA carta del player → produce delta {dmg, loot, heals, self, block, dodge, log}
 function resolvePlayerCell(c) {
@@ -504,9 +505,14 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
       shieldRef.current += stats.shieldPerDef; setEnemyShield(shieldRef.current);
       pushLog(`${enemy.name} 🛡 ${c.name}: +${stats.shieldPerDef} scudo`, C.blue);
     } else if (c.category === "DENARO") {
-      const healAmt = Math.round((c.value || 20) * 0.2);
-      hpRef.current = Math.min(enemyMaxHp, hpRef.current + healAmt); setEnemyHp(hpRef.current);
-      pushLog(`${enemy.name} 💰 ${c.name}: si cura +${healAmt} HP`, C.orange);
+      if (turn >= FURY_TURN) {
+        // FURIA: troppo agitato per curarsi — colpo a vuoto, puoi bruciarlo
+        pushLog(`${enemy.name} 🔥 ${c.name}: troppo furioso per curarsi!`, C.red);
+      } else {
+        const healAmt = Math.round((c.value || 20) * 0.2);
+        hpRef.current = Math.min(enemyMaxHp, hpRef.current + healAmt); setEnemyHp(hpRef.current);
+        pushLog(`${enemy.name} 💰 ${c.name}: si cura +${healAmt} HP`, C.orange);
+      }
     } else {
       // attacco bloccato da carta scudo del player
       pushLog(`${enemy.name} 🗡 ${c.name}: 🛡 BLOCCATO dallo scudo!`, C.blue);
@@ -517,8 +523,9 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
   const applyEnemyAttack = (c, quality) => {
     const heavy = c.effect === "damageNail" || c.effect === "killNail" || c.effect === "damage";
     const stealsMoney = c.effect === "stealMoney" || c.effect === "steal";
-    const baseSteps = heavy ? 2 : 1;
-    const stealVal = c.value || 15;
+    const fury = Math.max(0, turn - FURY_TURN + 1); // 0 fino al turno soglia, poi cresce
+    const baseSteps = (heavy ? 2 : 1) + fury;       // FURIA: attacchi sempre più pesanti
+    const stealVal = (c.value || 15) + fury * 10;
 
     if (quality === "perfect") {
       // Annulla il danno + contrattacco
@@ -689,6 +696,14 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
     if (logScrollRef.current) logScrollRef.current.scrollTop = logScrollRef.current.scrollHeight;
   }, [log, phase]);
 
+  // FURIA: suono drammatico quando il nemico entra in enrage
+  useEffect(() => {
+    if (turn === FURY_TURN) { AudioEngine.bossEntrance?.(); triggerShake(); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [turn]);
+
+  const inFury = turn >= FURY_TURN;
+
   // Spacebar: prosegui fasi
   const spaceRef = useRef(null);
   spaceRef.current = () => {
@@ -765,6 +780,16 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
           <div style={{ fontWeight: "bold", fontSize: "15px", color: C.red, letterSpacing: "1px" }}>
             {enemy.isBoss ? "👑 " : ""}{enemy.name}
           </div>
+          {inFury && (
+            <div style={{
+              fontSize: "12px", fontWeight: "bold", padding: "2px 10px", borderRadius: "3px",
+              color: "#000", background: C.orange, letterSpacing: "1px",
+              boxShadow: `0 0 14px ${C.orange}, 0 0 4px ${C.red} inset`,
+              animation: "telePulse 0.7s ease-in-out infinite",
+            }}>
+              🔥 FURIA
+            </div>
+          )}
         </div>
         {/* Barra HP rossa */}
         <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
@@ -811,8 +836,9 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
           <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "16px", textAlign: "center" }}>
             <div style={{ fontSize: "40px" }}>{enemy.isBoss ? "👑" : "🗡️"}</div>
             <div style={{ color: C.red, fontSize: "20px", fontWeight: "bold" }}>{enemy.name} ti sfida!</div>
-            <div style={{ color: C.dim, fontSize: "13px", maxWidth: "320px" }}>
+            <div style={{ color: C.dim, fontSize: "13px", maxWidth: "340px" }}>
               Gratta le tue carte per attaccare. Riduci gli HP del nemico a zero — ma occhio alle tue unghie!
+              <br /><span style={{ color: C.orange }}>⚠ Dal turno {FURY_TURN} il nemico va in 🔥 FURIA: non si cura più e picchia sempre più forte. Chiudi in fretta!</span>
             </div>
             <Btn variant="danger" onClick={startCombat} style={{ fontSize: "16px", padding: "12px 32px" }}>⚔️ COMBATTI!</Btn>
           </div>
