@@ -579,8 +579,9 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
       }
       setTimeout(() => setPhase("turnEnd"), 400);
     } else {
-      // NON resettare currentExchange: lo scambio appena risolto resta evidenziato
-      // (coerente col log) finché il player non gratta la carta successiva.
+      // Avanza l'evidenziazione allo scambio SUCCESSIVO (quello ancora da grattare),
+      // così il player sa cosa arriva. Lo scambio appena risolto diventa ✓ fatto.
+      setCurrentExchange(-1);
       resolvingRef.current = false; // sblocca lo scratch per la prossima carta
     }
   };
@@ -823,25 +824,31 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
               TURNO {turn} — GRATTA 3 DELLE 9 CARTE <span style={{ color: C.dim }}>({revealedIdxs.length}/3)</span>
             </div>
             {/* Telegrafo: cosa farà il nemico ad ogni scambio (attacca / difende / cura) */}
-            <div style={{ display: "flex", justifyContent: "center", gap: "6px", fontSize: "10px" }}>
-              <span style={{ color: C.dim, alignSelf: "center" }}>NEMICO:</span>
+            <div style={{
+              display: "flex", justifyContent: "center", alignItems: "center", gap: "8px", fontSize: "11px",
+              padding: "6px 8px", borderRadius: "6px",
+              background: "#0c0c14", border: `1px solid ${C.dim}44`,
+            }}>
+              <span style={{ color: C.dim, letterSpacing: "1px", fontWeight: "bold" }}>MOSSE NEMICO ▸</span>
               {enemyPlan.slice(0, 3).map((ec, i) => {
                 const tel = ec.category === "COMBATTIMENTO" ? { ic: "🗡️", lb: "ATTACCO", col: C.red }
                   : ec.category === "DIFESA" ? { ic: "🛡", lb: "DIFESA", col: C.blue }
                   : { ic: "💰", lb: "DENARO", col: C.orange };
                 const activeEx = currentExchange >= 0 ? currentExchange : revealedIdxs.length;
-                const done = i < activeEx;   // scambi già passati
-                const active = i === activeEx; // scambio attuale (in risoluzione o appena risolto)
+                const done = i < activeEx;      // scambi già passati
+                const active = i === activeEx;  // PROSSIMA mossa del nemico (evidenziata + pulsa)
                 return (
                   <span key={i} style={{
-                    padding: "3px 8px", borderRadius: "3px",
-                    border: `1px solid ${active ? tel.col : done ? "#333" : tel.col + "55"}`,
-                    background: active ? tel.col + "22" : "transparent",
+                    padding: active ? "4px 12px" : "4px 9px", borderRadius: "4px",
+                    border: `2px solid ${active ? tel.col : done ? "#333" : tel.col + "55"}`,
+                    background: active ? tel.col + "33" : "transparent",
                     color: done ? C.dim : tel.col,
                     opacity: done ? 0.4 : 1,
-                    boxShadow: active ? `0 0 8px ${tel.col}66` : "none",
+                    boxShadow: active ? `0 0 14px ${tel.col}aa, 0 0 4px ${tel.col} inset` : "none",
                     fontWeight: active ? "bold" : "normal",
+                    textShadow: active ? `0 0 8px ${tel.col}` : "none",
                     textDecoration: done ? "line-through" : "none",
+                    animation: active ? "telePulse 1s ease-in-out infinite" : "none",
                   }}>
                     {done ? "✓ " : active ? "▸ " : ""}{tel.ic} {tel.lb}
                   </span>

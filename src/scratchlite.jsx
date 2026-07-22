@@ -444,6 +444,7 @@ export default function Grattini() {
         @keyframes floatUp { 0% { transform:translateY(0) scale(1); opacity:0.7; } 100% { transform:translateY(-18px) scale(0.5); opacity:0; } }
         @keyframes coinFly { 0% { transform:translate(0,0) rotate(0deg); opacity:1; } 100% { transform:translate(var(--dx,0), var(--dy,-60px)) rotate(var(--rot,0deg)); opacity:0; } }
         @keyframes combatFloat { 0% { transform:translate(-50%, 0) scale(0.6); opacity:0; } 18% { transform:translate(-50%, -6px) scale(1.15); opacity:1; } 100% { transform:translate(-50%, -46px) scale(1); opacity:0; } }
+        @keyframes telePulse { 0%,100% { transform:scale(1); filter:brightness(1); } 50% { transform:scale(1.08); filter:brightness(1.35); } }
         @keyframes achievementSlide { 0% { transform:translateX(120%); opacity:0; } 100% { transform:translateX(0); opacity:1; } }
         @keyframes nodePop { 0% { transform:scale(0.85); } 60% { transform:scale(1.05); } 100% { transform:scale(1); } }
         @keyframes lineFlow { 0% { stroke-dashoffset:20; } 100% { stroke-dashoffset:0; } }
