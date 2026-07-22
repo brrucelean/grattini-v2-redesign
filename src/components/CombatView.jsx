@@ -7,12 +7,22 @@ import {
 import { roll, pick } from "../utils/random.js";
 import { makeNailCursor } from "../utils/nail.js";
 import { generateCombatHand, generateCombatCard, CARD_VARIANTS } from "../utils/combat.js";
+import { SPR_BIG } from "../data/art.js";
 import { AudioEngine, ParticleSystem } from "../audio.js";
 import { Btn } from "./Btn.jsx";
 import { NailDisplay } from "./NailDisplay.jsx";
 
 // Nomi categoria abbreviati — COMBATTIMENTO è troppo lungo per le card strette
 const CAT_SHORT = { COMBATTIMENTO: "ATTACCO", DIFESA: "DIFESA", DENARO: "DENARO" };
+
+// Sprite ASCII del nemico (schermo "mostro" sopra le barre — come da bozza)
+function enemySpriteKey(enemy) {
+  const n = enemy?.name;
+  if (n === "Il Drago d'Oro") return "drago";
+  if (n === "Ladro" || n === "Ladro Nascosto") return "ladro";
+  if (enemy?.isBoss) return "boss";
+  return "miniboss";
+}
 
 
 // ─── COMBAT CARD SCRATCH ─────────────────────────────────────
@@ -149,6 +159,21 @@ export function CombatCardScratch({ cell, onRevealed, catColors, disabled, nailS
       }}>
         {disabled ? (
           <div style={{fontSize:"24px", opacity:0.2, color:C.dim}}>✕</div>
+        ) : isRevealed ? (
+          <>
+            {/* Carta rivelata: mostra l'EFFETTO specifico (emoji + nome) */}
+            <div style={{ fontSize:"30px", lineHeight:1 }}>
+              {cell.emoji || CAT_EMOJI_MAP[cell.category] || "?"}
+            </div>
+            <div style={{
+              fontSize:"12px", fontWeight:"bold", letterSpacing:"0.5px",
+              color: catColors[cell.category] || C.text,
+              textShadow:`0 0 6px ${catColors[cell.category] || C.text}aa`,
+              textAlign:"center", padding:"0 6px", lineHeight:1.15,
+            }}>
+              {cell.name}
+            </div>
+          </>
         ) : (
           <>
             {/* Icona stampata sull'oro — colore scuro, ombra incisa */}
@@ -472,6 +497,22 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
         background: "#160308", boxShadow: `0 0 18px ${C.red}44, inset 0 0 24px rgba(0,0,0,0.6)`,
         transform: enemyHitFlash ? "translateX(4px)" : "none", transition: "transform 0.1s",
       }}>
+        {/* Schermo "mostro" — sprite ASCII del nemico (come da bozza) */}
+        <div style={{
+          margin: "0 auto 8px", maxWidth: "260px",
+          background: "#0a0400", border: `2px solid ${C.red}88`, borderRadius: "4px",
+          padding: "8px 6px", boxShadow: `inset 0 0 26px #000, 0 0 12px ${C.red}33`,
+          overflow: "hidden",
+        }}>
+          <pre style={{
+            margin: 0, textAlign: "center", color: "#ff6a6a", fontFamily: FONT,
+            fontSize: "10px", lineHeight: "1.05", whiteSpace: "pre",
+            textShadow: `0 0 6px ${C.red}aa`,
+            animation: enemyHitFlash ? "none" : "neonText 2.4s infinite",
+          }}>
+            {(SPR_BIG[enemySpriteKey(enemy)] || SPR_BIG.miniboss).join("\n")}
+          </pre>
+        </div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
           <div style={{ fontWeight: "bold", fontSize: "15px", color: C.red, letterSpacing: "1px" }}>
             {enemy.isBoss ? "👑 " : ""}{enemy.name}
