@@ -168,6 +168,31 @@ export const ENEMY_COMBAT_POOLS = {
   },
 };
 
+// ─── V2 DUELLO HP: statistiche nemico ────────────────────────
+// Il combat non è più "gara a chi fa più soldi": è un duello a HP.
+// Il player usa le unghie come vita; il nemico ha una barra HP (rossa)
+// + uno scudo (blu) che accumula quando gioca carte DIFESA.
+// I valori sono un punto di partenza da tarare (balance pass successivo).
+export const ENEMY_STATS = {
+  "Sfidante":       { hp: 50,  shieldPerDef: 10 },
+  "Ladro":          { hp: 55,  shieldPerDef: 12 },
+  "Ladro Nascosto": { hp: 65,  shieldPerDef: 14 },
+  "Mini Boss":      { hp: 95,  shieldPerDef: 16 },
+  "Il Broker":      { hp: 130, shieldPerDef: 20 },
+  "Il Romanaccio":  { hp: 150, shieldPerDef: 22 },
+  "Il Napoletano":  { hp: 165, shieldPerDef: 22 },
+  "Il Drago d'Oro": { hp: 210, shieldPerDef: 26 },
+};
+export const DEFAULT_ENEMY_STATS = { hp: 60, shieldPerDef: 12 };
+
+// Mappa effetto → danno inflitto all'HP nemico (carte COMBATTIMENTO del player).
+// Gli effetti che hanno un `value` (stealMoney/damage) derivano il danno dal value.
+export const EFFECT_DAMAGE = {
+  lightDamage: 12,  // Schiaffo — danno base
+  damageNail:  30,  // Strappa! — danno pesante
+  berserk:     34,  // Berserk — danno pesante ma degrada 1 unghia tua
+};
+
 // ─── TAUNTS ─────────────────────────────────────────────────
 export const TAUNTS = [
   { text:"\"Quelle unghie fanno schifo, nemmeno mia nonna gratta così male!\"",

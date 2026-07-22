@@ -23,7 +23,7 @@ import { ASCII_TITLE } from "./data/art.js";
 import { AudioEngine } from "./audio.js";
 import { clamp } from "./utils/random.js";
 import { Haptics } from "./utils/haptics.js";
-import { degradeNailObj, makeNailCursor } from "./utils/nail.js";
+import { degradeNailObj, healNail, makeNailCursor } from "./utils/nail.js";
 import { generateCard } from "./utils/card.js";
 import { generateMap } from "./utils/map.js";
 
@@ -232,6 +232,23 @@ export default function Grattini() {
     addLog("Nonno Carmelo ti ferma al bancone. Ha tre biglietti e mani che tremano. Gratti tu, scegli tu.", C.gold);
   };
 
+  // ─── DEBUG: salta dritto in combattimento con ?combat=miniboss|boss|ladro ───
+  useEffect(() => {
+    const dbg = new URLSearchParams(window.location.search).get("combat");
+    if (!dbg) return;
+    const debugPlayer = {
+      money: 100,
+      nails: Array(5).fill(null).map(() => ({ state: "sana", scratchCount: 0, implant: null, implantUses: 0, stats: { fortuna: 0, potenza: 0, resilienza: 0 }, heldItem: null, cremaHP: 0 })),
+      activeNail: 0, items: [], grattatori: [], equippedGrattatore: null, scratchCards: [],
+      fortune: 0, fortuneTurns: 0, relics: [], streamerFollowers: 0,
+    };
+    const name = dbg === "boss" ? "Il Broker" : dbg === "ladro" ? "Ladro" : "Mini Boss";
+    setPlayer(debugPlayer);
+    setCombatEnemy({ name, isBoss: dbg === "boss", isMiniboss: dbg !== "boss" && dbg !== "ladro", isElite: false });
+    setScreen("combat");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ─── HOOK: useNailEffects ───
   const { globalPainFlash, nailDeathFlash, setNailDeathFlash, screenShake, setScreenShake, moneyBling } = useNailEffects({ player, screen, gameStats, unlockAchievement, updateAllTimeStats, addLog });
 
@@ -425,6 +442,7 @@ export default function Grattini() {
         @keyframes glitE { 0% { opacity:0; transform:translate(0,0) scale(0.35); } 50% { opacity:1; transform:translate(14px,6px) scale(1.2); } 80% { opacity:0.5; transform:translate(20px,-4px) scale(0.7); } 100% { opacity:0; transform:translate(10px,-14px) scale(0.3); } }
         @keyframes glitF { 0% { opacity:0; transform:translate(0,0) scale(0.4); } 40% { opacity:0.9; transform:translate(-6px,14px) scale(1.1); } 60% { opacity:1; transform:translate(-12px,8px) scale(1.3); } 100% { opacity:0; transform:translate(-20px,-6px) scale(0.3); } }
         @keyframes floatUp { 0% { transform:translateY(0) scale(1); opacity:0.7; } 100% { transform:translateY(-18px) scale(0.5); opacity:0; } }
+        @keyframes coinFly { 0% { transform:translate(0,0) rotate(0deg); opacity:1; } 100% { transform:translate(var(--dx,0), var(--dy,-60px)) rotate(var(--rot,0deg)); opacity:0; } }
         @keyframes achievementSlide { 0% { transform:translateX(120%); opacity:0; } 100% { transform:translateX(0); opacity:1; } }
         @keyframes nodePop { 0% { transform:scale(0.85); } 60% { transform:scale(1.05); } 100% { transform:scale(1); } }
         @keyframes lineFlow { 0% { stroke-dashoffset:20; } 100% { stroke-dashoffset:0; } }
@@ -2168,6 +2186,19 @@ export default function Grattini() {
                 addLog(`🎨 Nuova variante vintage scoperta: ${variantId}!`, C.magenta);
                 if (vintageCollected.length + 1 >= 5) unlockAchievement("vintage_collector");
               }
+            }}
+            onNailHeal={(count) => {
+              updatePlayer(p => {
+                const nails = [...p.nails];
+                let healed = 0;
+                for (let i = 0; i < nails.length && healed < count; i++) {
+                  if (nails[i].state !== "sana" && nails[i].state !== "kawaii" && nails[i].state !== "morta") {
+                    nails[i] = { ...nails[i], state: healNail(nails[i].state, "sana"), scratchCount: 0 };
+                    healed++;
+                  }
+                }
+                return { ...p, nails };
+              });
             }}
             onNailDamage={(count, onExplosiva) => {
               updatePlayer(p => {
