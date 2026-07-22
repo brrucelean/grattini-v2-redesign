@@ -139,12 +139,18 @@ export function CombatCardScratch({ cell, onRevealed, catColors, disabled, nailS
       touchAction: "none",
     }} {...evts}>
 
-      {/* Canvas oro — completamente opaco, copre tutto. Sparisce al reveal. */}
-      {!disabled && !isRevealed && (
+      {/* Canvas oro — sempre montato finché non rivelata (mai smontato/rimontato:
+          l'effetto di pittura gira una sola volta al mount del componente, quindi
+          smontare e rimontare il <canvas> lo lascerebbe vuoto/trasparente).
+          Il blocco "disabled" è puramente visivo (overlay sotto) + il check
+          in doScratch, non tocca il DOM del canvas. */}
+      {!isRevealed && (
         <canvas ref={canvasRef} width={220} height={160}
           style={{
             position:"absolute", inset:0, width:"100%", height:"100%",
-            display:"block", cursor: nailCursor, touchAction:"none",
+            display:"block", cursor: disabled ? "default" : nailCursor, touchAction:"none",
+            opacity: disabled ? 0.35 : 1,
+            filter: disabled ? "grayscale(60%)" : "none",
           }}
         />
       )}
