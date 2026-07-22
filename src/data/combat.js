@@ -1,5 +1,5 @@
 // ─── COMBAT CARD HEIGHT ──────────────────────────────────────
-export const COMBAT_CARD_H = 118;
+export const COMBAT_CARD_H = 94;
 export const CAT_EMOJI_MAP = { COMBATTIMENTO:"🗡️", DIFESA:"🛡", DENARO:"💰" };
 export const CAT_BG = { COMBATTIMENTO:"#1a0005", DIFESA:"#00051a", DENARO:"#1a1000" };
 

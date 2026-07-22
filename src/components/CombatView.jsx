@@ -241,9 +241,10 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
 
   const nailCol = C.red;
 
-  // ── Deal: inizio turno, pesca 3 carte + prepara il piano nemico ──
+  // ── Deal: inizio turno, pesca 9 carte (griglia 3x3) + prepara il piano nemico ──
+  // Come l'originale: gratti 3 delle 9 carte; quelle 3 sono le mosse giocate.
   const dealTurn = () => {
-    setHand(generateCombatHand(3));
+    setHand(generateCombatHand(9));
     setRevealedIdxs([]);
     const plan = generateCombatCard(false, enemy.name).cells;
     setEnemyPlan(plan);
@@ -256,17 +257,20 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
 
   const startCombat = () => { setPhase("player"); dealTurn(); };
 
-  // ── Reveal di una carta del player ──
+  // ── Reveal di una carta del player (max 3) ──
   const onCellRevealed = (idx) => {
-    onCellScratch?.(false); // grattatore assorbe/consuma se equipaggiato
-    const cell = hand[idx];
-    if (cell?.variant && onVariantRevealed) onVariantRevealed(cell.variant);
-    setRevealedIdxs(prev => (prev.includes(idx) ? prev : [...prev, idx]));
+    setRevealedIdxs(prev => {
+      if (prev.includes(idx) || prev.length >= 3) return prev; // già giocata / mano piena
+      onCellScratch?.(false); // grattatore assorbe/consuma se equipaggiato
+      const cell = hand[idx];
+      if (cell?.variant && onVariantRevealed) onVariantRevealed(cell.variant);
+      return [...prev, idx];
+    });
   };
 
-  // Quando tutte e 3 le carte sono grattate → risolvi il turno
+  // Quando hai grattato 3 carte → risolvi il turno
   useEffect(() => {
-    if (phase !== "player" || revealedIdxs.length < hand.length || hand.length === 0) return;
+    if (phase !== "player" || revealedIdxs.length < 3) return;
     const t = setTimeout(() => resolveTurn(), 700);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -288,13 +292,14 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
     const newLog = [];
     const push = (text, color = C.dim) => newLog.push({ text, color });
 
-    // ── 1) OFFENSIVA PLAYER ──
+    // ── 1) OFFENSIVA PLAYER (solo le 3 carte grattate) ──
+    const played = revealedIdxs.map(i => hand[i]).filter(Boolean);
     let dmg = 0, deltaLoot = 0, heals = 0, selfDeg = 0, playerBlock = false, playerDodges = 0;
     let bonusEnemyShield = 0;
     const damagedNails = player.nails.some(n => n.state !== "sana" && n.state !== "kawaii" && n.state !== "morta" && n.state !== "piede");
-    const allAttack = hand.every(c => c.category === "COMBATTIMENTO");
+    const allAttack = played.length === 3 && played.every(c => c.category === "COMBATTIMENTO");
 
-    hand.forEach(c => {
+    played.forEach(c => {
       const r = resolvePlayerCell(c);
       if (r.dmg) dmg += r.dmg;
       if (r.loot) deltaLoot += r.loot;
@@ -525,22 +530,26 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
         )}
 
         {phase === "player" && (
-          <>
+          <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: "6px", overflowY: "auto" }}>
             <div style={{ textAlign: "center", fontSize: "12px", color: C.gold, letterSpacing: "1px" }}>
-              TURNO {turn} — GRATTA LE 3 CARTE
+              TURNO {turn} — GRATTA 3 DELLE 9 CARTE <span style={{ color: C.dim }}>({revealedIdxs.length}/3)</span>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
-              {hand.map((cell, i) => (
-                <CombatCardScratch
-                  key={`${turn}-${i}`}
-                  cell={cell}
-                  catColors={CAT_COLORS}
-                  onRevealed={() => onCellRevealed(i)}
-                  disabled={false}
-                />
-              ))}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "6px" }}>
+              {hand.map((cell, i) => {
+                const isRevealed = revealedIdxs.includes(i);
+                const locked = revealedIdxs.length >= 3 && !isRevealed;
+                return (
+                  <CombatCardScratch
+                    key={`${turn}-${i}`}
+                    cell={cell}
+                    catColors={CAT_COLORS}
+                    onRevealed={() => onCellRevealed(i)}
+                    disabled={locked}
+                  />
+                );
+              })}
             </div>
-            {/* Descrizioni rivelate */}
+            {/* Descrizioni delle carte giocate */}
             <div style={{ display: "flex", flexDirection: "column", gap: "3px", fontSize: "11px" }}>
               {revealedIdxs.map(i => {
                 const c = hand[i];
@@ -552,7 +561,7 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
                 );
               })}
             </div>
-          </>
+          </div>
         )}
 
         {(phase === "turnEnd" || phase === "win") && (
