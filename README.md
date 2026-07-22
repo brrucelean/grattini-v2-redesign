@@ -2,9 +2,9 @@
 
 > Rework di **Grattini** — roguelike italiano di gratta-e-vinci — centrato sul combattimento: duello a HP con scudo/furia, minigiochi di tempismo (colpo perfetto, parata) al posto della vecchia "gara a chi fa più soldi".
 
-**Partito da:** https://github.com/brrucelean/iphone-grattini (copia pulita, repo indipendente — nessuna storia condivisa, nessun collegamento al remote originale)
+**🎮 Gioca online:** https://brrucelean.github.io/grattini-v2/
 
-> ⚠️ Progetto in sviluppo attivo. Non c'è ancora un deploy pubblico.
+> ⚠️ Progetto in sviluppo attivo — build aggiornata a ogni push su `main`.
 
 ---
 
