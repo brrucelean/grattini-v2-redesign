@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- iPhone: full-screen, niente zoom-pinch, safe-area sotto il notch -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="theme-color" content="#000000" />
+    <title>iPhone Grattini</title>
+    <meta name="description" content="Gratta-e-vinci roguelike per iPhone — V2 Holo Edition. Grafica olografica, 5 unghie, 3 biomi, 1 destino." />
+    <meta property="og:title" content="iPhone Grattini" />
+    <meta property="og:description" content="Roguelike italiano di gratta-e-vinci, ottimizzato per iPhone." />
+    <meta property="og:type" content="website" />
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body {
+        width: 100%; height: 100%;
+        /* overflow hidden su body: il game frame si estende con position:absolute inset:0
+           così non servono mai unità vh che su iOS Safari sono sbagliate */
+        overflow: hidden;
+        background: #000000;
+        overscroll-behavior: none;
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+      #root {
+        width: 100%; height: 100%;
+        overflow: hidden;
+        /* NON mettere padding safe-area qui: il game div è position:fixed
+           relativo al viewport, non a #root, quindi il padding sarebbe ignorato.
+           Le safe-area sono gestite internamente dal componente Grattini via
+           env(safe-area-inset-top/bottom) sullo S.container. */
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
