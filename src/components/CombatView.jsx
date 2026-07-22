@@ -393,6 +393,7 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
     pendingParryRef.current = false; atkDmgRef.current = 0;
     turnLogRef.current = []; setLog([]);
     resolvingRef.current = false;
+    setCurrentExchange(-1);
     const plan = generateCombatCard(false, enemy.name).cells;
     setEnemyPlan(plan);
     // Telegrafo intento: categoria dominante nel piano nemico
@@ -575,10 +576,10 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
         if (ec.category === "COMBATTIMENTO") applyEnemyAttack(ec, "miss");
         else applyEnemyNonAttack(ec);
       }
-      setCurrentExchange(-1);
       setTimeout(() => setPhase("turnEnd"), 400);
     } else {
-      setCurrentExchange(-1);
+      // NON resettare currentExchange: lo scambio appena risolto resta evidenziato
+      // (coerente col log) finché il player non gratta la carta successiva.
       resolvingRef.current = false; // sblocca lo scratch per la prossima carta
     }
   };
@@ -836,19 +837,20 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
                   : ec.category === "DIFESA" ? { ic: "🛡", lb: "SCUDO", col: C.blue }
                   : { ic: "💰", lb: "SI CURA", col: C.orange };
                 const activeEx = currentExchange >= 0 ? currentExchange : revealedIdxs.length;
-                const done = i < activeEx;
-                const active = i === activeEx;
+                const done = i < activeEx;   // scambi già passati
+                const active = i === activeEx; // scambio attuale (in risoluzione o appena risolto)
                 return (
                   <span key={i} style={{
                     padding: "3px 8px", borderRadius: "3px",
-                    border: `1px solid ${active ? tel.col : tel.col + "55"}`,
+                    border: `1px solid ${active ? tel.col : done ? "#333" : tel.col + "55"}`,
                     background: active ? tel.col + "22" : "transparent",
                     color: done ? C.dim : tel.col,
-                    opacity: done ? 0.45 : 1,
+                    opacity: done ? 0.4 : 1,
                     boxShadow: active ? `0 0 8px ${tel.col}66` : "none",
                     fontWeight: active ? "bold" : "normal",
+                    textDecoration: done ? "line-through" : "none",
                   }}>
-                    {tel.ic} {tel.lb}
+                    {done ? "✓ " : active ? "▸ " : ""}{tel.ic} {tel.lb}
                   </span>
                 );
               })}
