@@ -829,7 +829,7 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
               padding: "6px 8px", borderRadius: "6px",
               background: "#0c0c14", border: `1px solid ${C.dim}44`,
             }}>
-              <span style={{ color: C.dim, letterSpacing: "1px", fontWeight: "bold" }}>MOSSE NEMICO ▸</span>
+              <span style={{ color: C.dim, letterSpacing: "1px", fontWeight: "bold" }}>IN ARRIVO ▸</span>
               {enemyPlan.slice(0, 3).map((ec, i) => {
                 const tel = ec.category === "COMBATTIMENTO" ? { ic: "🗡️", lb: "ATTACCO", col: C.red }
                   : ec.category === "DIFESA" ? { ic: "🛡", lb: "DIFESA", col: C.blue }
