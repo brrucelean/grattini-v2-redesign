@@ -240,7 +240,7 @@ function resolvePlayerCell(c) {
     case "block":
       return { block: true, log: `🛡 ${c.name}: PARATA pronta — para l'attacco in arrivo!` };
     case "fortress":
-      return { block: true, loot: -(c.cost || 0), log: `🏰 ${c.name}: PARATA pronta (−€${c.cost || 0})` };
+      return { guard: true, loot: -(c.cost || 0), log: `🏰 ${c.name}: FORTEZZA — blocco garantito (−€${c.cost || 0})` };
     case "dodge":
       return { dodge: 1, log: `💨 ${c.name}: PARATA pronta — schiva l'attacco!` };
     default:
@@ -377,7 +377,8 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
   const hpRef = useRef(Math.round(stats.hp * bossMult));
   const shieldRef = useRef(0);
   const lootRef = useRef(0);
-  const pendingParryRef = useRef(false); // true se il player ha giocato una carta DIFESA in questo scambio
+  const pendingParryRef = useRef(false); // true se il player ha giocato Scudo/Schiva (parata a tempo)
+  const pendingGuardRef = useRef(false); // true se il player ha giocato Fortezza (blocco garantito, no minigioco)
   const atkDmgRef = useRef(0);     // danno d'attacco cumulato (per combo)
   const playedRef = useRef([]);    // indici giocati questo turno
   const turnLogRef = useRef([]);   // log del turno (cresce live)
@@ -389,7 +390,7 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
     setHand(generateCombatHand(9));
     playedRef.current = [];
     setRevealedIdxs([]);
-    pendingParryRef.current = false; atkDmgRef.current = 0;
+    pendingParryRef.current = false; pendingGuardRef.current = false; atkDmgRef.current = 0;
     turnLogRef.current = []; setLog([]);
     resolvingRef.current = false;
     setCurrentExchange(-1);
@@ -409,7 +410,7 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
     setRevealedIdxs([...playedRef.current]);
     setCurrentExchange(exchangeIdx);
     resolvingRef.current = true;             // blocca lo scratch durante lo scambio
-    pendingParryRef.current = false;         // difesa di QUESTO scambio
+    pendingParryRef.current = false; pendingGuardRef.current = false; // difesa di QUESTO scambio
     onCellScratch?.(false);
     const cell = hand[idx];
     if (!cell) { resolvingRef.current = false; return; }
@@ -470,7 +471,13 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
     const ec = enemyPlan[exchangeIdx];
     const isEnemyAttack = ec && ec.category === "COMBATTIMENTO";
     if (isEnemyAttack) {
-      // La PARATA (minigioco) parte SOLO se hai giocato una carta di difesa in questo scambio.
+      // FORTEZZA: blocco garantito, a prescindere dal tempismo (nessun minigioco).
+      if (pendingGuardRef.current) {
+        pushLog(`${enemy.name} 🗡 ${ec.name}: 🏰 FORTEZZA blocca tutto — nessun danno!`, C.blue);
+        setTimeout(() => finishExchange(exchangeIdx, isLast), 450);
+        return;
+      }
+      // La PARATA (minigioco) parte SOLO se hai giocato Scudo/Schiva in questo scambio.
       if (pendingParryRef.current) {
         setActiveTiming({
           mode: "parry",
@@ -640,8 +647,9 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
         AudioEngine.heal?.(); spawnFloater(`+${r.heals}💚`, C.green, "player");
       }
     }
-    // Carta di difesa (scudo/schivata/fortezza): abilita la PARATA per questo scambio
+    // Scudo/Schivata → parata a tempo; Fortezza → blocco garantito (no minigioco)
     if (r.block || r.dodge) pendingParryRef.current = true;
+    if (r.guard) pendingGuardRef.current = true;
     if (r.enemyShield) { shieldRef.current += r.enemyShield; setEnemyShield(shieldRef.current); }
     if (r.self) { onNailDamage?.(r.self); setPainFlash(0.35); setTimeout(() => setPainFlash(0), 400); }
     pushLog(r.log, CAT_COLORS[c.category] || C.dim);
