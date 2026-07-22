@@ -249,6 +249,102 @@ function resolvePlayerCell(c) {
 }
 
 
+// ─── TIMING BAR: minigioco tempismo (attacco / parata) ───────
+// Un cursore oscilla su una barra; zona verde = PERFETTO, gialla = BUONO.
+// Premi (click/spazio/tap) per fermarlo. onResult riceve "perfect"|"good"|"miss".
+function TimingBar({ mode = "attack", speed = 1.5, onResult }) {
+  const isAttack = mode === "attack";
+  const accent = isAttack ? C.red : C.blue;
+  // zone (0..1)
+  const PERFECT = [0.44, 0.56];
+  const GOOD = [0.26, 0.74];
+
+  const [pos, setPos] = useState(0);
+  const posRef = useRef(0);
+  const dirRef = useRef(1);
+  const doneRef = useRef(false);
+  const rafRef = useRef(null);
+  const [result, setResult] = useState(null);
+
+  useEffect(() => {
+    let last = performance.now();
+    const loop = (t) => {
+      const dt = Math.min(0.05, (t - last) / 1000); last = t;
+      posRef.current += dirRef.current * speed * dt;
+      if (posRef.current >= 1) { posRef.current = 1; dirRef.current = -1; }
+      if (posRef.current <= 0) { posRef.current = 0; dirRef.current = 1; }
+      setPos(posRef.current);
+      if (!doneRef.current) rafRef.current = requestAnimationFrame(loop);
+    };
+    rafRef.current = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [speed]);
+
+  const lock = () => {
+    if (doneRef.current) return;
+    doneRef.current = true;
+    cancelAnimationFrame(rafRef.current);
+    const p = posRef.current;
+    let quality = "miss";
+    if (p >= PERFECT[0] && p <= PERFECT[1]) quality = "perfect";
+    else if (p >= GOOD[0] && p <= GOOD[1]) quality = "good";
+    AudioEngine.scratch();
+    setResult(quality);
+    setTimeout(() => onResult(quality), 650);
+  };
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.code === "Space" || e.code === "Enter") { e.preventDefault(); lock(); } };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const resultLabel = result === "perfect" ? (isAttack ? "COLPO PERFETTO!" : "PARATA PERFETTA!")
+    : result === "good" ? (isAttack ? "BUONO!" : "PARATA PARZIALE")
+    : result ? (isAttack ? "MANCATO..." : "COLPITO!") : null;
+  const resultColor = result === "perfect" ? C.green : result === "good" ? C.gold : C.red;
+
+  return (
+    <div style={{
+      position: "absolute", inset: 0, zIndex: 40,
+      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "14px",
+      background: "rgba(0,0,0,0.72)", backdropFilter: "blur(2px)",
+    }}
+      onClick={lock}
+    >
+      <div style={{ color: accent, fontSize: "18px", fontWeight: "bold", letterSpacing: "1px", textShadow: `0 0 12px ${accent}` }}>
+        {isAttack ? "⚔️ COLPISCI AL MOMENTO GIUSTO!" : "🛡 PARA L'ATTACCO!"}
+      </div>
+      {/* Barra */}
+      <div style={{
+        position: "relative", width: "min(80%, 460px)", height: "34px",
+        background: "#0a0a12", border: `2px solid ${accent}88`, borderRadius: "6px", overflow: "hidden",
+        boxShadow: `0 0 18px ${accent}44, inset 0 0 18px #000`,
+      }}>
+        {/* zona buono */}
+        <div style={{ position: "absolute", top: 0, bottom: 0, left: `${GOOD[0] * 100}%`, width: `${(GOOD[1] - GOOD[0]) * 100}%`, background: `${C.gold}33`, borderLeft: `1px solid ${C.gold}88`, borderRight: `1px solid ${C.gold}88` }} />
+        {/* zona perfetto */}
+        <div style={{ position: "absolute", top: 0, bottom: 0, left: `${PERFECT[0] * 100}%`, width: `${(PERFECT[1] - PERFECT[0]) * 100}%`, background: `${C.green}55`, boxShadow: `0 0 12px ${C.green}88 inset` }} />
+        {/* cursore */}
+        <div style={{ position: "absolute", top: "-3px", bottom: "-3px", left: `calc(${pos * 100}% - 3px)`, width: "6px", background: result ? resultColor : "#fff", boxShadow: `0 0 10px ${result ? resultColor : "#fff"}`, transition: doneRef.current ? "background 0.1s" : "none" }} />
+      </div>
+      {resultLabel ? (
+        <div style={{ color: resultColor, fontSize: "22px", fontWeight: "bold", textShadow: `0 0 16px ${resultColor}` }}>{resultLabel}</div>
+      ) : (
+        <div style={{
+          padding: "10px 30px", background: accent, color: "#000", fontWeight: "bold", fontSize: "16px",
+          border: `2px solid ${accent}`, borderRadius: "6px", boxShadow: `0 0 18px ${accent}aa`, cursor: "pointer",
+          letterSpacing: "1px",
+        }}>
+          {isAttack ? "COLPISCI!" : "PARA!"} <span style={{ fontSize: "11px", opacity: 0.7 }}>(spazio / tap)</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 // ─── COMBAT COMPONENT — DUELLO HP ────────────────────────────
 export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onCellScratch, playerWallet = 0, onCombo, onVariantRevealed }) {
   const stats = ENEMY_STATS[enemy.name] || DEFAULT_ENEMY_STATS;
@@ -268,18 +364,33 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
   const [enemyIntent, setEnemyIntent] = useState(null); // "ATTACCA" | "SCUDO" | "CURA"
   const [enemyHitFlash, setEnemyHitFlash] = useState(0);
   const [painFlash, setPainFlash] = useState(0);
+  const [activeTiming, setActiveTiming] = useState(null); // {mode, onResult} minigioco tempismo
+  const [currentExchange, setCurrentExchange] = useState(-1); // scambio in corso (per telegrafo)
   const [coins, setCoins] = useState([]); // monete che volano
   const coinId = useRef(0);
   const logScrollRef = useRef(null);
   const dead = useRef(false);
 
-  const nailCol = C.red;
+  // Refs per applicazione LIVE degli effetti (accumulo sincrono, poi mirror in state)
+  const hpRef = useRef(Math.round(stats.hp * bossMult));
+  const shieldRef = useRef(0);
+  const lootRef = useRef(0);
+  const pendingBlockRef = useRef(false); // difesa dello scambio corrente (scudo)
+  const pendingDodgeRef = useRef(0);     // schivate dello scambio corrente
+  const atkDmgRef = useRef(0);     // danno d'attacco cumulato (per combo)
+  const playedRef = useRef([]);    // indici giocati questo turno
+  const turnLogRef = useRef([]);   // log del turno (cresce live)
+  const resolvingRef = useRef(false);
 
   // ── Deal: inizio turno, pesca 9 carte (griglia 3x3) + prepara il piano nemico ──
   // Come l'originale: gratti 3 delle 9 carte; quelle 3 sono le mosse giocate.
   const dealTurn = () => {
     setHand(generateCombatHand(9));
+    playedRef.current = [];
     setRevealedIdxs([]);
+    pendingBlockRef.current = false; pendingDodgeRef.current = 0; atkDmgRef.current = 0;
+    turnLogRef.current = []; setLog([]);
+    resolvingRef.current = false;
     const plan = generateCombatCard(false, enemy.name).cells;
     setEnemyPlan(plan);
     // Telegrafo intento: categoria dominante nel piano nemico
@@ -291,24 +402,178 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
 
   const startCombat = () => { setPhase("player"); dealTurn(); };
 
-  // ── Reveal di una carta del player (max 3) ──
+  // ── Reveal di una carta = uno SCAMBIO: player agisce, poi il nemico risponde ──
   const onCellRevealed = (idx) => {
-    setRevealedIdxs(prev => {
-      if (prev.includes(idx) || prev.length >= 3) return prev; // già giocata / mano piena
-      onCellScratch?.(false); // grattatore assorbe/consuma se equipaggiato
-      const cell = hand[idx];
-      if (cell?.variant && onVariantRevealed) onVariantRevealed(cell.variant);
-      return [...prev, idx];
-    });
+    if (phase !== "player" || resolvingRef.current) return;
+    if (playedRef.current.includes(idx) || playedRef.current.length >= 3) return;
+    const exchangeIdx = playedRef.current.length; // 0,1,2
+    const isLast = exchangeIdx >= 2;
+    playedRef.current = [...playedRef.current, idx];
+    setRevealedIdxs([...playedRef.current]);
+    setCurrentExchange(exchangeIdx);
+    resolvingRef.current = true;             // blocca lo scratch durante lo scambio
+    pendingBlockRef.current = false; pendingDodgeRef.current = 0; // difesa di QUESTO scambio
+    onCellScratch?.(false);
+    const cell = hand[idx];
+    if (!cell) { resolvingRef.current = false; return; }
+    if (cell.variant && onVariantRevealed) onVariantRevealed(cell.variant);
+
+    const r = resolvePlayerCell(cell);
+    const isAttack = cell.category === "COMBATTIMENTO" && r.dmg > 0;
+
+    // Effetti non-danno della carta si applicano subito
+    applyPlayerImmediate(cell, r);
+
+    if (isAttack) {
+      // Minigioco di tempismo: colpisci al momento giusto
+      setActiveTiming({
+        mode: "attack",
+        onResult: (quality) => {
+          setActiveTiming(null);
+          applyAttackDamage(cell, r, quality);
+          proceedToEnemy(exchangeIdx, isLast);
+        },
+      });
+    } else {
+      // Nessun attacco da temporizzare → passa direttamente al nemico
+      setTimeout(() => proceedToEnemy(exchangeIdx, isLast), 450);
+    }
   };
 
-  // Quando hai grattato 3 carte → risolvi il turno
-  useEffect(() => {
-    if (phase !== "player" || revealedIdxs.length < 3) return;
-    const t = setTimeout(() => resolveTurn(), 700);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [revealedIdxs.length, phase]);
+  // Danno d'attacco modulato dal tempismo
+  const applyAttackDamage = (cell, r, quality) => {
+    const mult = quality === "perfect" ? 1.6 : quality === "good" ? 1.0 : 0.5;
+    const dmg = Math.max(1, Math.round(r.dmg * mult));
+    atkDmgRef.current += dmg;
+    if (quality === "perfect") { pushLog(`⚔️ ${cell.name}: COLPO PERFETTO! ${dmg} danni (×1.6)`, C.green); setEnemyHitFlash(1.4); }
+    else if (quality === "good") pushLog(`⚔️ ${cell.name}: ${dmg} danni`, C.gold);
+    else pushLog(`⚔️ ${cell.name}: colpo maldestro, solo ${dmg} danni`, C.dim);
+    flyCoins(2);
+    dealDamage(dmg);
+  };
+
+  // Dopo l'azione del player, il nemico risponde per questo scambio
+  const proceedToEnemy = (exchangeIdx, isLast) => {
+    // Combo: se le 3 carte giocate sono tutte attacchi → bonus
+    if (isLast) {
+      const played = playedRef.current.map(i => hand[i]).filter(Boolean);
+      if (played.length === 3 && played.every(c => c.category === "COMBATTIMENTO") && atkDmgRef.current > 0) {
+        const bonus = Math.round(atkDmgRef.current * 0.5);
+        pushLog(`🔥 COMBO ATTACCO! +${bonus} danni!`, C.magenta);
+        onCombo?.();
+        dealDamage(bonus);
+      }
+    }
+    if (hpRef.current <= 0) { winNow(); return; }
+
+    const ec = enemyPlan[exchangeIdx];
+    const isEnemyAttack = ec && ec.category === "COMBATTIMENTO";
+    if (isEnemyAttack) {
+      // Se il player ha giocato scudo/schivata questo scambio → negato senza minigioco
+      if (pendingBlockRef.current) {
+        pushLog(`${enemy.name} 🗡 ${ec.name}: 🛡 BLOCCATO dallo scudo!`, C.blue);
+        setTimeout(() => finishExchange(exchangeIdx, isLast), 450);
+        return;
+      }
+      if (pendingDodgeRef.current > 0) {
+        pendingDodgeRef.current--;
+        pushLog(`${enemy.name} 🗡 ${ec.name}: 💨 SCHIVATO!`, C.cyan);
+        setTimeout(() => finishExchange(exchangeIdx, isLast), 450);
+        return;
+      }
+      // Minigioco di parata: prova a parare al momento giusto
+      setActiveTiming({
+        mode: "parry",
+        onResult: (quality) => {
+          setActiveTiming(null);
+          applyEnemyAttack(ec, quality);
+          finishExchange(exchangeIdx, isLast);
+        },
+      });
+    } else {
+      // Difesa/cura nemico
+      if (ec) applyEnemyNonAttack(ec);
+      setTimeout(() => finishExchange(exchangeIdx, isLast), 450);
+    }
+  };
+
+  const applyEnemyNonAttack = (c) => {
+    if (c.category === "DIFESA") {
+      shieldRef.current += stats.shieldPerDef; setEnemyShield(shieldRef.current);
+      pushLog(`${enemy.name} 🛡 ${c.name}: +${stats.shieldPerDef} scudo`, C.blue);
+    } else if (c.category === "DENARO") {
+      const healAmt = Math.round((c.value || 20) * 0.4);
+      hpRef.current = Math.min(enemyMaxHp, hpRef.current + healAmt); setEnemyHp(hpRef.current);
+      pushLog(`${enemy.name} 💰 ${c.name}: si cura +${healAmt} HP`, C.orange);
+    } else {
+      // attacco bloccato da carta scudo del player
+      pushLog(`${enemy.name} 🗡 ${c.name}: 🛡 BLOCCATO dallo scudo!`, C.blue);
+    }
+  };
+
+  // Attacco nemico risolto dal tempismo di parata
+  const applyEnemyAttack = (c, quality) => {
+    const heavy = c.effect === "damageNail" || c.effect === "killNail" || c.effect === "damage";
+    const stealsMoney = c.effect === "stealMoney" || c.effect === "steal";
+    const baseSteps = heavy ? 2 : 1;
+    const stealVal = c.value || 15;
+
+    if (quality === "perfect") {
+      // Annulla il danno + contrattacco
+      pushLog(`${enemy.name} 🗡 ${c.name}: 🛡 PARATA PERFETTA! Nessun danno`, C.green);
+      const counter = 14;
+      pushLog(`↩️ Contrattacco! ${counter} danni a ${enemy.name}`, C.cyan);
+      dealDamage(counter);
+      if (hpRef.current <= 0) { winNow(); return; }
+      return;
+    }
+    if (quality === "good") {
+      if (stealsMoney) {
+        const v = Math.round(stealVal * 0.5);
+        lootRef.current = Math.max(0, lootRef.current - v); setLoot(lootRef.current);
+        pushLog(`${enemy.name} 🗡 ${c.name}: parata parziale — ti ruba solo €${v}`, C.gold);
+      } else {
+        onNailDamage?.(1);
+        setPainFlash(0.3); setTimeout(() => setPainFlash(0), 350);
+        pushLog(`${enemy.name} 🗡 ${c.name}: parata parziale — 1 danno`, C.gold);
+        checkDefeat();
+      }
+      return;
+    }
+    // miss → danno pieno
+    if (stealsMoney) {
+      lootRef.current = Math.max(0, lootRef.current - stealVal); setLoot(lootRef.current);
+      pushLog(`${enemy.name} 🗡 ${c.name}: ti ruba €${stealVal}!`, C.red);
+    } else {
+      onNailDamage?.(baseSteps);
+      setPainFlash(0.5); setTimeout(() => setPainFlash(0.2), 150); setTimeout(() => setPainFlash(0), 500);
+      AudioEngine.painScream?.();
+      pushLog(`${enemy.name} 🗡 ${c.name}: COLPITO! ${baseSteps} danno alle unghie`, C.red);
+      checkDefeat();
+    }
+  };
+
+  const checkDefeat = () => {
+    const aliveNow = player.nails.filter(n => n.state !== "morta").length;
+    if (aliveNow <= 1) dead.current = true;
+  };
+
+  const finishExchange = (exchangeIdx, isLast) => {
+    if (dead.current) { setPhase("turnEnd"); return; }
+    if (isLast) {
+      // Carte nemico extra (es. 4a del Napoletano) si risolvono senza parata
+      for (let k = 3; k < enemyPlan.length; k++) {
+        const ec = enemyPlan[k];
+        if (ec.category === "COMBATTIMENTO") applyEnemyAttack(ec, "miss");
+        else applyEnemyNonAttack(ec);
+      }
+      setCurrentExchange(-1);
+      setTimeout(() => setPhase("turnEnd"), 400);
+    } else {
+      setCurrentExchange(-1);
+      resolvingRef.current = false; // sblocca lo scratch per la prossima carta
+    }
+  };
 
   const flyCoins = (n) => {
     const batch = Array.from({ length: Math.min(8, Math.max(1, n)) }, () => ({
@@ -321,121 +586,56 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
     setTimeout(() => setCoins(prev => prev.filter(c => !batch.find(b => b.id === c.id))), 1100);
   };
 
-  const resolveTurn = () => {
-    if (dead.current) return;
-    const newLog = [];
-    const push = (text, color = C.dim) => newLog.push({ text, color });
+  // Aggiunge una riga al log del turno (mostrato live in turnEnd)
+  const pushLog = (text, color = C.dim) => {
+    turnLogRef.current = [...turnLogRef.current, { text, color }];
+    setLog(turnLogRef.current);
+  };
 
-    // ── 1) OFFENSIVA PLAYER (solo le 3 carte grattate) ──
-    const played = revealedIdxs.map(i => hand[i]).filter(Boolean);
-    let dmg = 0, deltaLoot = 0, heals = 0, selfDeg = 0, playerBlock = false, playerDodges = 0;
-    let bonusEnemyShield = 0;
-    const damagedNails = player.nails.some(n => n.state !== "sana" && n.state !== "kawaii" && n.state !== "morta" && n.state !== "piede");
-    const allAttack = played.length === 3 && played.every(c => c.category === "COMBATTIMENTO");
-
-    played.forEach(c => {
-      const r = resolvePlayerCell(c);
-      if (r.dmg) dmg += r.dmg;
-      if (r.loot) deltaLoot += r.loot;
-      if (r.self) selfDeg += r.self;
-      if (r.block) playerBlock = true;
-      if (r.dodge) playerDodges += r.dodge;
-      if (r.enemyShield) bonusEnemyShield += r.enemyShield;
-      // adrenaline: cura se hai unghie danneggiate, altrimenti bottino
-      if (r.heals) { if (c.effect === "adrenaline" && !damagedNails) deltaLoot += r.altLoot || 0; else heals += r.heals; }
-      push(r.log, CAT_COLORS[c.category] || C.dim);
-    });
-
-    // Combo: 3 attacchi = danno bonus
-    if (allAttack && dmg > 0) {
-      const bonus = Math.round(dmg * 0.5);
-      dmg += bonus;
-      push(`🔥 COMBO ATTACCO! +${bonus} danni!`, C.magenta);
-      onCombo?.();
+  // Applica danno all'HP nemico (scudo prima, poi HP). Aggiorna gli state per il render.
+  const dealDamage = (d) => {
+    let remaining = d;
+    if (shieldRef.current > 0) {
+      const absorbed = Math.min(shieldRef.current, remaining);
+      shieldRef.current -= absorbed; remaining -= absorbed;
+      setEnemyShield(shieldRef.current);
+      if (absorbed > 0) pushLog(`🛡 Scudo nemico assorbe ${absorbed}`, C.blue);
     }
-
-    // Applica danno al nemico (scudo prima, poi HP)
-    let remaining = dmg;
-    let newShield = enemyShield;
-    let newHp = enemyHp;
     if (remaining > 0) {
-      if (newShield > 0) {
-        const absorbed = Math.min(newShield, remaining);
-        newShield -= absorbed; remaining -= absorbed;
-        if (absorbed > 0) push(`🛡 Scudo nemico assorbe ${absorbed}`, C.blue);
-      }
-      newHp = Math.max(0, newHp - remaining);
-      if (remaining > 0) { AudioEngine.scratch(); setEnemyHitFlash(1); setTimeout(() => setEnemyHitFlash(0), 350); }
+      hpRef.current = Math.max(0, hpRef.current - remaining);
+      setEnemyHp(hpRef.current);
+      AudioEngine.scratch(); setEnemyHitFlash(1); setTimeout(() => setEnemyHitFlash(0), 350);
     }
+  };
 
-    // Bottino + monete che volano
-    if (deltaLoot !== 0) {
-      setLoot(l => Math.max(0, l + deltaLoot));
-      if (deltaLoot > 0) flyCoins(Math.ceil(deltaLoot / 6));
+  // Applica gli effetti NON-danno di una carta player (bottino/cura/difesa/self).
+  // Il danno d'attacco è gestito a parte da applyAttackDamage (dopo il minigioco).
+  const applyPlayerImmediate = (c, r) => {
+    const damaged = player.nails.some(n => n.state !== "sana" && n.state !== "kawaii" && n.state !== "morta" && n.state !== "piede");
+    if (r.loot) {
+      lootRef.current = Math.max(0, lootRef.current + r.loot);
+      setLoot(lootRef.current);
+      if (r.loot > 0) flyCoins(Math.ceil(r.loot / 6));
     }
-    if (dmg > 0) flyCoins(2);
-
-    // Auto-degrado del player da berserk (self)
-    if (selfDeg > 0) { onNailDamage?.(selfDeg); setPainFlash(0.35); setTimeout(() => setPainFlash(0), 400); }
-    // Cure
-    if (heals > 0) { onNailHeal?.(heals); push(`💚 ${heals} unghia/e curate`, C.green); }
-
-    // ── VITTORIA se il nemico è morto: il nemico NON agisce ──
-    if (newHp <= 0) {
-      setEnemyShield(newShield);
-      setEnemyHp(0);
-      push(`💥 ${enemy.name} è al tappeto!`, C.green);
-      setLog(newLog);
-      setTimeout(() => setPhase("win"), 600);
-      return;
+    if (r.heals) {
+      if (c.effect === "adrenaline" && !damaged) {
+        lootRef.current += (r.altLoot || 0); setLoot(lootRef.current);
+        if (r.altLoot) flyCoins(Math.ceil(r.altLoot / 6));
+      } else {
+        onNailHeal?.(r.heals);
+      }
     }
+    if (r.block) pendingBlockRef.current = true;
+    if (r.dodge) pendingDodgeRef.current += r.dodge;
+    if (r.enemyShield) { shieldRef.current += r.enemyShield; setEnemyShield(shieldRef.current); }
+    if (r.self) { onNailDamage?.(r.self); setPainFlash(0.35); setTimeout(() => setPainFlash(0), 400); }
+    pushLog(r.log, CAT_COLORS[c.category] || C.dim);
+  };
 
-    // ── 2) TURNO NEMICO ──
-    let nailDegrade = 0; // step di degrado da infliggere al player
-    let stolen = 0;
-    enemyPlan.forEach(c => {
-      const cat = c.category;
-      if (cat === "DIFESA") {
-        newShield += stats.shieldPerDef;
-        push(`${enemy.name} 🛡 ${c.name}: +${stats.shieldPerDef} scudo`, C.blue);
-        return;
-      }
-      if (cat === "DENARO") {
-        const healAmt = Math.round((c.value || 20) * 0.4);
-        newHp = Math.min(enemyMaxHp, newHp + healAmt);
-        push(`${enemy.name} 💰 ${c.name}: si cura +${healAmt} HP`, C.orange);
-        return;
-      }
-      // COMBATTIMENTO — attacco: bloccato/schivato?
-      const heavy = c.effect === "damageNail" || c.effect === "killNail" || c.effect === "damage";
-      const stealsMoney = c.effect === "stealMoney" || c.effect === "steal";
-      if (playerBlock) { push(`${enemy.name} 🗡 ${c.name}: 🛡 BLOCCATO!`, C.blue); return; }
-      if (playerDodges > 0 && !stealsMoney) { playerDodges--; push(`${enemy.name} 🗡 ${c.name}: 💨 SCHIVATO!`, C.cyan); return; }
-      if (stealsMoney) {
-        stolen += (c.value || 15);
-        push(`${enemy.name} 🗡 ${c.name}: ti ruba €${c.value || 15}!`, C.red);
-        return;
-      }
-      const steps = heavy ? 2 : 1;
-      nailDegrade += steps;
-      push(`${enemy.name} 🗡 ${c.name}: le tue unghie subiscono ${steps} danno!`, C.red);
-    });
-
-    if (stolen > 0) setLoot(l => Math.max(0, l - stolen));
-    if (nailDegrade > 0) {
-      onNailDamage?.(nailDegrade);
-      setPainFlash(0.5); setTimeout(() => setPainFlash(0.2), 150); setTimeout(() => setPainFlash(0), 500);
-      AudioEngine.painScream?.();
-      // Sconfitta: il parent (onNailDamage) porta a gameOver quando tutte le unghie muoiono.
-      // Qui congeliamo la UI se il colpo può azzerare le unghie ancora vive (stima prudente).
-      const aliveNow = player.nails.filter(n => n.state !== "morta").length;
-      if (aliveNow <= 1) dead.current = true;
-    }
-
-    setEnemyShield(newShield + bonusEnemyShield);
-    setEnemyHp(newHp);
-    setLog(newLog);
-    setPhase("turnEnd");
+  const winNow = () => {
+    setActiveTiming(null);
+    pushLog(`💥 ${enemy.name} è al tappeto!`, C.green);
+    setTimeout(() => setPhase("win"), 600);
   };
 
   const nextTurn = () => {
@@ -584,6 +784,31 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
             <div style={{ textAlign: "center", fontSize: "12px", color: C.gold, letterSpacing: "1px" }}>
               TURNO {turn} — GRATTA 3 DELLE 9 CARTE <span style={{ color: C.dim }}>({revealedIdxs.length}/3)</span>
             </div>
+            {/* Telegrafo: cosa farà il nemico ad ogni scambio (attacca / difende / cura) */}
+            <div style={{ display: "flex", justifyContent: "center", gap: "6px", fontSize: "10px" }}>
+              <span style={{ color: C.dim, alignSelf: "center" }}>NEMICO:</span>
+              {enemyPlan.slice(0, 3).map((ec, i) => {
+                const tel = ec.category === "COMBATTIMENTO" ? { ic: "🗡️", lb: "ATTACCA", col: C.red }
+                  : ec.category === "DIFESA" ? { ic: "🛡", lb: "SCUDO", col: C.blue }
+                  : { ic: "💰", lb: "SI CURA", col: C.orange };
+                const activeEx = currentExchange >= 0 ? currentExchange : revealedIdxs.length;
+                const done = i < activeEx;
+                const active = i === activeEx;
+                return (
+                  <span key={i} style={{
+                    padding: "3px 8px", borderRadius: "3px",
+                    border: `1px solid ${active ? tel.col : tel.col + "55"}`,
+                    background: active ? tel.col + "22" : "transparent",
+                    color: done ? C.dim : tel.col,
+                    opacity: done ? 0.45 : 1,
+                    boxShadow: active ? `0 0 8px ${tel.col}66` : "none",
+                    fontWeight: active ? "bold" : "normal",
+                  }}>
+                    {tel.ic} {tel.lb}
+                  </span>
+                );
+              })}
+            </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "6px" }}>
               {hand.map((cell, i) => {
                 const isRevealed = revealedIdxs.includes(i);
@@ -599,17 +824,11 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
                 );
               })}
             </div>
-            {/* Descrizioni delle carte giocate */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "3px", fontSize: "11px" }}>
-              {revealedIdxs.map(i => {
-                const c = hand[i];
-                if (!c) return null;
-                return (
-                  <div key={i} style={{ color: CAT_COLORS[c.category] || C.dim }}>
-                    {c.emoji} <b>{c.name}</b> — {c.desc}
-                  </div>
-                );
-              })}
+            {/* Log live dello scambio (cresce man mano) */}
+            <div ref={logScrollRef} style={{ display: "flex", flexDirection: "column", gap: "2px", fontSize: "11px", maxHeight: "160px", overflowY: "auto" }}>
+              {log.map((l, i) => (
+                <div key={i} style={{ color: l.color }}>{l.text}</div>
+              ))}
             </div>
           </div>
         )}
@@ -638,6 +857,15 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
           <div style={{ color: C.gold, fontSize: "14px" }}>Bottino: €{loot}</div>
           <Btn variant="success" onClick={finishWin} style={{ fontSize: "15px", padding: "10px 28px" }}>INCASSA →</Btn>
         </div>
+      )}
+
+      {/* ── OVERLAY MINIGIOCO TEMPISMO (attacco / parata) ── */}
+      {activeTiming && (
+        <TimingBar
+          mode={activeTiming.mode}
+          speed={enemy.isBoss ? 1.75 : 1.45}
+          onResult={activeTiming.onResult}
+        />
       )}
     </div>
   );
