@@ -20,6 +20,7 @@ export function CombatCardScratch({ cell, onRevealed, catColors, disabled, nailS
   const canvasRef = useRef(null);
   const drawing = useRef(false);
   const revealed = useRef(false);
+  const [isRevealed, setIsRevealed] = useState(false); // al reveal la patina sparisce del tutto
   const lastScratchSound = useRef(0); // throttle audio
   const nailCursor = makeNailCursor(nailState);
 
@@ -79,9 +80,10 @@ export function CombatCardScratch({ cell, onRevealed, catColors, disabled, nailS
     const ctx = canvas.getContext("2d");
     ctx.globalCompositeOperation = "destination-out";
     ctx.beginPath();
-    ctx.arc(x, y, 40, 0, Math.PI * 2);
+    ctx.arc(x, y, 46, 0, Math.PI * 2);
     ctx.fill();
-    ParticleSystem.spawn(clientX, clientY, 14, false);
+    // Polverina d'oro a ogni passata
+    ParticleSystem.spawn(clientX, clientY, 18, false);
     // Suono della grattata — throttled a ogni 80ms per non spammare
     const now = Date.now();
     if (now - lastScratchSound.current > 80) {
@@ -91,9 +93,16 @@ export function CombatCardScratch({ cell, onRevealed, catColors, disabled, nailS
     const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
     let transparent = 0;
     for (let i = 3; i < data.length; i += 4) if (data[i] < 100) transparent++;
-    if (transparent / (canvas.width * canvas.height) > 0.32 && !revealed.current) {
+    if (transparent / (canvas.width * canvas.height) > 0.30 && !revealed.current) {
       revealed.current = true;
+      // Reveal completo: pulisci TUTTA la patina d'oro in un colpo (come i grattini originali)
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // Burst di polverina su tutta la carta
+      for (let k = 0; k < 6; k++) {
+        ParticleSystem.spawn(rect.left + Math.random() * rect.width, rect.top + Math.random() * rect.height, 12, false);
+      }
       AudioEngine.scratch();
+      setIsRevealed(true);
       onRevealed();
     }
   };
@@ -120,8 +129,8 @@ export function CombatCardScratch({ cell, onRevealed, catColors, disabled, nailS
       touchAction: "none",
     }} {...evts}>
 
-      {/* Canvas oro — completamente opaco, copre tutto */}
-      {!disabled && (
+      {/* Canvas oro — completamente opaco, copre tutto. Sparisce al reveal. */}
+      {!disabled && !isRevealed && (
         <canvas ref={canvasRef} width={220} height={160}
           style={{
             position:"absolute", inset:0, width:"100%", height:"100%",
