@@ -1112,86 +1112,140 @@ export default function Grattini() {
         </div>
       )}
 
-      {/* ═══ TUTORIAL UNGHIE — paginated, no scroll ═══ */}
-      {screen === "tutorialNails" && (
+      {/* ═══ TUTORIAL — 3 pagine: Unghie · Combattimento · Mappa/Soldi ═══ */}
+      {screen === "tutorialNails" && (() => {
+        const PAGES = [
+          { emoji:"🖐", title:"LE TUE UNGHIE", sub:"sono la tua VITA", color:C.cyan },
+          { emoji:"⚔️", title:"IL COMBATTIMENTO", sub:"un duello a colpi di grattino", color:C.red },
+          { emoji:"🗺️", title:"LA MAPPA & I SOLDI", sub:"dove vai, cosa compri", color:C.gold },
+        ];
+        const pg = PAGES[tutorialPage] || PAGES[0];
+        const Panel = ({ accent, head, children }) => (
+          <div style={{ background:"#0b0b14", border:`1px solid ${accent}55`, padding:"8px 11px", marginBottom:"8px", flexShrink:0 }}>
+            <div style={{color:accent, fontSize:"10px", fontWeight:"bold", letterSpacing:"1px", marginBottom:"5px"}}>{head}</div>
+            <div style={{color:C.text, fontSize:"11px", lineHeight:"1.65"}}>{children}</div>
+          </div>
+        );
+        return (
         <div style={{
           width:"100%", flex:1, minHeight:0, maxWidth:"520px", margin:"0 auto",
           display:"flex", flexDirection:"column", justifyContent:"center",
           padding:"10px 14px 14px", boxSizing:"border-box",
           overflowY:"auto", WebkitOverflowScrolling:"touch",
         }}>
-          {/* ── Header ── */}
+          {/* ── Header + puntini pagina ── */}
           <div style={{textAlign:"center", flexShrink:0, marginBottom:"10px"}}>
-            <div style={{color:C.cyan, fontFamily:FONT, fontSize:"16px", fontWeight:"bold", letterSpacing:"2px", marginBottom:"2px"}}>
-              🖐 LE TUE UNGHIE
+            <div style={{color:pg.color, fontFamily:FONT, fontSize:"16px", fontWeight:"bold", letterSpacing:"2px", marginBottom:"2px"}}>
+              {pg.emoji} {pg.title}
             </div>
-            <div style={{color:C.dim, fontSize:"9px", letterSpacing:"3px"}}>TUTORIAL — leggi, poi gratta</div>
+            <div style={{color:C.dim, fontSize:"9px", letterSpacing:"3px"}}>{pg.sub.toUpperCase()} — {tutorialPage+1}/3</div>
+            <div style={{display:"flex", justifyContent:"center", gap:"5px", marginTop:"6px"}}>
+              {PAGES.map((_, i) => (
+                <div key={i} style={{
+                  width: i === tutorialPage ? "18px" : "6px", height:"6px",
+                  background: i === tutorialPage ? pg.color : C.dim+"66",
+                  boxShadow: i === tutorialPage ? `0 0 6px ${pg.color}` : "none",
+                  transition:"width 0.2s, background 0.2s",
+                }}/>
+              ))}
+            </div>
           </div>
 
-          {/* ── Griglia stati unghie — 2 colonne, 3 righe ── */}
-          <div style={{
-            display:"grid", gridTemplateColumns:"1fr 1fr",
-            gap:"6px", marginBottom:"10px", flexShrink:0,
-          }}>
-            {[
-              { label:"Sana",         color:C.green,   badge:"💚 PIENO",   desc:"Unghia intatta. Premio al 100%." },
-              { label:"Graffiata",    color:C.gold,    badge:"💛 PIENO",   desc:"Usura iniziale. Premio ancora pieno." },
-              { label:"Sanguinante",  color:C.orange,  badge:"🩸 −50%",    desc:"Fa male. Premio dimezzato." },
-              { label:"Marcia",       color:C.red,     badge:"🦠 −75%",    desc:"Pericolosa. Solo 25% del premio." },
-              { label:"Morta ✝",      color:"#555",    badge:"💀 FUORI",   desc:"Inutilizzabile. Passa alla prossima." },
-              { label:"Kawaii ♡",     color:"#ff88cc", badge:"✨ ×2",      desc:"Rara. Premio raddoppiato. Usala bene." },
-            ].map(({label, color, badge, desc}) => (
-              <div key={label} style={{
-                background:"#0c0c1a", border:`1px solid ${color}55`,
-                padding:"7px 9px",
-                display:"flex", flexDirection:"column", gap:"3px",
-              }}>
-                <div style={{display:"flex", alignItems:"center", gap:"6px"}}>
-                  <div style={{width:"8px", height:"8px", background:color, flexShrink:0, boxShadow:`0 0 4px ${color}`}}/>
-                  <span style={{color, fontSize:"12px", fontWeight:"bold", letterSpacing:"0.5px"}}>{label}</span>
-                  <span style={{
-                    marginLeft:"auto", fontSize:"9px", fontWeight:"bold",
-                    color: color === "#555" ? "#555" : color,
-                    background:"#00000066", padding:"1px 5px",
-                    border:`1px solid ${color}33`,
-                  }}>{badge}</span>
+          {/* ══ PAGINA 1 — UNGHIE ══ */}
+          {tutorialPage === 0 && (<>
+            <div style={{color:C.dim, fontSize:"10px", lineHeight:"1.5", textAlign:"center", marginBottom:"8px"}}>
+              Le tue <strong style={{color:C.bright}}>5 unghie</strong> sono la barra vita: le consumi grattando i biglietti <em>e</em> le perdi quando un nemico ti colpisce in combattimento.
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"6px", marginBottom:"10px", flexShrink:0 }}>
+              {[
+                { label:"Sana",         color:C.green,   badge:"💚 PIENO",   desc:"Intatta. Premio al 100%." },
+                { label:"Graffiata",    color:C.gold,    badge:"💛 PIENO",   desc:"Usura iniziale. Premio pieno." },
+                { label:"Sanguinante",  color:C.orange,  badge:"🩸 −50%",    desc:"Fa male. Premio dimezzato." },
+                { label:"Marcia",       color:C.red,     badge:"🦠 −75%",    desc:"Solo 25% del premio." },
+                { label:"Morta ✝",      color:"#555",    badge:"💀 FUORI",   desc:"Inutilizzabile. Prossima." },
+                { label:"Kawaii ♡",     color:"#ff88cc", badge:"✨ ×2",      desc:"Rara. Premio raddoppiato." },
+              ].map(({label, color, badge, desc}) => (
+                <div key={label} style={{ background:"#0c0c1a", border:`1px solid ${color}55`, padding:"7px 9px", display:"flex", flexDirection:"column", gap:"3px" }}>
+                  <div style={{display:"flex", alignItems:"center", gap:"6px"}}>
+                    <div style={{width:"8px", height:"8px", background:color, flexShrink:0, boxShadow:`0 0 4px ${color}`}}/>
+                    <span style={{color, fontSize:"12px", fontWeight:"bold", letterSpacing:"0.5px"}}>{label}</span>
+                    <span style={{ marginLeft:"auto", fontSize:"9px", fontWeight:"bold", color: color === "#555" ? "#555" : color, background:"#00000066", padding:"1px 5px", border:`1px solid ${color}33` }}>{badge}</span>
+                  </div>
+                  <div style={{color:C.dim, fontSize:"10px", lineHeight:"1.35"}}>{desc}</div>
                 </div>
-                <div style={{color:C.dim, fontSize:"10px", lineHeight:"1.35"}}>{desc}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* ── Meccaniche in due righe compatte ── */}
-          <div style={{
-            background:"#0d1100", border:`1px solid ${C.gold}44`,
-            padding:"8px 11px", marginBottom:"8px", flexShrink:0,
-          }}>
-            <div style={{color:C.gold, fontSize:"10px", fontWeight:"bold", letterSpacing:"1px", marginBottom:"5px"}}>⚠ COME SI CONSUMANO</div>
-            <div style={{color:C.text, fontSize:"11px", lineHeight:"1.7"}}>
-              Ogni <strong style={{color:C.bright}}>3 celle grattate</strong> → l'unghia degrada di uno stato.<br/>
-              Hai <strong style={{color:C.bright}}>5 unghie</strong>. Quando una muore, passi alla prossima.<br/>
-              Tutte e 5 morte → <strong style={{color:C.red}}>GAME OVER</strong>.
+              ))}
             </div>
-          </div>
+            <Panel accent={C.gold} head="⚠ COME SI CONSUMANO">
+              Ogni <strong style={{color:C.bright}}>3 celle grattate</strong> → l'unghia peggiora di uno stato.<br/>
+              Quando una muore, passi automaticamente alla prossima.<br/>
+              Tutte e 5 morte → <strong style={{color:C.red}}>GAME OVER</strong>. Le unghie <strong style={{color:C.bright}}>non ricrescono</strong> (ma puoi curarle).
+            </Panel>
+          </>)}
 
-          <div style={{
-            background:"#080a08", border:`1px solid ${C.cyan}33`,
-            padding:"7px 11px", marginBottom:"12px", flexShrink:0,
-          }}>
-            <div style={{color:C.cyan, fontSize:"10px", fontWeight:"bold", letterSpacing:"1px", marginBottom:"4px"}}>💡 CONSIGLIO</div>
-            <div style={{color:C.dim, fontSize:"10px", lineHeight:"1.5"}}>
-              Compra cerotti e disinfettanti al tabaccaio prima che sia tardi.<br/>
-              Tieni la Kawaii per le carte da alto valore.
-            </div>
-          </div>
+          {/* ══ PAGINA 2 — COMBATTIMENTO ══ */}
+          {tutorialPage === 1 && (<>
+            <Panel accent={C.red} head="🗡️ È UN DUELLO, NON UNA GARA DI SOLDI">
+              Il nemico ha una barra <strong style={{color:C.red}}>❤️ HP</strong> (rossa) e uno <strong style={{color:C.blue}}>🛡 scudo</strong> (blu). Portalo a <strong style={{color:C.bright}}>0 HP</strong> prima che le tue unghie finiscano.
+            </Panel>
+            <Panel accent={C.gold} head="🎫 OGNI TURNO: GRATTA 3 DELLE 9 CARTE">
+              <span style={{color:C.red}}>🗡️ ATTACCO</span> → fa danno al nemico.<br/>
+              <span style={{color:C.blue}}>🛡 DIFESA</span> → ti prepara a PARARE il prossimo colpo.<br/>
+              <span style={{color:C.gold}}>💰 DENARO</span> → bottino in € (non fa danno).<br/>
+              <span style={{color:C.dim}}>Gratti una carta → il nemico risponde subito (vedi <strong style={{color:C.text}}>«IN ARRIVO ▸»</strong>).</span>
+            </Panel>
+            <Panel accent={C.cyan} head="🎯 TEMPISMO (la barra col cursore)">
+              Quando <strong style={{color:C.red}}>ATTACCHI</strong>: ferma il cursore nel <strong style={{color:C.green}}>VERDE</strong> = <strong>COLPO PERFETTO</strong> (più danno).<br/>
+              Se hai giocato una <strong style={{color:C.blue}}>DIFESA</strong> e il nemico attacca, parte la <strong>PARATA</strong>: perfetta = <strong style={{color:C.green}}>annulli il colpo e contrattacchi</strong>.<br/>
+              <strong style={{color:C.red}}>Senza difesa, il colpo ti rovina un'unghia.</strong>
+            </Panel>
+            <Panel accent={C.orange} head="🔥 FURIA & COMBO">
+              3 attacchi di fila in un turno = <strong style={{color:C.magenta}}>COMBO</strong> (danno bonus).<br/>
+              Dal <strong style={{color:C.orange}}>turno 3</strong> il nemico va in <strong style={{color:C.orange}}>FURIA</strong>: non si cura più e picchia sempre più forte. <strong style={{color:C.bright}}>Chiudi in fretta.</strong>
+            </Panel>
+          </>)}
 
-          {/* ── CTA ── */}
-          <Btn variant="gold" onClick={() => setScreen("introScratch")}
-            style={{fontSize:"14px", padding:"14px", letterSpacing:"2px", flexShrink:0}}>
-            ░ HO CAPITO — INIZIAMO ░
-          </Btn>
+          {/* ══ PAGINA 3 — MAPPA & SOLDI ══ */}
+          {tutorialPage === 2 && (<>
+            <Panel accent={C.cyan} head="🗺️ IL PERCORSO">
+              Scegli il cammino a nodi fino al <strong style={{color:C.red}}>👹 BOSS</strong> del bioma. Battilo per sbloccare il bioma successivo.
+            </Panel>
+            <Panel accent={C.gold} head="📍 I NODI">
+              <span style={{color:C.red}}>🗡️ 💀</span> combattimenti &nbsp;·&nbsp; <span style={{color:C.cyan}}>🏪 tabaccaio</span> (grattini & attrezzi)<br/>
+              <span style={{color:C.magenta}}>🏨 locanda</span> (curi le unghie con €) &nbsp;·&nbsp; <span style={{color:C.text}}>❓ eventi/NPC</span><br/>
+              <span style={{color:C.dim}}>⛪ 👵 🙏 possono aiutarti… o fregarti. Leggi sempre le scelte.</span>
+            </Panel>
+            <Panel accent={C.gold} head="💰 I SOLDI (€)">
+              Sono il bottino di combattimenti e grattate. Servono per <strong style={{color:C.bright}}>curarti in locanda</strong>, comprare <strong style={{color:C.bright}}>grattatori da combattimento</strong> e consumabili.<br/>
+              <span style={{color:C.orange}}>⚠ I boss chiedono un minimo di € per farti entrare: non arrivare al verde.</span>
+            </Panel>
+            <Panel accent={C.green} head="💡 CONSIGLIO">
+              Cura le unghie <strong style={{color:C.bright}}>prima</strong> che sia tardi. Tieni la <strong style={{color:"#ff88cc"}}>Kawaii</strong> per i colpi grossi, e passa il mouse sugli oggetti dello <strong style={{color:C.magenta}}>zaino</strong> per sapere cosa fanno.
+            </Panel>
+          </>)}
+
+          {/* ── NAV: indietro / avanti / inizia ── */}
+          <div style={{display:"flex", gap:"8px", flexShrink:0, marginTop:"4px"}}>
+            {tutorialPage > 0 && (
+              <Btn onClick={() => setTutorialPage(p => p - 1)}
+                style={{fontSize:"13px", padding:"12px", letterSpacing:"1px", flex:"0 0 auto"}}>
+                ← INDIETRO
+              </Btn>
+            )}
+            {tutorialPage < 2 ? (
+              <Btn variant="gold" onClick={() => setTutorialPage(p => p + 1)}
+                style={{fontSize:"14px", padding:"12px", letterSpacing:"2px", flex:1}}>
+                AVANTI →
+              </Btn>
+            ) : (
+              <Btn variant="gold" onClick={() => setScreen("introScratch")}
+                style={{fontSize:"14px", padding:"12px", letterSpacing:"2px", flex:1}}>
+                ░ HO CAPITO — INIZIAMO ░
+              </Btn>
+            )}
+          </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* ═══ INTRO SCRATCH (scratch 2 starting cards, pocket 1 prize) ═══ */}
       {screen === "introScratch" && player && (

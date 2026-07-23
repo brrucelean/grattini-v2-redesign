@@ -4,6 +4,7 @@ import { BIOME_PALETTE } from "../data/biomes.js";
 import { AudioEngine } from "../audio.js";
 import { S } from "../utils/styles.js";
 import { fmtMoney } from "../utils/money.js";
+import { GRATTATORE_DEFS } from "../data/items.js";
 import { Tooltip } from "./Tooltip.jsx";
 import { NewsTicker } from "./NewsTicker.jsx";
 
@@ -75,7 +76,7 @@ export function HUD({ player, onOpenInventory, inventoryOpen = false, moneyBling
         </Tooltip>
       )}
       {player.equippedGrattatore && (
-        <Tooltip text={`${player.equippedGrattatore.name} — ${player.equippedGrattatore.usesLeft} usi`}>
+        <Tooltip text={`${player.equippedGrattatore.name} — ${GRATTATORE_DEFS[player.equippedGrattatore.id]?.desc || "grattatore equipaggiato"}\n\n${player.equippedGrattatore.usesLeft} usi rimasti`}>
           <StatusChip color={C.cyan}>{player.equippedGrattatore.emoji} <b>{player.equippedGrattatore.usesLeft}</b></StatusChip>
         </Tooltip>
       )}

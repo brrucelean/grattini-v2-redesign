@@ -1,5 +1,5 @@
 import { C } from "../data/theme.js";
-import { ITEM_DEFS } from "../data/items.js";
+import { ITEM_DEFS, GRATTATORE_DEFS } from "../data/items.js";
 import { Tooltip } from "./Tooltip.jsx";
 import { CornerBrackets, FoilShimmer, VintageBadge } from "./Vintage.jsx";
 
@@ -68,10 +68,12 @@ export function InventorySidebar({ items, grattatori, equippedGrattatore, onUseI
           {grattatori.map((g, idx) => {
             const isEquipped = equippedGrattatore?.inventoryIdx === idx;
             const lowUses = g.usesLeft <= 1;
+            // Descrizione dell'effetto (cosa fa) dal catalogo, così il tooltip
+            // spiega davvero il grattatore e non solo nome + usi.
+            const gDesc = GRATTATORE_DEFS[g.id]?.desc;
+            const gTooltip = `${g.name} — ${gDesc || "grattatore"}\n\n${g.usesLeft} usi · ${isEquipped ? "equipaggiato (clicca per togliere)" : "clicca per equipaggiare"}`;
             return (
-              <Tooltip key={idx} text={isEquipped
-                ? `${g.name} — equipaggiato (${g.usesLeft} usi)`
-                : `${g.name} — clicca per equipaggiare (${g.usesLeft} usi)`}>
+              <Tooltip key={idx} text={gTooltip}>
                 <div
                   onClick={() => onEquipGrattatore(idx)}
                   style={{

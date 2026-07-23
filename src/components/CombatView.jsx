@@ -890,9 +890,11 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
           <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "16px", textAlign: "center" }}>
             <div style={{ fontSize: "40px" }}>{enemy.isBoss ? "👑" : "🗡️"}</div>
             <div style={{ color: C.red, fontSize: "20px", fontWeight: "bold" }}>{enemyLabel} ti sfida!</div>
-            <div style={{ color: C.dim, fontSize: "13px", maxWidth: "340px" }}>
-              Gratta le tue carte per attaccare. Riduci gli HP del nemico a zero — ma occhio alle tue unghie!
-              <br /><span style={{ color: C.orange }}>⚠ Dal turno {FURY_TURN} il nemico va in 🔥 FURIA: non si cura più e picchia sempre più forte. Chiudi in fretta!</span>
+            <div style={{ color: C.dim, fontSize: "13px", maxWidth: "360px", lineHeight: 1.6 }}>
+              Ogni turno gratti <strong style={{ color: C.text }}>3 delle 9 carte</strong>:
+              <br /><span style={{ color: C.red }}>🗡️ ATTACCO</span> (danno) · <span style={{ color: C.blue }}>🛡 DIFESA</span> (parata) · <span style={{ color: C.gold }}>💰 DENARO</span> (bottino).
+              <br />Ferma il cursore nel <strong style={{ color: C.green }}>VERDE</strong> per colpire/parare al meglio. Porta i suoi <strong style={{ color: C.red }}>HP a 0</strong> prima che le tue unghie finiscano.
+              <br /><span style={{ color: C.orange }}>⚠ Dal turno {FURY_TURN} va in 🔥 FURIA: niente cure, più danno. Chiudi in fretta!</span>
             </div>
             <Btn variant="danger" onClick={startCombat} style={{ fontSize: "16px", padding: "12px 32px" }}>⚔️ COMBATTI!</Btn>
           </div>
