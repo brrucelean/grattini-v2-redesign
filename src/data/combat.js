@@ -92,6 +92,36 @@ export const ENEMY_COMBAT_POOLS = {
       { name:"Contrabbando",effect:"money", value:55, emoji:"📦" },
     ],
   },
+  "Spacciatore": {
+    COMBATTIMENTO: [
+      { name:"Coltellata",  effect:"lightDamage", emoji:"🔪" },
+      { name:"Sfregio",     effect:"damageNail",  emoji:"💢" },
+      { name:"Rapina",      effect:"stealMoney",  value:20, emoji:"💸" },
+    ],
+    DIFESA: [
+      { name:"Si defila",   effect:"dodge", emoji:"🫥" },
+      { name:"Copertura",   effect:"block", emoji:"🧥" },
+    ],
+    DENARO: [
+      { name:"Giro di spaccio", effect:"money", value:35, emoji:"💊" },
+      { name:"Cassa nera",      effect:"money", value:55, emoji:"💰" },
+    ],
+  },
+  "Poliziotto": {
+    COMBATTIMENTO: [
+      { name:"Manganellata",  effect:"damageNail",  emoji:"🚔" },
+      { name:"Placcaggio",    effect:"lightDamage", emoji:"👮" },
+      { name:"Sequestro",     effect:"stealMoney",  value:25, emoji:"📋" },
+    ],
+    DIFESA: [
+      { name:"Scudo antisommossa", effect:"block", emoji:"🛡" },
+      { name:"Rinforzi",           effect:"block", emoji:"🚨" },
+    ],
+    DENARO: [
+      { name:"Confisca",   effect:"money", value:40, emoji:"💰" },
+      { name:"Mazzetta",   effect:"money", value:60, emoji:"💵" },
+    ],
+  },
   "Il Broker": {
     // BILANCIAMENTO boss 1 (più accessibile): valori DENARO abbassati (era 40/80/120),
     // steal ridotti (erano 30/50). Il player deve poter vincere il primo boss.
@@ -177,6 +207,8 @@ export const ENEMY_STATS = {
   "Sfidante":       { hp: 50,  shieldPerDef: 10 },
   "Ladro":          { hp: 55,  shieldPerDef: 12 },
   "Ladro Nascosto": { hp: 65,  shieldPerDef: 14 },
+  "Spacciatore":    { hp: 58,  shieldPerDef: 11 },
+  "Poliziotto":     { hp: 70,  shieldPerDef: 16 },
   "Mini Boss":      { hp: 95,  shieldPerDef: 16 },
   "Il Broker":      { hp: 130, shieldPerDef: 20 },
   "Il Romanaccio":  { hp: 150, shieldPerDef: 22 },

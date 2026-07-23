@@ -232,7 +232,7 @@ export default function Grattini() {
     addLog("Nonno Carmelo ti ferma al bancone. Ha tre biglietti e mani che tremano. Gratti tu, scegli tu.", C.gold);
   };
 
-  // ─── DEBUG: salta dritto in combattimento con ?combat=miniboss|boss|ladro ───
+  // ─── DEBUG: salta dritto in combattimento con ?combat=miniboss|boss|ladro|spacciatore|poliziotto ───
   useEffect(() => {
     const dbg = new URLSearchParams(window.location.search).get("combat");
     if (!dbg) return;
@@ -242,9 +242,10 @@ export default function Grattini() {
       activeNail: 0, items: ["cerotto", "disinfettante", "cremaRinforzante"], grattatori: [], equippedGrattatore: null, scratchCards: [],
       fortune: 0, fortuneTurns: 0, relics: [], streamerFollowers: 0,
     };
-    const name = dbg === "boss" ? "Il Broker" : dbg === "ladro" ? "Ladro" : "Mini Boss";
+    const NAME_MAP = { boss: "Il Broker", ladro: "Ladro", spacciatore: "Spacciatore", poliziotto: "Poliziotto" };
+    const name = NAME_MAP[dbg] || "Mini Boss";
     setPlayer(debugPlayer);
-    setCombatEnemy({ name, isBoss: dbg === "boss", isMiniboss: dbg !== "boss" && dbg !== "ladro", isElite: false });
+    setCombatEnemy({ name, isBoss: dbg === "boss", isMiniboss: !NAME_MAP[dbg], isElite: false });
     setScreen("combat");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

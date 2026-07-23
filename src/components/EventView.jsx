@@ -31,7 +31,8 @@ const NPC_CAT = {
 function actionMeta(action, label) {
   const a = action || "";
   const l = label  || "";
-  if (a === "fight")                           return { icon:"⚔️",  badge:"COMBATTI",   col:"#ff3355" };
+  if (a === "fight" || a.includes("defy"))     return { icon:"⚔️",  badge:"COMBATTI",   col:"#ff3355" };
+  if (a.includes("bribe"))                     return { icon:"🕊️",  badge:"CALMA",       col:"#66dd88" };
   if (a.includes("flee") || a.includes("fintotondo")) return { icon:"🏃",  badge:"SCAPPA",     col:"#ff8800" };
   if (a === "leave")                           return { icon:"🚪",  badge:"ESCI",        col:"#555566" };
   if (a.includes("Nail") || a.includes("nail")) return { icon:"🦴",  badge:"UNGHIA",      col:"#ff8800" };
@@ -122,6 +123,21 @@ export function EventView({ node, player, onChoice }) {
           choices: [
             { label: "⚔ Combatti! (ti ha scoperto)", action: "fight" },
             { label: "🏃 Prova a scappare (50%)", action: "flee" },
+          ],
+        };
+      }
+      // NPC volatile: già nervoso quando lo incontri (deciso in mappa).
+      if (node.angry) {
+        return {
+          title: "Lo Spacciatore — NERVOSO",
+          art: NPC_ART.spacciatore,
+          text: "\"Chi sei?! Chi ti manda?! Stai zitto e allontanati, o qui finisce male...\" Ha una mano in tasca. Non sembra un bluff.",
+          choices: [
+            { label: `🕊️ Calmalo con €15`, action: "bribeSpacciatore",
+              condition: player.money >= 15, disabledNote: `ti mancano €${Math.max(0,15-player.money)}`,
+              tooltip: "Paghi, si tranquillizza, te ne vai senza problemi." },
+            { label: "⚔ Affrontalo", action: "fight" },
+            { label: "🏃 Scappa (60%)", action: "fleeAngry" },
           ],
         };
       }
@@ -238,7 +254,22 @@ export function EventView({ node, player, onChoice }) {
         { label: "Rifiuta e scappa", action: "leave" },
       ],
     },
-    poliziotto: {
+    poliziotto: node.angry ? {
+      // NPC volatile: già sul piede di guerra quando lo incontri (deciso in mappa).
+      title: "🚔 Poliziotto — SOSPETTOSO",
+      art: NPC_ART.poliziotto,
+      text: "\"Fermo lì! Ho ricevuto una segnalazione su di lei. Ho tutto il diritto di procedere come mi pare, e oggi non sono dell'umore giusto.\"",
+      choices: [
+        { label: "🎩 Mostra il Cappello Sbirro", action: "useCappello",
+          condition: player.cappelloSbirroWorn, disabledNote: "non ce l'hai" },
+        { label: `🕊️ Offrigli €25 "per il disturbo"`, action: "bribePoliziotto",
+          condition: player.money >= 25, disabledNote: `ti mancano €${Math.max(0,25-player.money)}`,
+          tooltip: "Paghi, si calma e ti lascia andare." },
+        { label: "⚔ Sfidalo apertamente", action: "fight",
+          tooltip: "Rischioso: è la legge, ma oggi hai poca scelta." },
+        { label: "🏃 Prova a scappare (30%)", action: "fintotondo" },
+      ],
+    } : {
       title: "🚔 Poliziotto della Lotteria",
       art: NPC_ART.poliziotto,
       text: player.giornalettoRead
@@ -260,6 +291,8 @@ export function EventView({ node, player, onChoice }) {
           condition: !player.snitchedOn, disabledNote: "già denunciato",
           tooltip: "Guadagni €30 + passi senza multa. Ma lo spacciatore ti vedrà come un ratto." },
         { label: "🏃 Prova a scappare (20%)", action: "fintotondo" },
+        { label: "😤 Rifiuta e sfidalo apertamente", action: "defyPoliziotto",
+          tooltip: "Niente multa, niente scuse. Vediamo come reagisce." },
         { label: "😰 Non ho i soldi... (manganellata)", action: "manganellata",
           condition: player.money < 20 && !player.cappelloSbirroWorn,
           disabledNote: "hai i soldi o il cappello" },

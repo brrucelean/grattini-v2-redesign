@@ -8,14 +8,17 @@ export const NODE_ICONS = {
   maestroTe:"🍵", guantaio:"🧤",
 };
 
+// Pesi ribilanciati: il combattimento (ladro/miniboss) è ora il tipo di
+// nodo più comune — il gioco è centrato sulle fight. Shop/locanda/eventi
+// restano ma ridimensionati a supporto (minimi garantiti più sotto).
 export const NODE_POOL_WEIGHTS = [
-  { type:"tabaccaio", w:28 }, { type:"locanda", w:12 },
-  { type:"spacciatore", w:10 }, { type:"ladro", w:12 },
-  { type:"mendicante", w:10 }, { type:"zaino", w:8 },
-  { type:"chirurgo", w:7 }, { type:"miniboss", w:7 },
-  { type:"evento", w:8 }, { type:"stregone", w:10 },
-  { type:"anziana", w:5 }, { type:"sacerdote", w:3 },
-  { type:"bambino", w:4 }, { type:"streamer", w:6 },
+  { type:"tabaccaio", w:14 }, { type:"locanda", w:8 },
+  { type:"spacciatore", w:10 }, { type:"ladro", w:30 },
+  { type:"mendicante", w:6 }, { type:"zaino", w:8 },
+  { type:"chirurgo", w:5 }, { type:"miniboss", w:20 },
+  { type:"evento", w:6 }, { type:"stregone", w:6 },
+  { type:"anziana", w:4 }, { type:"sacerdote", w:2 },
+  { type:"bambino", w:3 }, { type:"streamer", w:4 },
 ];
 
 // ─── NODE TOOLTIPS ────────────────────────────────────────────

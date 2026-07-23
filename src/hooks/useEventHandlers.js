@@ -75,6 +75,43 @@ export function useEventHandlers({
         setScreen("map");
         break;
       }
+      // ── NPC VOLATILI: bribe/fuga per spacciatore e poliziotto arrabbiati ──
+      case "bribeSpacciatore": {
+        updatePlayer(p => ({...p, money: Math.max(0, p.money - 15)}));
+        addLog("🕊️ Paghi €15. Lo spacciatore si calma e si allontana borbottando.", C.green);
+        setScreen("map");
+        break;
+      }
+      case "bribePoliziotto": {
+        updatePlayer(p => ({...p, money: Math.max(0, p.money - 25)}));
+        addLog("🕊️ €25 \"per il disturbo\". Il poliziotto se li intasca e ti lascia andare.", C.green);
+        setScreen("map");
+        break;
+      }
+      case "fleeAngry": {
+        if (roll(0.6)) {
+          addLog("Sei riuscito a filartela prima che la situazione degenerasse.", C.green);
+          setScreen("map");
+        } else {
+          addLog("Non sei stato abbastanza veloce. Si scaglia contro di te!", C.red);
+          setCombatEnemy({ name: "Spacciatore", isBoss: false, isMiniboss: false, isElite: false });
+          setScreen("combat");
+        }
+        break;
+      }
+      case "defyPoliziotto": {
+        // Sfida scriptata: rifiuti di pagare/scusarti — 45% il poliziotto lascia
+        // perdere (non vuole grane), 55% attacca per davvero.
+        if (roll(0.45)) {
+          addLog("😤 Lo guardi dritto negli occhi. Non ha voglia di grane oggi — se ne va scuotendo la testa.", C.green);
+          setScreen("map");
+        } else {
+          addLog("🚔 \"Ah sì? Allora facciamo a modo mio.\" Il poliziotto ti si scaglia contro!", C.red);
+          setCombatEnemy({ name: "Poliziotto", isBoss: false, isMiniboss: false, isElite: false });
+          setScreen("combat");
+        }
+        break;
+      }
       case "giveItem": {
         updatePlayer(p => {
           const items = [...p.items];

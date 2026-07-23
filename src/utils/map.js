@@ -19,14 +19,17 @@ export function generateMap(biomeIdx = 0) {
     [0.5],                                         // row 10: boss
   ];
 
-  // Tipi per zona X: sinistra=pericolo, destra=sicuro, centro=bilanciato
+  // Tipi per zona X: sinistra=pericolo, destra=sicuro, centro=bilanciato.
+  // Combattimento (ladro/miniboss) alzato ovunque — il gioco è centrato
+  // sulle fight, anche la zona "sicura" ora ne contiene un po'.
   const LEFT_POOL  = [
-    {type:"ladro",w:22},{type:"spacciatore",w:16},{type:"miniboss",w:16},
-    {type:"evento",w:20},{type:"stregone",w:14},{type:"tabaccaio",w:12},
+    {type:"ladro",w:38},{type:"spacciatore",w:14},{type:"miniboss",w:26},
+    {type:"evento",w:12},{type:"stregone",w:8},{type:"tabaccaio",w:8},
   ];
   const RIGHT_POOL = [
-    {type:"locanda",w:30},{type:"tabaccaio",w:26},{type:"chirurgo",w:14},
-    {type:"mendicante",w:18},{type:"sacerdote",w:12},
+    {type:"locanda",w:20},{type:"tabaccaio",w:18},{type:"chirurgo",w:10},
+    {type:"mendicante",w:12},{type:"sacerdote",w:8},
+    {type:"ladro",w:18},{type:"miniboss",w:10},
   ];
   const MID_POOL = NODE_POOL_WEIGHTS;
 
@@ -222,6 +225,16 @@ export function generateMap(biomeIdx = 0) {
   if (vecchioCandidates.length > 0) {
     shuffle(vecchioCandidates)[0]._isVecchio = true;
   }
+
+  // ── NPC VOLATILI: spacciatore/poliziotto hanno il 25% di chance di
+  // essere già arrabbiati quando li incontri (deciso in generazione, non
+  // ad ogni visita) — offrono bribe/combatti/scappa invece delle scelte
+  // normali. Fissato in generazione così è coerente per tutta la run.
+  rows.flat().forEach(n => {
+    if ((n.type === "spacciatore" || n.type === "poliziotto") && roll(0.25)) {
+      n.angry = true;
+    }
+  });
 
   // ── Connessioni: no incroci garantiti, 2-3 uscite per nodo ──
   // Algoritmo: indice primario = floor(i*(n-1)/(m-1)), monotono.

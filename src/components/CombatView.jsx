@@ -21,6 +21,8 @@ function enemySpriteKey(enemy) {
   const n = enemy?.name;
   if (n === "Il Drago d'Oro") return "drago";
   if (n === "Ladro" || n === "Ladro Nascosto") return "ladro";
+  if (n === "Poliziotto") return "poliziotto";
+  if (n === "Spacciatore") return "spacciatore";
   if (enemy?.isBoss) return "boss";
   return "miniboss";
 }
