@@ -456,16 +456,6 @@ export function useNodeHandlers({
       addLog(`🏆 Vittoria! Guadagni €${Math.max(0, result.playerMoney) * (currentNode?.elite ? 2 : 1)}!${eliteTag}`, C.green);
       if (result.winNail) addLog(`✨ Hai preso un'unghia al nemico! Una tua unghia risorge.`, C.green);
       if (result.nailHeals > 0) addLog(`Cure in combattimento: ${result.nailHeals} unghie curate!`, C.green);
-      // Sprint 5: Mini-boss 3-combo challenge feedback
-      if (result.minibossBonus > 0) {
-        addLog(`💀 SFIDA 3-COMBO: ${result.minibossCombos} combo distinti → +€${result.minibossBonus}${result.minibossHeal ? " + unghia curata" : ""}!`, C.magenta);
-        setItemFoundModal({
-          emoji: result.minibossCombos >= 3 ? "🔥" : "🎯",
-          name: result.minibossCombos >= 3 ? "3-COMBO CHALLENGE MAX!" : "3-COMBO CHALLENGE!",
-          desc: `Hai raggiunto ${result.minibossCombos} combo distinti in combat!\n\n+€${result.minibossBonus}${result.minibossHeal ? " + 1 unghia curata" : ""}`,
-          subtitle: "Mini-Boss sconfitto con stile", buttonLabel: "Combo! →",
-        });
-      }
       // Boss defeated? Drop reliquia casuale
       if (currentNode?.type === "boss" || (currentNode?.type === "miniboss" && roll(0.25))) {
         const owned = new Set((player?.relics || []).map(r => r.id));

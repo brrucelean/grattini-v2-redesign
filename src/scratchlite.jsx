@@ -234,6 +234,7 @@ export default function Grattini() {
 
   // ─── DEBUG: salta dritto in combattimento con ?combat=miniboss|boss|ladro|spacciatore|poliziotto ───
   useEffect(() => {
+    if (!import.meta.env.DEV) return; // scorciatoia di debug: solo in dev, non in prod
     const dbg = new URLSearchParams(window.location.search).get("combat");
     if (!dbg) return;
     const debugPlayer = {
@@ -2206,11 +2207,17 @@ export default function Grattini() {
             }}
             onNailDamage={(count, onExplosiva) => {
               updatePlayer(p => {
-                // noCombatDegradeMeta: unghia d'acciaio — nessun danno in combat
-                if (p.noCombatDegradeMeta) return p;
+                // Guanto da BOSS (bossShield/guantoBossActive): protegge TUTTE le
+                // dita per l'intera boss-fight, come promette la descrizione.
+                // Attivo SOLO contro il boss (si sgretola a fine fight in handleCombatEnd).
+                if (combatEnemy?.isBoss && (p.equippedGrattatore?.effect === "bossShield" || p.guantoBossActive)) return p;
                 const nails = [...p.nails];
                 let explosivaBonus = 0;
-                for (let d = 0; d < count; d++) {
+                // noCombatDegradeMeta (Unghia d'Acciaio): non più immunità totale
+                // (rendeva il duello a HP impossibile da perdere) — assorbe 1 step
+                // per colpo. I colpi leggeri (1) vengono annullati, i pesanti/FURIA passano ridotti.
+                const effCount = p.noCombatDegradeMeta ? Math.max(0, count - 1) : count;
+                for (let d = 0; d < effCount; d++) {
                   const alive = nails.findIndex(n => n.state !== "morta");
                   if (alive >= 0) {
                     // Check esplosiva PRIMA di degradare (per verificare se muore)

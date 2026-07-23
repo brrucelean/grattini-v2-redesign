@@ -741,14 +741,8 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
     onEnd({
       won: true,
       playerMoney: loot,
-      enemyMoney: 0,
-      nailDamage: 0,   // già applicato live via onNailDamage
-      nailHeals: 0,    // già applicate live via onNailHeal
-      moneyGained: loot,
-      stolenMoney: 0,
+      nailHeals: 0,    // già applicate live via onNailHeal (mantenuto: letto in handleCombatEnd)
       winNail: true,
-      loseNail: false,
-      minibossBonus: 0, minibossHeal: 0, minibossCombos: 0,
     });
   };
 

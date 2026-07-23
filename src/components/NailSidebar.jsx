@@ -66,7 +66,13 @@ export function NailSidebar({ nails, activeNail, onSelectNail, locked=false, gra
           <div key={i} onClick={canSwitch ? () => onSelectNail(i) : undefined}
             style={{
               position:"relative",
-              border:`1px solid ${borderCol}`,
+              // Longhand sui 3 lati (no shorthand `border`) così non entra in
+              // conflitto col `borderBottom` condizionale sotto — evita lo spam
+              // del warning React "mixing shorthand and non-shorthand".
+              borderTop:`1px solid ${borderCol}`,
+              borderLeft:`1px solid ${borderCol}`,
+              borderRight:`1px solid ${borderCol}`,
+              borderBottom:`1px solid ${borderCol}`,
               background: sidebarBg,
               boxShadow: sidebarGlow,
               padding: horizontal ? "5px 4px 3px" : "5px 8px", borderRadius:"0",
