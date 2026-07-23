@@ -283,7 +283,7 @@ export default function Grattini() {
   }, [updatePlayer, addLog]);
 
   // ─── HOOK: useNailHandlers ───
-  const { playerRelicEffects, effectiveFortune, getActiveNailState, handleCellScratch, handleNailDamage, handleCombatCellScratch } = useNailHandlers({
+  const { playerRelicEffects, effectiveFortune, getActiveNailState, handleCellScratch, handleNailDamage, handleCombatCellScratch, consumeGrattatoreUse } = useNailHandlers({
     player, updatePlayer, triggerNpcComment, scratchingCard, setScreen, addLog,
   });
 
@@ -2180,6 +2180,7 @@ export default function Grattini() {
             player={player}
             onEnd={handleCombatEnd}
             onCellScratch={handleCombatCellScratch}
+            onGrattatoreConsumed={consumeGrattatoreUse}
             playerWallet={player.money}
             onCombo={() => { unlockAchievement("combo_master"); setGameStats(s => ({...s, combosFired: (s.combosFired || 0) + 1})); }}
             onVariantRevealed={(variantId) => {

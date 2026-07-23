@@ -106,11 +106,17 @@ export function useNailHandlers({ player, updatePlayer, triggerNpcComment, scrat
       // Come per ScratchCardView, il grattatore protegge l'unghia attiva e viene
       // consumato di 1 uso per cella grattata in combat. Se esaurisce i suoi usi,
       // viene rimosso dall'inventario.
-      if (p.equippedGrattatore) {
+      // I grattatori da COMBATTIMENTO PURO (atkBoost/widePerfect/guaranteedParry)
+      // non proteggono l'unghia dal logorio — il loro "uso" è consumato solo
+      // quando il rispettivo effetto scatta davvero (via onGrattatoreConsumed
+      // in CombatView), non ad ogni carta grattata a caso.
+      const eff = p.equippedGrattatore?.effect;
+      const isPureCombatGrattatore = eff === "atkBoost" || eff === "widePerfect" || eff === "guaranteedParry";
+      if (p.equippedGrattatore && !isPureCombatGrattatore) {
         // bossShield (Guanto da BOSS): NON consuma per singola cella — resta
         // intatto durante tutta la fight e viene sgretolato solo da handleCombatEnd
         // al termine di un boss combat (non contro miniboss/ladri).
-        if (p.equippedGrattatore.effect === "bossShield") {
+        if (eff === "bossShield") {
           // Ignora il danno all'unghia (la protezione è globale in combat boss,
           // gestita direttamente da CombatView per aggiungere il messaggio).
           return p;
@@ -153,6 +159,27 @@ export function useNailHandlers({ player, updatePlayer, triggerNpcComment, scrat
     });
   }, [updatePlayer, setScreen, addLog]);
 
+  // Consuma esplicitamente 1 uso del grattatore da combattimento equipaggiato,
+  // chiamato da CombatView SOLO quando il suo effetto scatta davvero (non ad
+  // ogni carta grattata). Rimuove il grattatore se esaurisce gli usi.
+  const consumeGrattatoreUse = useCallback(() => {
+    updatePlayer(p => {
+      if (!p.equippedGrattatore) return p;
+      const idx = p.equippedGrattatore.inventoryIdx;
+      const grattatori = [...(p.grattatori || [])];
+      if (!grattatori[idx]) return p;
+      const g = {...grattatori[idx]};
+      g.usesLeft -= 1;
+      if (g.usesLeft <= 0) {
+        grattatori.splice(idx, 1);
+        setTimeout(() => addLog(`${g.name} consumato!`, C.dim), 0);
+        return {...p, grattatori, equippedGrattatore: null};
+      }
+      grattatori[idx] = g;
+      return {...p, grattatori, equippedGrattatore: {...p.equippedGrattatore, usesLeft: g.usesLeft}};
+    });
+  }, [updatePlayer, addLog]);
+
   return {
     playerRelicEffects,
     effectiveFortune,
@@ -160,5 +187,6 @@ export function useNailHandlers({ player, updatePlayer, triggerNpcComment, scrat
     handleCellScratch,
     handleNailDamage,
     handleCombatCellScratch,
+    consumeGrattatoreUse,
   };
 }

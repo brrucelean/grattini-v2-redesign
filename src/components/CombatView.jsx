@@ -259,11 +259,11 @@ function resolvePlayerCell(c) {
 // ─── TIMING BAR: minigioco tempismo (attacco / parata) ───────
 // Un cursore oscilla su una barra; zona verde = PERFETTO, gialla = BUONO.
 // Premi (click/spazio/tap) per fermarlo. onResult riceve "perfect"|"good"|"miss".
-function TimingBar({ mode = "attack", speed = 1.5, onResult }) {
+function TimingBar({ mode = "attack", speed = 1.5, onResult, perfectWiden = 0 }) {
   const isAttack = mode === "attack";
   const accent = isAttack ? C.red : C.blue;
-  // zone (0..1)
-  const PERFECT = [0.44, 0.56];
+  // zone (0..1) — perfectWiden allarga la zona verde (Fascia da Polso)
+  const PERFECT = [0.44 - perfectWiden, 0.56 + perfectWiden];
   const GOOD = [0.26, 0.74];
 
   const [pos, setPos] = useState(0);
@@ -353,7 +353,10 @@ function TimingBar({ mode = "attack", speed = 1.5, onResult }) {
 
 
 // ─── COMBAT COMPONENT — DUELLO HP ────────────────────────────
-export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onCellScratch, playerWallet = 0, onCombo, onVariantRevealed }) {
+export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onCellScratch, onGrattatoreConsumed, playerWallet = 0, onCombo, onVariantRevealed }) {
+  const grEffect = player.equippedGrattatore?.effect;
+  const guaranteedParryLeftRef = useRef(grEffect === "guaranteedParry"); // 1 sola volta a fight
+  const perfectWiden = grEffect === "widePerfect" ? (player.equippedGrattatore.value || 0.06) : 0;
   const stats = ENEMY_STATS[enemy.name] || DEFAULT_ENEMY_STATS;
   const bossMult = enemy.isBoss ? 1.0 : 1.0; // hp già tarati per boss in ENEMY_STATS
 
@@ -439,6 +442,7 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
           applyAttackDamage(cell, r, quality);
           proceedToEnemy(exchangeIdx, isLast);
         },
+        perfectWiden,
       });
     } else {
       // Nessun attacco da temporizzare → passa direttamente al nemico
@@ -449,7 +453,14 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
   // Danno d'attacco modulato dal tempismo
   const applyAttackDamage = (cell, r, quality) => {
     const mult = quality === "perfect" ? 1.6 : quality === "good" ? 1.0 : 0.5;
-    const dmg = Math.max(1, Math.round(r.dmg * mult));
+    let dmg = Math.max(1, Math.round(r.dmg * mult));
+    // Coltello Affilato: +50% sulla PROSSIMA carta ATTACCO grattata, poi si consuma.
+    if (player.equippedGrattatore?.effect === "atkBoost") {
+      const boosted = Math.round(dmg * (1 + (player.equippedGrattatore.value || 0.5)));
+      pushLog(`🔪 Coltello Affilato! ${dmg}→${boosted} danni`, C.magenta);
+      dmg = boosted;
+      onGrattatoreConsumed?.();
+    }
     atkDmgRef.current += dmg;
     if (quality === "perfect") {
       pushLog(`⚔️ ${cell.name}: COLPO PERFETTO! ${dmg} danni (×1.6)`, C.green);
@@ -485,6 +496,16 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
         setTimeout(() => finishExchange(exchangeIdx, isLast), 450);
         return;
       }
+      // Guanto di Ferro: la prima parata della fight è automaticamente PERFETTA
+      // (richiede comunque una carta Scudo/Schiva per attivare la parata).
+      if (pendingParryRef.current && guaranteedParryLeftRef.current) {
+        guaranteedParryLeftRef.current = false;
+        pushLog(`🧤 Guanto di Ferro! ${ec.name}: PARATA PERFETTA garantita`, C.magenta);
+        onGrattatoreConsumed?.();
+        applyEnemyAttack(ec, "perfect");
+        setTimeout(() => finishExchange(exchangeIdx, isLast), 550);
+        return;
+      }
       // La PARATA (minigioco) parte SOLO se hai giocato Scudo/Schiva in questo scambio.
       if (pendingParryRef.current) {
         setActiveTiming({
@@ -494,6 +515,7 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
             applyEnemyAttack(ec, quality);
             finishExchange(exchangeIdx, isLast);
           },
+          perfectWiden,
         });
       } else {
         // Nessuna difesa giocata → l'attacco colpisce pieno, senza minigioco.
@@ -947,6 +969,7 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
           mode={activeTiming.mode}
           speed={enemy.isBoss ? 1.75 : 1.45}
           onResult={activeTiming.onResult}
+          perfectWiden={activeTiming.perfectWiden || 0}
         />
       )}
     </div>

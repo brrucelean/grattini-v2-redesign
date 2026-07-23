@@ -333,10 +333,10 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
   const shopGrattatori = ["bottone","bullone"];
   const mediumItemsPool = ["sigarettaErba","cremaRinforzante"].filter(() => true);
   const mediumItems = player.money >= 8 ? stock(mediumItemsPool, 0.50, 2) : [];
-  const mediumGrattatori = player.money >= 10 ? stock(["unghiaFinta"], 0.55, 1) : [];
+  const mediumGrattatori = player.money >= 10 ? stock(["unghiaFinta","coltelloAffilato"], 0.55, 2) : [];
   const sottoBanco = player.money >= 15 ? stock(["giornalettoPorno"], 0.30, 1) : [];
   const rareItems = player.money >= 15 ? stock(["cappelloSbirro","smalto"], 0.30, 1) : [];
-  const rareGrattatori = player.money >= 15 ? stock(["plettro","moneta_argento","discoRotto","chiaveOttone"], 0.30, 1) : [];
+  const rareGrattatori = player.money >= 15 ? stock(["plettro","moneta_argento","discoRotto","chiaveOttone","fasciaPolso","guantoFerro"], 0.30, 2) : [];
   const legendaryGrattatori = player.money >= 40 ? stock(["moneta_oro"], 0.12, 1) : [];
   const vipGrattatori = (currentBiome >= 2 && player.money >= 2000) ? ["portaChiavi"] : [];
   const vipItems = player.hasVIP ? ["sieroRicrescita","gettoneLavaggio","manoProtesica"] : [];
