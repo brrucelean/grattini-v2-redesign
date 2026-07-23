@@ -368,11 +368,16 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
     + (hasRelic(player, "globalWinBoost") ? 0.04 : 0);
   // Occhio di Tigre: primo colpo subito in QUESTO combattimento completamente assorbito.
   const tigerShieldLeftRef = useRef(hasRelic(player, "firstHitShield"));
-  const stats = ENEMY_STATS[enemy.name] || DEFAULT_ENEMY_STATS;
-  const bossMult = enemy.isBoss ? 1.0 : 1.0; // hp già tarati per boss in ENEMY_STATS
+  // ELITE: nodi ★ — non solo loot ×2 (in handleCombatEnd) ma anche fight più
+  // dura. Scala HP/scudo e aggiunge +1 step ai colpi nemici (isEliteFight sotto).
+  const isEliteFight = !!enemy.isElite;
+  const baseStats = ENEMY_STATS[enemy.name] || DEFAULT_ENEMY_STATS;
+  const stats = isEliteFight
+    ? { hp: Math.round(baseStats.hp * 1.4), shieldPerDef: Math.round(baseStats.shieldPerDef * 1.3) }
+    : baseStats;
 
-  const [enemyMaxHp] = useState(Math.round(stats.hp * bossMult));
-  const [enemyHp, setEnemyHp] = useState(Math.round(stats.hp * bossMult));
+  const [enemyMaxHp] = useState(stats.hp);
+  const [enemyHp, setEnemyHp] = useState(stats.hp);
   const [enemyShield, setEnemyShield] = useState(0);
 
   const [phase, setPhase] = useState("intro"); // intro | player | turnEnd | win
@@ -396,7 +401,7 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
   const dead = useRef(false);
 
   // Refs per applicazione LIVE degli effetti (accumulo sincrono, poi mirror in state)
-  const hpRef = useRef(Math.round(stats.hp * bossMult));
+  const hpRef = useRef(stats.hp);
   const shieldRef = useRef(0);
   const lootRef = useRef(0);
   const pendingParryRef = useRef(false); // true se il player ha giocato Scudo/Schiva (parata a tempo)
@@ -463,7 +468,7 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
 
   // Danno d'attacco modulato dal tempismo
   const applyAttackDamage = (cell, r, quality) => {
-    const mult = quality === "perfect" ? 1.6 : quality === "good" ? 1.0 : 0.5;
+    const mult = quality === "perfect" ? 1.4 : quality === "good" ? 1.0 : 0.5;
     let dmg = Math.max(1, Math.round(r.dmg * mult));
     // Coltello Affilato: +50% sulla PROSSIMA carta ATTACCO grattata, poi si consuma.
     if (player.equippedGrattatore?.effect === "atkBoost") {
@@ -474,7 +479,7 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
     }
     atkDmgRef.current += dmg;
     if (quality === "perfect") {
-      pushLog(`⚔️ ${cell.name}: COLPO PERFETTO! ${dmg} danni (×1.6)`, C.green);
+      pushLog(`⚔️ ${cell.name}: COLPO PERFETTO! ${dmg} danni (×1.4)`, C.green);
       setEnemyHitFlash(1.4);
       AudioEngine.perfectHit?.();
       spawnFloater("PERFETTO!", C.green, "enemy", true);
@@ -490,7 +495,7 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
     if (isLast) {
       const played = playedRef.current.map(i => hand[i]).filter(Boolean);
       if (played.length === 3 && played.every(c => c.category === "COMBATTIMENTO") && atkDmgRef.current > 0) {
-        const bonus = Math.round(atkDmgRef.current * 0.5);
+        const bonus = Math.round(atkDmgRef.current * 0.25);
         pushLog(`🔥 COMBO ATTACCO! +${bonus} danni!`, C.magenta);
         onCombo?.();
         dealDamage(bonus);
@@ -549,7 +554,7 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
         // FURIA: troppo agitato per curarsi — colpo a vuoto, puoi bruciarlo
         pushLog(`${enemyLabel} 🔥 ${c.name}: troppo furioso per curarsi!`, C.red);
       } else {
-        const healAmt = Math.round((c.value || 20) * 0.2);
+        const healAmt = Math.round((c.value || 20) * 0.35);
         hpRef.current = Math.min(enemyMaxHp, hpRef.current + healAmt); setEnemyHp(hpRef.current);
         pushLog(`${enemyLabel} 💰 ${c.name}: si cura +${healAmt} HP`, C.orange);
       }
@@ -564,7 +569,8 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
     const heavy = c.effect === "damageNail" || c.effect === "killNail" || c.effect === "damage";
     const stealsMoney = c.effect === "stealMoney" || c.effect === "steal";
     const fury = Math.max(0, turn - FURY_TURN + 1); // 0 fino al turno soglia, poi cresce
-    const baseSteps = (heavy ? 2 : 1) + fury;       // FURIA: attacchi sempre più pesanti
+    const eliteStep = isEliteFight ? 1 : 0;         // elite: colpi più duri
+    const baseSteps = (heavy ? 2 : 1) + fury + eliteStep; // FURIA: attacchi sempre più pesanti
     const stealVal = (c.value || 15) + fury * 10;
 
     if (quality === "perfect") {

@@ -203,27 +203,32 @@ export const ENEMY_COMBAT_POOLS = {
 // Il player usa le unghie come vita; il nemico ha una barra HP (rossa)
 // + uno scudo (blu) che accumula quando gioca carte DIFESA.
 // I valori sono un punto di partenza da tarare (balance pass successivo).
+// BALANCE PASS (audit 2026-07): il danno del player era troppo alto rispetto
+// agli HP → i nemici morivano al turno 1 e la FURIA (turno 3) non scattava mai.
+// HP abbassati per far durare le fight 2-3 turni. Vedi anche EFFECT_DAMAGE e
+// i moltiplicatori (perfetto/combo) in CombatView.
 export const ENEMY_STATS = {
-  "Sfidante":       { hp: 50,  shieldPerDef: 10 },
-  "Ladro":          { hp: 55,  shieldPerDef: 12 },
-  "Ladro Nascosto": { hp: 65,  shieldPerDef: 14 },
-  "Spacciatore":    { hp: 58,  shieldPerDef: 11 },
-  "Poliziotto":     { hp: 70,  shieldPerDef: 16 },
-  "Mini Boss":      { hp: 95,  shieldPerDef: 16 },
-  "Il Broker":      { hp: 130, shieldPerDef: 20 },
-  "Il Romanaccio":  { hp: 150, shieldPerDef: 22 },
-  "Il Napoletano":  { hp: 165, shieldPerDef: 22 },
-  "Il Drago d'Oro": { hp: 210, shieldPerDef: 26 },
+  "Sfidante":       { hp: 42,  shieldPerDef: 10 },
+  "Ladro":          { hp: 45,  shieldPerDef: 12 },
+  "Ladro Nascosto": { hp: 52,  shieldPerDef: 14 },
+  "Spacciatore":    { hp: 48,  shieldPerDef: 11 },
+  "Poliziotto":     { hp: 58,  shieldPerDef: 16 },
+  "Mini Boss":      { hp: 70,  shieldPerDef: 16 },
+  "Il Broker":      { hp: 95,  shieldPerDef: 20 },
+  "Il Romanaccio":  { hp: 115, shieldPerDef: 22 },
+  "Il Napoletano":  { hp: 135, shieldPerDef: 22 },
+  "Il Drago d'Oro": { hp: 170, shieldPerDef: 26 },
 };
-export const DEFAULT_ENEMY_STATS = { hp: 60, shieldPerDef: 12 };
+export const DEFAULT_ENEMY_STATS = { hp: 55, shieldPerDef: 12 };
 
 // Mappa effetto → danno inflitto all'HP nemico (carte COMBATTIMENTO del player).
 // Gli effetti che hanno un `value` (stealMoney/damage) derivano il danno dal value.
+// Ridotti nel balance pass: nessuna singola carta deve one-shottare.
 export const EFFECT_DAMAGE = {
-  lightDamage: 18,  // Schiaffo — danno base
-  damageNail:  42,  // Strappa! — danno pesante
-  berserk:     46,  // Berserk — danno pesante ma degrada 1 unghia tua
-  stealMoney:  22,  // Furto! — danno + rubi soldi
+  lightDamage: 14,  // Schiaffo — danno base
+  damageNail:  26,  // Strappa! — danno pesante
+  berserk:     30,  // Berserk — danno pesante ma degrada 1 unghia tua
+  stealMoney:  16,  // Furto! — danno + rubi soldi
 };
 
 // ─── TAUNTS ─────────────────────────────────────────────────
