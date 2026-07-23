@@ -9,6 +9,7 @@ import { makeNailCursor } from "../utils/nail.js";
 import { generateCombatHand, generateCombatCard, CARD_VARIANTS } from "../utils/combat.js";
 import { SPR_BIG } from "../data/art.js";
 import { AudioEngine, ParticleSystem } from "../audio.js";
+import { hasRelic } from "../utils/hasRelic.js";
 import { Btn } from "./Btn.jsx";
 import { NailDisplay } from "./NailDisplay.jsx";
 
@@ -356,7 +357,12 @@ function TimingBar({ mode = "attack", speed = 1.5, onResult, perfectWiden = 0 })
 export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onCellScratch, onGrattatoreConsumed, playerWallet = 0, onCombo, onVariantRevealed }) {
   const grEffect = player.equippedGrattatore?.effect;
   const guaranteedParryLeftRef = useRef(grEffect === "guaranteedParry"); // 1 sola volta a fight
-  const perfectWiden = grEffect === "widePerfect" ? (player.equippedGrattatore.value || 0.06) : 0;
+  // Fascia da Polso (grattatore) + Maneki Neko (reliquia, "+10% vincita su TUTTE le carte"
+  // → qui si traduce in zona PERFETTO più larga) si sommano.
+  const perfectWiden = (grEffect === "widePerfect" ? (player.equippedGrattatore.value || 0.06) : 0)
+    + (hasRelic(player, "globalWinBoost") ? 0.04 : 0);
+  // Occhio di Tigre: primo colpo subito in QUESTO combattimento completamente assorbito.
+  const tigerShieldLeftRef = useRef(hasRelic(player, "firstHitShield"));
   const stats = ENEMY_STATS[enemy.name] || DEFAULT_ENEMY_STATS;
   const bossMult = enemy.isBoss ? 1.0 : 1.0; // hp già tarati per boss in ENEMY_STATS
 
@@ -573,6 +579,11 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
         lootRef.current = Math.max(0, lootRef.current - v); setLoot(lootRef.current);
         pushLog(`${enemy.name} 🗡 ${c.name}: parata parziale — ti ruba solo €${v}`, C.gold);
         spawnFloater(`−€${v}`, C.orange, "loot");
+      } else if (tigerShieldLeftRef.current) {
+        // Occhio di Tigre: primo colpo del combattimento assorbito gratis.
+        tigerShieldLeftRef.current = false;
+        pushLog(`🐯 Occhio di Tigre! ${c.name} assorbito — nessun danno`, C.orange);
+        spawnFloater("ASSORBITO!", C.orange, "player", true);
       } else {
         onNailDamage?.(1);
         AudioEngine.nailCrack?.();
@@ -588,6 +599,11 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
       lootRef.current = Math.max(0, lootRef.current - stealVal); setLoot(lootRef.current);
       pushLog(`${enemy.name} 🗡 ${c.name}: ti ruba €${stealVal}!`, C.red);
       spawnFloater(`−€${stealVal}`, C.red, "loot");
+    } else if (tigerShieldLeftRef.current) {
+      // Occhio di Tigre: primo colpo del combattimento assorbito gratis.
+      tigerShieldLeftRef.current = false;
+      pushLog(`🐯 Occhio di Tigre! ${c.name}: colpo assorbito — nessun danno`, C.orange);
+      spawnFloater("ASSORBITO!", C.orange, "player", true);
     } else {
       onNailDamage?.(baseSteps);
       setPainFlash(0.5); setTimeout(() => setPainFlash(0.2), 150); setTimeout(() => setPainFlash(0), 500);
