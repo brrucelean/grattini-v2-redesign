@@ -887,8 +887,9 @@ export default function Grattini() {
             }}/>
           ))}
 
-          {/* Contenuto titolo */}
-          <div style={{textAlign:"center", width:"min(95%, 440px)", position:"relative", zIndex:1}}>
+          {/* Contenuto titolo — largo abbastanza da contenere l'ASCII "GRATTINI"
+              a piena dimensione (altrimenti il logo sfora e resta ancorato a sinistra) */}
+          <div style={{textAlign:"center", width:"min(95vw, 680px)", position:"relative", zIndex:1}}>
             {/* Insegna neon TABACCHI — la T blu, sempre accesa, mai del tutto */}
             <div style={{
               display:"flex", alignItems:"center", justifyContent:"center", gap:"12px",
@@ -914,10 +915,10 @@ export default function Grattini() {
               </div>
             </div>
             {/* ASCII TITLE — foil iridescente animato sopra il gold */}
-            <div className="foil-ascii" style={{display:"inline-block", margin:"0 auto", padding:"8px 0"}}>
+            <div className="foil-ascii" style={{display:"block", width:"100%", margin:"0 auto", padding:"8px 0"}}>
               <pre style={{...S.pre, color:C.gold,
                 fontSize:"clamp(10px, 1.9vw, 19px)",
-                lineHeight:"1.2", overflowX:"auto",
+                lineHeight:"1.2", overflowX:"hidden", textAlign:"center",
                 textShadow:`0 0 18px ${C.gold}cc, 0 0 48px ${C.gold}55`,
                 animation:"titleBlink 3s ease-in-out infinite, asciiFlicker 7s ease-in-out infinite",
                 margin:0,
