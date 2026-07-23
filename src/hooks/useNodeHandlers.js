@@ -238,7 +238,9 @@ export function useNodeHandlers({
       addLog("Dormi per terra come un barbone. Le unghie recuperano... un po'.", C.dim);
       if (roll(0.5)) {
         addLog("Un ladro ti sveglia con un calcio! Preparati a combattere!", C.red);
-        const thief = { name:"Ladro Notturno", hp:3, maxHp:3, type:"Ladro", money:0 };
+        // "Ladro" (non "Ladro Notturno"): deve matchare ENEMY_STATS/ENEMY_COMBAT_POOLS
+        // per avere HP e mosse reali invece del fallback generico.
+        const thief = { name:"Ladro", isBoss:false, isMiniboss:false, isElite:false };
         setCombatEnemy(thief);
         setScreen("combat");
       } else {

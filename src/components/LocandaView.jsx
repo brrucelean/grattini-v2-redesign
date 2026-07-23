@@ -130,10 +130,10 @@ function RoomTile({ room, canAfford, onClick }) {
 export function LocandaView({ player, onRest, onLeave }) {
   const rooms = [
     { name: "Per Terra", emoji: "🛏️", cost: 0, heals: 0, risk: "pavimento", desc: "Dormi sul pavimento lurido. Recuperi metà stato unghie. 50% chance ladro ti sveglia!", isFloor: true, accent: "#6a6a7a" },
-    { name: "Bettola", emoji: "🍺", cost: 5, heals: 1, risk: "ladri", desc: "Recuperi 1 unghia (anche morta). Rischio ladri!", accent: C.cyan },
-    { name: "Camera Media", emoji: "🛌", cost: 15, heals: 2, risk: null, desc: "Recuperi 2 unghie (anche morte). Conta raschiature azzerate.", accent: C.magenta },
-    { name: "Suite", emoji: "🏨", cost: 80, heals: 5, risk: null, desc: "Recuperi TUTTE le unghie a Sana!", kawaii: false, accent: C.gold },
-    { name: "Manicure Kawaii", emoji: "💅", cost: 150, heals: 5, risk: null, desc: "✨ Tutte le unghie diventano KAWAII (x2 premio)!", kawaii: true, accent: C.pink },
+    { name: "Bettola", emoji: "🍺", cost: 6, heals: 1, risk: "ladri", desc: "Recuperi 1 unghia (anche morta). Rischio ladri!", accent: C.cyan },
+    { name: "Camera Media", emoji: "🛌", cost: 22, heals: 2, risk: null, desc: "Recuperi 2 unghie (anche morte). Conta raschiature azzerate.", accent: C.magenta },
+    { name: "Suite", emoji: "🏨", cost: 110, heals: 5, risk: null, desc: "Recuperi TUTTE le unghie a Sana!", kawaii: false, accent: C.gold },
+    { name: "Manicure Kawaii", emoji: "💅", cost: 175, heals: 5, risk: null, desc: "✨ Tutte le unghie diventano KAWAII (x2 premio)!", kawaii: true, accent: C.pink },
   ];
 
   return (

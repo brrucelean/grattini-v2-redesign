@@ -239,7 +239,7 @@ export default function Grattini() {
     const debugPlayer = {
       money: 100,
       nails: Array(5).fill(null).map(() => ({ state: "sana", scratchCount: 0, implant: null, implantUses: 0, stats: { fortuna: 0, potenza: 0, resilienza: 0 }, heldItem: null, cremaHP: 0 })),
-      activeNail: 0, items: [], grattatori: [], equippedGrattatore: null, scratchCards: [],
+      activeNail: 0, items: ["cerotto", "disinfettante", "cremaRinforzante"], grattatori: [], equippedGrattatore: null, scratchCards: [],
       fortune: 0, fortuneTurns: 0, relics: [], streamerFollowers: 0,
     };
     const name = dbg === "boss" ? "Il Broker" : dbg === "ladro" ? "Ladro" : "Mini Boss";
