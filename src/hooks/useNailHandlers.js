@@ -103,13 +103,36 @@ export function useNailHandlers({ player, updatePlayer, triggerNpcComment, scrat
   const handleCombatCellScratch = useCallback(() => {
     updatePlayer(p => {
       // ── GRATTATORE EQUIPAGGIATO: gratti con l'attrezzo, non con l'unghia ──
-      // Con QUALSIASI grattatore equipaggiato l'unghia attiva NON si logora in combat,
-      // e il grattatore NON si consuma per-cella: i suoi usi si spendono sui grattini
-      // veri o quando l'effetto da combat scatta (onGrattatoreConsumed in CombatView) /
-      // a fine boss-fight (handleCombatEnd). Così anche un grattatore da 1 uso (es.
-      // Bullone) protegge il dito per tutta la fight invece di sparire dopo 1 cella.
+      // Con un grattatore equipaggiato l'unghia attiva NON si logora — MA il grattatore
+      // non è infinito: si consuma come sui grattini veri.
+      const eff = p.equippedGrattatore?.effect;
       if (p.equippedGrattatore) {
-        return p;
+        // Grattatori da COMBATTIMENTO (atkBoost/widePerfect/guaranteedParry) e Guanto
+        // da BOSS (bossShield): proteggono l'unghia ma NON si consumano per-cella —
+        // il loro uso si spende quando l'effetto scatta (onGrattatoreConsumed in
+        // CombatView) o a fine boss-fight (handleCombatEnd). Altrimenti un Coltello da
+        // 1 uso sparirebbe sulla prima cella, prima ancora di colpire.
+        const isPureCombatGrattatore = eff === "atkBoost" || eff === "widePerfect" || eff === "guaranteedParry";
+        if (isPureCombatGrattatore || eff === "bossShield") {
+          return p;
+        }
+        // Grattatore "normale" (Bullone/Moneta/Unghia Finta/...): protegge l'unghia e
+        // consuma 1 uso per cella grattata, esattamente come sui grattini. A esaurimento
+        // viene rimosso: da lì in poi l'unghia torna a logorarsi.
+        const idx = p.equippedGrattatore.inventoryIdx;
+        const grattatori = [...(p.grattatori || [])];
+        if (grattatori[idx]) {
+          const g = {...grattatori[idx]};
+          g.usesLeft -= 1;
+          if (g.usesLeft <= 0) {
+            grattatori.splice(idx, 1);
+            setTimeout(() => addLog(`${g.name} consumato!`, C.dim), 0);
+            return {...p, grattatori, equippedGrattatore: null};
+          }
+          grattatori[idx] = g;
+          return {...p, grattatori, equippedGrattatore: {...p.equippedGrattatore, usesLeft: g.usesLeft}};
+        }
+        return p; // indice non valido: niente logorio comunque
       }
 
       // ── Nessun grattatore: danno normale all'unghia attiva ──
