@@ -232,25 +232,6 @@ export default function Grattini() {
     addLog("Nonno Carmelo ti ferma al bancone. Ha tre biglietti e mani che tremano. Gratti tu, scegli tu.", C.gold);
   };
 
-  // ─── DEBUG: salta dritto in combattimento con ?combat=miniboss|boss|ladro|spacciatore|poliziotto ───
-  useEffect(() => {
-    if (!import.meta.env.DEV) return; // scorciatoia di debug: solo in dev, non in prod
-    const dbg = new URLSearchParams(window.location.search).get("combat");
-    if (!dbg) return;
-    const debugPlayer = {
-      money: 100,
-      nails: Array(5).fill(null).map(() => ({ state: "sana", scratchCount: 0, implant: null, implantUses: 0, stats: { fortuna: 0, potenza: 0, resilienza: 0 }, heldItem: null, cremaHP: 0 })),
-      activeNail: 0, items: ["cerotto", "disinfettante", "cremaRinforzante"], grattatori: [], equippedGrattatore: null, scratchCards: [],
-      fortune: 0, fortuneTurns: 0, relics: [], streamerFollowers: 0,
-    };
-    const NAME_MAP = { boss: "Il Broker", ladro: "Ladro", spacciatore: "Spacciatore", poliziotto: "Poliziotto" };
-    const name = NAME_MAP[dbg] || "Mini Boss";
-    setPlayer(debugPlayer);
-    setCombatEnemy({ name, isBoss: dbg === "boss", isMiniboss: !NAME_MAP[dbg], isElite: false });
-    setScreen("combat");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   // ─── HOOK: useNailEffects ───
   const { globalPainFlash, nailDeathFlash, setNailDeathFlash, screenShake, setScreenShake, moneyBling } = useNailEffects({ player, screen, gameStats, unlockAchievement, updateAllTimeStats, addLog });
 
