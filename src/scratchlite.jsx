@@ -1210,8 +1210,9 @@ export default function Grattini() {
               Scegli il cammino a nodi fino al <strong style={{color:C.red}}>👹 BOSS</strong> del bioma. Battilo per sbloccare il bioma successivo.
             </Panel>
             <Panel accent={C.gold} head="📍 I NODI">
-              <span style={{color:C.red}}>🗡️ 💀</span> combattimenti &nbsp;·&nbsp; <span style={{color:C.cyan}}>🏪 tabaccaio</span> (grattini & attrezzi)<br/>
+              <span style={{color:C.red}}>🗡️ 💀</span> combattimenti &nbsp;·&nbsp; <span style={{color:C.cyan}}>🏪 tabaccaio</span> (grattini & grattatori)<br/>
               <span style={{color:C.magenta}}>🏨 locanda</span> (curi le unghie con €) &nbsp;·&nbsp; <span style={{color:C.text}}>❓ eventi/NPC</span><br/>
+              <span style={{color:"#88ccff"}}>🧤 guantaio</span> (l'unico che vende il <strong style={{color:C.bright}}>Guanto da BOSS</strong>, protezione per la boss-fight)<br/>
               <span style={{color:C.dim}}>⛪ 👵 🙏 possono aiutarti… o fregarti. Leggi sempre le scelte.</span>
             </Panel>
             <Panel accent={C.gold} head="💰 I SOLDI (€)">
