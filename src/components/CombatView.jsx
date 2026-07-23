@@ -357,6 +357,9 @@ function TimingBar({ mode = "attack", speed = 1.5, onResult, perfectWiden = 0 })
 
 // ─── COMBAT COMPONENT — DUELLO HP ────────────────────────────
 export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onCellScratch, onGrattatoreConsumed, playerWallet = 0, onCombo, onVariantRevealed }) {
+  // Nome mostrato all'utente: usa il flavor (displayName) se presente, altrimenti
+  // la specie. Le lookup stats/pool/sprite restano su enemy.name (la specie).
+  const enemyLabel = enemy.displayName || enemy.name;
   const grEffect = player.equippedGrattatore?.effect;
   const guaranteedParryLeftRef = useRef(grEffect === "guaranteedParry"); // 1 sola volta a fight
   // Fascia da Polso (grattatore) + Maneki Neko (reliquia, "+10% vincita su TUTTE le carte"
@@ -500,7 +503,7 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
     if (isEnemyAttack) {
       // FORTEZZA: blocco garantito, a prescindere dal tempismo (nessun minigioco).
       if (pendingGuardRef.current) {
-        pushLog(`${enemy.name} 🗡 ${ec.name}: 🏰 FORTEZZA blocca tutto — nessun danno!`, C.blue);
+        pushLog(`${enemyLabel} 🗡 ${ec.name}: 🏰 FORTEZZA blocca tutto — nessun danno!`, C.blue);
         setTimeout(() => finishExchange(exchangeIdx, isLast), 450);
         return;
       }
@@ -540,19 +543,19 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
   const applyEnemyNonAttack = (c) => {
     if (c.category === "DIFESA") {
       shieldRef.current += stats.shieldPerDef; setEnemyShield(shieldRef.current);
-      pushLog(`${enemy.name} 🛡 ${c.name}: +${stats.shieldPerDef} scudo`, C.blue);
+      pushLog(`${enemyLabel} 🛡 ${c.name}: +${stats.shieldPerDef} scudo`, C.blue);
     } else if (c.category === "DENARO") {
       if (turn >= FURY_TURN) {
         // FURIA: troppo agitato per curarsi — colpo a vuoto, puoi bruciarlo
-        pushLog(`${enemy.name} 🔥 ${c.name}: troppo furioso per curarsi!`, C.red);
+        pushLog(`${enemyLabel} 🔥 ${c.name}: troppo furioso per curarsi!`, C.red);
       } else {
         const healAmt = Math.round((c.value || 20) * 0.2);
         hpRef.current = Math.min(enemyMaxHp, hpRef.current + healAmt); setEnemyHp(hpRef.current);
-        pushLog(`${enemy.name} 💰 ${c.name}: si cura +${healAmt} HP`, C.orange);
+        pushLog(`${enemyLabel} 💰 ${c.name}: si cura +${healAmt} HP`, C.orange);
       }
     } else {
       // attacco bloccato da carta scudo del player
-      pushLog(`${enemy.name} 🗡 ${c.name}: 🛡 BLOCCATO dallo scudo!`, C.blue);
+      pushLog(`${enemyLabel} 🗡 ${c.name}: 🛡 BLOCCATO dallo scudo!`, C.blue);
     }
   };
 
@@ -566,11 +569,11 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
 
     if (quality === "perfect") {
       // Annulla il danno + contrattacco
-      pushLog(`${enemy.name} 🗡 ${c.name}: 🛡 PARATA PERFETTA! Nessun danno`, C.green);
+      pushLog(`${enemyLabel} 🗡 ${c.name}: 🛡 PARATA PERFETTA! Nessun danno`, C.green);
       AudioEngine.parry?.();
       spawnFloater("PARATA!", C.blue, "player", true);
       const counter = 14;
-      pushLog(`↩️ Contrattacco! ${counter} danni a ${enemy.name}`, C.cyan);
+      pushLog(`↩️ Contrattacco! ${counter} danni a ${enemyLabel}`, C.cyan);
       dealDamage(counter);
       if (hpRef.current <= 0) { winNow(); return; }
       return;
@@ -579,7 +582,7 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
       if (stealsMoney) {
         const v = Math.round(stealVal * 0.5);
         lootRef.current = Math.max(0, lootRef.current - v); setLoot(lootRef.current);
-        pushLog(`${enemy.name} 🗡 ${c.name}: parata parziale — ti ruba solo €${v}`, C.gold);
+        pushLog(`${enemyLabel} 🗡 ${c.name}: parata parziale — ti ruba solo €${v}`, C.gold);
         spawnFloater(`−€${v}`, C.orange, "loot");
       } else if (tigerShieldLeftRef.current) {
         // Occhio di Tigre: primo colpo del combattimento assorbito gratis.
@@ -591,7 +594,7 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
         AudioEngine.nailCrack?.();
         setPainFlash(0.3); setTimeout(() => setPainFlash(0), 350);
         spawnFloater("−1", C.orange, "player");
-        pushLog(`${enemy.name} 🗡 ${c.name}: parata parziale — 1 danno`, C.gold);
+        pushLog(`${enemyLabel} 🗡 ${c.name}: parata parziale — 1 danno`, C.gold);
         checkDefeat();
       }
       return;
@@ -599,7 +602,7 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
     // miss → danno pieno
     if (stealsMoney) {
       lootRef.current = Math.max(0, lootRef.current - stealVal); setLoot(lootRef.current);
-      pushLog(`${enemy.name} 🗡 ${c.name}: ti ruba €${stealVal}!`, C.red);
+      pushLog(`${enemyLabel} 🗡 ${c.name}: ti ruba €${stealVal}!`, C.red);
       spawnFloater(`−€${stealVal}`, C.red, "loot");
     } else if (tigerShieldLeftRef.current) {
       // Occhio di Tigre: primo colpo del combattimento assorbito gratis.
@@ -612,14 +615,18 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
       AudioEngine.painScream?.();
       triggerShake();
       spawnFloater(`−${baseSteps}💢`, C.red, "player", true);
-      pushLog(`${enemy.name} 🗡 ${c.name}: COLPITO! ${baseSteps} danno alle unghie`, C.red);
+      pushLog(`${enemyLabel} 🗡 ${c.name}: COLPITO! ${baseSteps} danno alle unghie`, C.red);
       checkDefeat();
     }
   };
 
   const checkDefeat = () => {
+    // Sconfitta = 0 unghie vive, coerente col parent (scratchlite onNailDamage →
+    // gameOver quando !isAlive). Prima usava <= 1: se restavi con 1 unghia,
+    // CombatView si fermava in turnEnd ma il parent non andava in gameOver →
+    // softlock (il bottone PROSSIMO TURNO non faceva nulla).
     const aliveNow = player.nails.filter(n => n.state !== "morta").length;
-    if (aliveNow <= 1) dead.current = true;
+    if (aliveNow <= 0) dead.current = true;
   };
 
   const finishExchange = (exchangeIdx, isLast) => {
@@ -712,7 +719,7 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
 
   const winNow = () => {
     setActiveTiming(null);
-    pushLog(`💥 ${enemy.name} è al tappeto!`, C.green);
+    pushLog(`💥 ${enemyLabel} è al tappeto!`, C.green);
     AudioEngine.win?.();
     setTimeout(() => setPhase("win"), 600);
   };
@@ -825,7 +832,7 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
           <div style={{ fontWeight: "bold", fontSize: "15px", color: C.red, letterSpacing: "1px" }}>
-            {enemy.isBoss ? "👑 " : ""}{enemy.name}
+            {enemy.isBoss ? "👑 " : ""}{enemyLabel}
           </div>
           {inFury && (
             <div style={{
@@ -882,7 +889,7 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
         {phase === "intro" && (
           <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "16px", textAlign: "center" }}>
             <div style={{ fontSize: "40px" }}>{enemy.isBoss ? "👑" : "🗡️"}</div>
-            <div style={{ color: C.red, fontSize: "20px", fontWeight: "bold" }}>{enemy.name} ti sfida!</div>
+            <div style={{ color: C.red, fontSize: "20px", fontWeight: "bold" }}>{enemyLabel} ti sfida!</div>
             <div style={{ color: C.dim, fontSize: "13px", maxWidth: "340px" }}>
               Gratta le tue carte per attaccare. Riduci gli HP del nemico a zero — ma occhio alle tue unghie!
               <br /><span style={{ color: C.orange }}>⚠ Dal turno {FURY_TURN} il nemico va in 🔥 FURIA: non si cura più e picchia sempre più forte. Chiudi in fretta!</span>

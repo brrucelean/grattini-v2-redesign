@@ -43,7 +43,11 @@ export function useEventHandlers({
           : currentNode.type === "ladro"
             ? LADRO_NAMES[Math.floor(rng() * LADRO_NAMES.length)]
             : SFIDANTE_NAMES[Math.floor(rng() * SFIDANTE_NAMES.length)];
-        setCombatEnemy({ name: enemyName, isBoss: false, isMiniboss, isElite: !!currentNode.elite });
+        // SPECIE (chiave reale per ENEMY_STATS / ENEMY_COMBAT_POOLS): il nome
+        // "flavor" va solo in displayName per l'UI. Senza questo, i nodi
+        // miniboss/ladro cadevano su DEFAULT_ENEMY_STATS (60 HP) + pool Sfidante.
+        const species = isMiniboss ? "Mini Boss" : currentNode.type === "ladro" ? "Ladro" : "Sfidante";
+        setCombatEnemy({ name: species, displayName: enemyName, isBoss: false, isMiniboss, isElite: !!currentNode.elite });
         setScreen("combat");
         break;
       }
