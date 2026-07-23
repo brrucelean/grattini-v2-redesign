@@ -34,20 +34,23 @@ export function useEventHandlers({
     }
     switch (action) {
       case "fight": {
-        const isMiniboss = currentNode.type === "miniboss";
+        const type = currentNode.type;
+        const isMiniboss = type === "miniboss";
         const MINIBOSS_NAMES = ["Enzo il Tabaccaio Rinnegato","Carmela la Grattona","Don Pasquale del Gratta","Mamma Rosaria","Franco il Cinquina"];
         const SFIDANTE_NAMES = ["Gennaro del Bar Sport","Tonino Tre Gratta","Peppe il Fortunello","Salvatore con la Sigaretta","Concetta la Scaltra","Mimmo Sfidante","Il Cognato di Tutti"];
         const LADRO_NAMES = ["il Borseggiatore di Porta Nuova","il Ladro dei Gratta","il Finto Turista","lo Scippatore del Lungomare"];
-        const enemyName = isMiniboss
-          ? MINIBOSS_NAMES[Math.floor(rng() * MINIBOSS_NAMES.length)]
-          : currentNode.type === "ladro"
-            ? LADRO_NAMES[Math.floor(rng() * LADRO_NAMES.length)]
-            : SFIDANTE_NAMES[Math.floor(rng() * SFIDANTE_NAMES.length)];
-        // SPECIE (chiave reale per ENEMY_STATS / ENEMY_COMBAT_POOLS): il nome
-        // "flavor" va solo in displayName per l'UI. Senza questo, i nodi
-        // miniboss/ladro cadevano su DEFAULT_ENEMY_STATS (60 HP) + pool Sfidante.
-        const species = isMiniboss ? "Mini Boss" : currentNode.type === "ladro" ? "Ladro" : "Sfidante";
-        setCombatEnemy({ name: species, displayName: enemyName, isBoss: false, isMiniboss, isElite: !!currentNode.elite });
+        // SPECIE = chiave reale per ENEMY_STATS/pool. Ogni tipo di nodo MANTIENE la
+        // propria identità: uno spacciatore resta uno Spacciatore, un poliziotto un
+        // Poliziotto — niente più trasformazione random in "Sfidante" (es. Mimmo).
+        // Il nome-flavor random (displayName) si usa SOLO dove ha senso (ladro/
+        // miniboss/sfidante generico), non per spacciatore/poliziotto.
+        let species, displayName;
+        if (isMiniboss)            { species = "Mini Boss";   displayName = pick(MINIBOSS_NAMES); }
+        else if (type === "ladro")       { species = "Ladro";        displayName = pick(LADRO_NAMES); }
+        else if (type === "spacciatore") { species = "Spacciatore";  displayName = "Lo Spacciatore"; }
+        else if (type === "poliziotto")  { species = "Poliziotto";   displayName = "Il Poliziotto"; }
+        else                             { species = "Sfidante";     displayName = pick(SFIDANTE_NAMES); }
+        setCombatEnemy({ name: species, displayName, isBoss: false, isMiniboss, isElite: !!currentNode.elite });
         setScreen("combat");
         break;
       }
