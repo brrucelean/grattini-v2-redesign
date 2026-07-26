@@ -1,7 +1,7 @@
 import { C, FONT } from "../data/theme.js";
-import { NPC_ART } from "../data/art.js";
 import { S } from "../utils/styles.js";
 import { Btn } from "./Btn.jsx";
+import { Asset } from "./Asset.jsx";
 
 // ─── RoomTile: card per singola stanza della locanda ──────────
 function RoomTile({ room, canAfford, onClick }) {
@@ -66,7 +66,7 @@ function RoomTile({ room, canAfford, onClick }) {
           fontSize: "30px",
           textShadow: `0 0 14px ${accent}`,
           filter: disabled ? "grayscale(0.6) brightness(0.7)" : "none",
-        }}>{room.emoji}</div>
+        }}><Asset id={room.img} emoji={room.emoji} size={40} /></div>
         {room.kawaii && !disabled && (
           <div style={{
             position: "absolute", top: 0, right: 0, bottom: 0, left: 0,
@@ -129,11 +129,11 @@ function RoomTile({ room, canAfford, onClick }) {
 
 export function LocandaView({ player, onRest, onLeave }) {
   const rooms = [
-    { name: "Per Terra", emoji: "🛏️", cost: 0, heals: 0, risk: "pavimento", desc: "Dormi sul pavimento lurido. Recuperi metà stato unghie. 50% chance ladro ti sveglia!", isFloor: true, accent: "#6a6a7a" },
-    { name: "Bettola", emoji: "🍺", cost: 6, heals: 1, risk: "ladri", desc: "Recuperi 1 unghia (anche morta). Rischio ladri!", accent: C.cyan },
-    { name: "Camera Media", emoji: "🛌", cost: 22, heals: 2, risk: null, desc: "Recuperi 2 unghie (anche morte). Conta raschiature azzerate.", accent: C.magenta },
-    { name: "Suite", emoji: "🏨", cost: 110, heals: 5, risk: null, desc: "Recuperi TUTTE le unghie a Sana!", kawaii: false, accent: C.gold },
-    { name: "Manicure Kawaii", emoji: "💅", cost: 175, heals: 5, risk: null, desc: "✨ Tutte le unghie diventano KAWAII (x2 premio)!", kawaii: true, accent: C.pink },
+    { name: "Per Terra", emoji: "🛏️", img: "room-perterra", cost: 0, heals: 0, risk: "pavimento", desc: "Dormi sul pavimento lurido. Recuperi metà stato unghie. 50% chance ladro ti sveglia!", isFloor: true, accent: "#6a6a7a" },
+    { name: "Bettola", emoji: "🍺", img: "room-bettola", cost: 6, heals: 1, risk: "ladri", desc: "Recuperi 1 unghia (anche morta). Rischio ladri!", accent: C.cyan },
+    { name: "Camera Media", emoji: "🛌", img: "room-cameramedia", cost: 22, heals: 2, risk: null, desc: "Recuperi 2 unghie (anche morte). Conta raschiature azzerate.", accent: C.magenta },
+    { name: "Suite", emoji: "🏨", img: "room-suite", cost: 110, heals: 5, risk: null, desc: "Recuperi TUTTE le unghie a Sana!", kawaii: false, accent: C.gold },
+    { name: "Manicure Kawaii", emoji: "💅", img: "room-kawaii", cost: 175, heals: 5, risk: null, desc: "✨ Tutte le unghie diventano KAWAII (x2 premio)!", kawaii: true, accent: C.pink },
   ];
 
   return (
@@ -156,14 +156,17 @@ export function LocandaView({ player, onRest, onLeave }) {
           animation: "variantSparkle 2.4s ease-in-out infinite",
         }}>✦</div>
 
-        <pre style={{
-          ...S.pre, ...S.title, margin: 0, fontSize: "11px", color: C.pink, lineHeight: 1.2,
-          textShadow: `0 0 8px ${C.pink}66`,
-          padding: "4px 10px",
-          border: `1px solid ${C.pink}33`,
+        <div style={{
+          flexShrink: 0,
+          padding: "6px",
+          border: `1px solid ${C.pink}44`,
           background: "#0a0510",
-          boxShadow: `inset 0 0 14px ${C.pink}10`,
-        }}>{NPC_ART.locanda}</pre>
+          boxShadow: `inset 0 0 14px ${C.pink}14, 0 0 10px ${C.pink}22`,
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+          <Asset id="spr-locanda" emoji="🏨" size={72}
+            style={{ filter: `drop-shadow(0 0 6px ${C.pink}66)` }} />
+        </div>
 
         <div>
           <div style={{

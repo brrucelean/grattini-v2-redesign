@@ -5,13 +5,15 @@ import {
   ENEMY_STATS, DEFAULT_ENEMY_STATS, EFFECT_DAMAGE,
 } from "../data/combat.js";
 import { roll, pick } from "../utils/random.js";
-import { makeNailCursor } from "../utils/nail.js";
+import { makeNailCursor, nailCursor } from "../utils/nail.js";
 import { generateCombatHand, generateCombatCard, CARD_VARIANTS } from "../utils/combat.js";
 import { SPR_BIG } from "../data/art.js";
 import { AudioEngine, ParticleSystem } from "../audio.js";
 import { hasRelic } from "../utils/hasRelic.js";
 import { Btn } from "./Btn.jsx";
 import { NailDisplay } from "./NailDisplay.jsx";
+import { Asset } from "./Asset.jsx";
+import { hasAsset } from "../assets/registry.js";
 
 // Nomi categoria abbreviati — COMBATTIMENTO è troppo lungo per le card strette
 const CAT_SHORT = { COMBATTIMENTO: "ATTACCO", DIFESA: "DIFESA", DENARO: "DENARO" };
@@ -29,13 +31,14 @@ function enemySpriteKey(enemy) {
 
 
 // ─── COMBAT CARD SCRATCH ─────────────────────────────────────
-export function CombatCardScratch({ cell, onRevealed, catColors, disabled, nailState = "sana" }) {
+export function CombatCardScratch({ cell, onRevealed, catColors, disabled, nailState = "sana", onDeadAttempt }) {
   const canvasRef = useRef(null);
   const drawing = useRef(false);
   const revealed = useRef(false);
   const [isRevealed, setIsRevealed] = useState(false); // al reveal la patina sparisce del tutto
   const lastScratchSound = useRef(0); // throttle audio
-  const nailCursor = makeNailCursor(nailState);
+  const scratchTicks = useRef(0);     // throttle del check getImageData (costoso su mobile)
+  const combatNailCursor = nailCursor(nailState);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -80,6 +83,8 @@ export function CombatCardScratch({ cell, onRevealed, catColors, disabled, nailS
 
   const doScratch = (e) => {
     if (revealed.current || disabled) return;
+    // Unghia MORTA: non si può grattare — avvisa di sceglierne una sana
+    if (nailState === "morta") { onDeadAttempt?.(); return; }
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
@@ -103,6 +108,10 @@ export function CombatCardScratch({ cell, onRevealed, catColors, disabled, nailS
       AudioEngine.scratch();
       lastScratchSound.current = now;
     }
+    // getImageData legge tutto il canvas: throttle a 1 ogni 3 passate come in
+    // ScratchCell (su mobile il touchmove spara decine di eventi al secondo).
+    scratchTicks.current += 1;
+    if (scratchTicks.current % 3 !== 0) return;
     const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
     let transparent = 0;
     for (let i = 3; i < data.length; i += 4) if (data[i] < 100) transparent++;
@@ -136,7 +145,9 @@ export function CombatCardScratch({ cell, onRevealed, catColors, disabled, nailS
       border: disabled ? `2px solid #333` : `2px solid ${C.gold}`,
       // Sfondo OPACO scuro — niente bleeding del contenuto
       background: disabled ? "#111" : CAT_BG[cell.category] || "#0a0a12",
-      height:`${COMBAT_CARD_H}px`,
+      // La griglia usa righe 1fr: la carta riempie la cella disponibile invece
+      // di restare fissa a COMBAT_CARD_H lasciando mezzo schermo vuoto sotto.
+      height:"100%", minHeight:`${COMBAT_CARD_H}px`,
       boxShadow: disabled ? "none" : `0 0 14px ${C.gold}66, inset 0 0 20px rgba(0,0,0,0.5)`,
       cursor: disabled ? "default" : "crosshair",
       touchAction: "none",
@@ -151,7 +162,7 @@ export function CombatCardScratch({ cell, onRevealed, catColors, disabled, nailS
         <canvas ref={canvasRef} width={220} height={160}
           style={{
             position:"absolute", inset:0, width:"100%", height:"100%",
-            display:"block", cursor: disabled ? "default" : nailCursor, touchAction:"none",
+            display:"block", cursor: disabled ? "default" : combatNailCursor, touchAction:"none",
             opacity: disabled ? 0.35 : 1,
             filter: disabled ? "grayscale(60%)" : "none",
           }}
@@ -172,7 +183,11 @@ export function CombatCardScratch({ cell, onRevealed, catColors, disabled, nailS
           <>
             {/* Carta rivelata: mostra l'EFFETTO specifico (emoji + nome) */}
             <div style={{ fontSize:"30px", lineHeight:1 }}>
-              {cell.emoji || CAT_EMOJI_MAP[cell.category] || "?"}
+              <Asset
+                id={!cell.emoji && cell.category ? `combat-${cell.category.toLowerCase()}` : null}
+                emoji={cell.emoji || CAT_EMOJI_MAP[cell.category] || "?"}
+                size={34}
+              />
             </div>
             <div style={{
               fontSize:"12px", fontWeight:"bold", letterSpacing:"0.5px",
@@ -191,7 +206,11 @@ export function CombatCardScratch({ cell, onRevealed, catColors, disabled, nailS
               filter:"drop-shadow(1px 2px 0px rgba(0,0,0,0.4))",
               opacity:0.85,
             }}>
-              {CAT_EMOJI_MAP[cell.category] || "?"}
+              <Asset
+                id={cell.category ? `combat-${cell.category.toLowerCase()}` : null}
+                emoji={CAT_EMOJI_MAP[cell.category] || "?"}
+                size={44}
+              />
             </div>
             {/* Label stampata — abbreviata per evitare overflow nelle card strette */}
             <div style={{
@@ -360,6 +379,15 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
   // Nome mostrato all'utente: usa il flavor (displayName) se presente, altrimenti
   // la specie. Le lookup stats/pool/sprite restano su enemy.name (la specie).
   const enemyLabel = enemy.displayName || enemy.name;
+  // Stato dell'unghia attiva (selezionata nella sidebar) — serve per bloccare
+  // la grattata quando è morta e avvisare di sceglierne una sana.
+  const activeNailState = player.nails?.[player.activeNail]?.state ?? "sana";
+  const [deadNailWarn, setDeadNailWarn] = useState(false);
+  const warnDeadNail = () => {
+    setDeadNailWarn(true);
+    clearTimeout(warnDeadNail._t);
+    warnDeadNail._t = setTimeout(() => setDeadNailWarn(false), 2000);
+  };
   const grEffect = player.equippedGrattatore?.effect;
   const guaranteedParryLeftRef = useRef(grEffect === "guaranteedParry"); // 1 sola volta a fight
   // Fascia da Polso (grattatore) + Maneki Neko (reliquia, "+10% vincita su TUTTE le carte"
@@ -784,10 +812,23 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
   return (
     <div style={{
       position: "relative", flex: 1, minHeight: 0, width: "100%",
-      display: "flex", flexDirection: "column", gap: "10px",
-      fontFamily: FONT, color: C.text, padding: "10px", overflow: "hidden",
+      display: "flex", flexDirection: "column", gap: "8px",
+      fontFamily: FONT, color: C.text, padding: "14px 16px", overflow: "hidden",
+      /* Cabinet ottone-oro — cornice CRT che racchiude tutto il duello */
+      border: `2px solid ${C.gold}77`, borderRadius: "6px",
+      background: "linear-gradient(180deg, rgba(12,10,20,0.68) 0%, rgba(4,3,8,0.82) 100%)",
+      boxShadow: `0 0 0 1px #000, 0 0 26px ${C.gold}22, inset 0 0 40px rgba(0,0,0,0.55)`,
       animation: shake ? "screenShake 0.38s" : "none",
     }}>
+      {/* Angoli ottone del cabinet */}
+      {[["top","left"],["top","right"],["bottom","left"],["bottom","right"]].map(([v,h],i)=>(
+        <div key={i} aria-hidden style={{
+          position:"absolute", [v]:6, [h]:6, width:"16px", height:"16px", zIndex:6, pointerEvents:"none",
+          [`border${v[0].toUpperCase()+v.slice(1)}`]:`2px solid ${C.gold}`,
+          [`border${h[0].toUpperCase()+h.slice(1)}`]:`2px solid ${C.gold}`,
+          filter:`drop-shadow(0 0 4px ${C.gold}88)`,
+        }} />
+      ))}
       {/* Pain flash overlay */}
       {painFlash > 0 && (
         <div style={{ position: "absolute", inset: 0, background: `rgba(255,0,0,${painFlash})`, pointerEvents: "none", zIndex: 50, transition: "background 0.1s" }} />
@@ -808,68 +849,90 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
         );
       })}
 
-      {/* ── SCHEDA NEMICO ── */}
+      {/* ── SCHEDA NEMICO — readout CRT compatto orizzontale ── */}
       <div style={{
-        border: `2px solid ${C.red}`, borderRadius: "4px", padding: "10px 14px",
+        display: "flex", alignItems: "stretch", gap: "12px",
+        border: `2px solid ${C.red}`, borderRadius: "4px", padding: "9px 12px",
         background: "#160308", boxShadow: `0 0 18px ${C.red}44, inset 0 0 24px rgba(0,0,0,0.6)`,
         transform: enemyHitFlash ? "translateX(4px)" : "none", transition: "transform 0.1s",
       }}>
-        {/* Schermo "mostro" — sprite ASCII del nemico (come da bozza) */}
+        {/* Schermo "mostro" CRT — ritratto sprite del nemico, riquadro compatto a sinistra */}
         <div style={{
-          margin: "0 auto 8px", maxWidth: "260px",
+          flexShrink: 0, width: "150px", minHeight: "150px", alignSelf: "stretch",
           background: "#0a0400", border: `2px solid ${C.red}88`, borderRadius: "4px",
-          padding: "8px 6px", boxShadow: `inset 0 0 26px #000, 0 0 12px ${C.red}33`,
-          overflow: "hidden",
+          padding: "5px", boxShadow: `inset 0 0 22px #000, 0 0 12px ${C.red}33`,
+          overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center",
+          position: "relative",
         }}>
-          <pre style={{
-            margin: 0, textAlign: "center", color: "#ff6a6a", fontFamily: FONT,
-            fontSize: "10px", lineHeight: "1.05", whiteSpace: "pre",
-            textShadow: `0 0 6px ${C.red}aa`,
-            animation: enemyHitFlash ? "none" : "neonText 2.4s infinite",
-          }}>
-            {(SPR_BIG[enemySpriteKey(enemy)] || SPR_BIG.miniboss).join("\n")}
-          </pre>
-        </div>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-          <div style={{ fontWeight: "bold", fontSize: "15px", color: C.red, letterSpacing: "1px" }}>
-            {enemy.isBoss ? "👑 " : ""}{enemyLabel}
-          </div>
-          {inFury && (
-            <div style={{
-              fontSize: "12px", fontWeight: "bold", padding: "2px 10px", borderRadius: "3px",
-              color: "#000", background: C.orange, letterSpacing: "1px",
-              boxShadow: `0 0 14px ${C.orange}, 0 0 4px ${C.red} inset`,
-              animation: "telePulse 0.7s ease-in-out infinite",
+          {/* scanline CRT interno */}
+          <div aria-hidden style={{
+            position: "absolute", inset: 0, pointerEvents: "none", zIndex: 2, opacity: 0.5,
+            backgroundImage: "repeating-linear-gradient(0deg, rgba(0,0,0,0.25) 0px, rgba(0,0,0,0.25) 1px, transparent 1px, transparent 3px)",
+          }} />
+          {hasAsset(`spr-${enemySpriteKey(enemy)}`) ? (
+            <Asset id={`spr-${enemySpriteKey(enemy)}`} size={140}
+              style={{width:"100%", height:"auto", display:"block",
+                filter:`drop-shadow(0 0 6px ${C.red}aa)`,
+                animation: enemyHitFlash ? "none" : "neonText 2.4s infinite"}} />
+          ) : (
+            <pre style={{
+              margin: 0, textAlign: "center", color: "#ff6a6a", fontFamily: FONT,
+              fontSize: "7px", lineHeight: "1.05", whiteSpace: "pre",
+              textShadow: `0 0 6px ${C.red}aa`,
+              animation: enemyHitFlash ? "none" : "neonText 2.4s infinite",
             }}>
-              🔥 FURIA
-            </div>
+              {(SPR_BIG[enemySpriteKey(enemy)] || SPR_BIG.miniboss).join("\n")}
+            </pre>
           )}
         </div>
-        {/* Barra HP rossa */}
-        <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
-          <span style={{ fontSize: "12px" }}>❤️</span>
-          <div style={{ flex: 1, height: "14px", background: "#3a0000", borderRadius: "3px", overflow: "hidden", border: "1px solid #550000" }}>
-            <div style={{ width: `${hpPct}%`, height: "100%", background: `linear-gradient(90deg, ${C.red}, #ff5555)`, transition: "width 0.4s ease", boxShadow: `0 0 8px ${C.red}` }} />
+        {/* Colonna stat — nome + barre HP/scudo */}
+        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "center", gap: "7px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px" }}>
+            <div style={{ fontWeight: "bold", fontSize: "15px", color: C.red, letterSpacing: "1px",
+              textShadow: `0 0 8px ${C.red}66`, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {enemy.isBoss ? "👑 " : ""}{enemyLabel}
+            </div>
+            {inFury && (
+              <div style={{
+                flexShrink: 0,
+                fontSize: "12px", fontWeight: "bold", padding: "2px 10px", borderRadius: "3px",
+                color: "#000", background: C.orange, letterSpacing: "1px",
+                boxShadow: `0 0 14px ${C.orange}, 0 0 4px ${C.red} inset`,
+                animation: "telePulse 0.7s ease-in-out infinite",
+              }}>
+                🔥 FURIA
+              </div>
+            )}
           </div>
-          <span style={{ fontSize: "11px", color: C.red, minWidth: "54px", textAlign: "right" }}>{enemyHp}/{enemyMaxHp}</span>
-        </div>
-        {/* Barra scudo blu */}
-        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-          <span style={{ fontSize: "12px" }}>🛡</span>
-          <div style={{ flex: 1, height: "10px", background: "#001428", borderRadius: "3px", overflow: "hidden", border: "1px solid #003355" }}>
-            <div style={{ width: `${Math.min(100, enemyShield)}%`, height: "100%", background: `linear-gradient(90deg, ${C.blue}, #55aaff)`, transition: "width 0.4s ease" }} />
+          {/* Barra HP rossa */}
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <span style={{ fontSize: "12px" }}>❤️</span>
+            <div style={{ flex: 1, height: "14px", background: "#3a0000", borderRadius: "3px", overflow: "hidden", border: "1px solid #550000" }}>
+              <div style={{ width: `${hpPct}%`, height: "100%", background: `linear-gradient(90deg, ${C.red}, #ff5555)`, transition: "width 0.4s ease", boxShadow: `0 0 8px ${C.red}` }} />
+            </div>
+            <span style={{ fontSize: "11px", color: C.red, minWidth: "54px", textAlign: "right" }}>{enemyHp}/{enemyMaxHp}</span>
           </div>
-          <span style={{ fontSize: "11px", color: C.blue, minWidth: "54px", textAlign: "right" }}>{enemyShield}</span>
+          {/* Barra scudo blu */}
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <span style={{ fontSize: "12px" }}>🛡</span>
+            <div style={{ flex: 1, height: "10px", background: "#001428", borderRadius: "3px", overflow: "hidden", border: "1px solid #003355" }}>
+              <div style={{ width: `${Math.min(100, enemyShield)}%`, height: "100%", background: `linear-gradient(90deg, ${C.blue}, #55aaff)`, transition: "width 0.4s ease" }} />
+            </div>
+            <span style={{ fontSize: "11px", color: C.blue, minWidth: "54px", textAlign: "right" }}>{enemyShield}</span>
+          </div>
         </div>
       </div>
 
-      {/* ── HUD player: unghie (vita) + bottino ── */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px" }}>
+      {/* ── HUD player: unghie (vita) + bottino — striscia ottone ── */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px",
+        padding: "5px 12px", border: `1px solid ${C.gold}44`, borderRadius: "4px",
+        background: "linear-gradient(180deg, rgba(40,30,4,0.5), rgba(10,8,2,0.5))",
+        boxShadow: `inset 0 0 14px rgba(0,0,0,0.5)` }}>
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <span style={{ fontSize: "11px", color: C.dim }}>UNGHIE</span>
+          <span style={{ fontSize: "10px", color: C.gold, letterSpacing: "1.5px", fontWeight: "bold" }}>UNGHIE</span>
           <NailDisplay nails={player.nails} activeNail={-1} compact />
         </div>
-        <div style={{ position: "relative", fontSize: "14px", fontWeight: "bold", color: C.gold }}>
+        <div style={{ position: "relative", fontSize: "15px", fontWeight: "bold", color: C.gold, letterSpacing: "0.5px" }}>
           💰 €{loot}
           {/* Monete che volano */}
           {coins.map(c => (
@@ -937,7 +1000,21 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
                 );
               })}
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "6px" }}>
+            {deadNailWarn && (
+              <div style={{
+                margin: "0 0 8px", padding: "8px 14px", textAlign: "center",
+                border: `2px solid ${C.red}`, background: "#1a0005",
+                color: C.red, fontWeight: "bold", letterSpacing: "0.5px",
+                boxShadow: `0 0 14px ${C.red}88, inset 0 0 10px ${C.red}22`,
+                animation: "pulse 0.8s infinite",
+              }}>
+                ✝ UNGHIA MORTA — seleziona un'unghia sana dalla colonna UNGHIE per grattare
+              </div>
+            )}
+            <div style={{
+              display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gridTemplateRows: "repeat(3, 1fr)",
+              gap: "6px", flex: "1 1 auto", minHeight: `${COMBAT_CARD_H * 3 + 12}px`,
+            }}>
               {hand.map((cell, i) => {
                 const isRevealed = revealedIdxs.includes(i);
                 // Bloccate se: hai già giocato 3 carte, OPPURE uno scambio è in
@@ -951,6 +1028,8 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
                     catColors={CAT_COLORS}
                     onRevealed={() => onCellRevealed(i)}
                     disabled={locked}
+                    nailState={activeNailState}
+                    onDeadAttempt={warnDeadNail}
                   />
                 );
               })}

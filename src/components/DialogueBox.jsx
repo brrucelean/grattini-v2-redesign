@@ -4,6 +4,8 @@ import { SPR_BIG } from "../data/art.js";
 import { AudioEngine } from "../audio.js";
 import { CornerBrackets } from "./Vintage.jsx";
 import { normalizePortrait } from "../utils/nail.js";
+import { Asset } from "./Asset.jsx";
+import { hasAsset } from "../assets/registry.js";
 
 // ─── CARMELO LOG BOX ─────────────────────────────────────────
 // Extracts plain text from a message (string or array of segments)
@@ -61,34 +63,49 @@ export function CarmeloLogBox({ npc, name, color, messages, footer, height="170p
 
   return (
     <div onClick={skip} style={{
-      display:"flex", cursor:"pointer",
+      // Ritratto SOPRA e testo SOTTO (prima erano affiancati con lo sprite a 96px
+      // in una colonna da 110px: il personaggio spariva e restava un box vuoto).
+      display:"flex", flexDirection:"column", cursor:"pointer",
       border:`2px solid ${color}66`,
       boxShadow:`0 0 30px ${color}22, inset 0 0 60px ${color}08`,
-      background:"#04040e", animation:"dialogueIn 0.3s ease-out", height, flexShrink:0,
-      position:"relative",
+      background:"#04040e", animation:"dialogueIn 0.3s ease-out",
+      // Il box riempie l'altezza che il genitore gli concede (`height` resta il
+      // minimo). Con un'altezza fissa il contenuto traboccava; centrandolo e
+      // basta restavano bande vuote sopra e sotto: qui è il RITRATTO a espandersi
+      // e prendersi lo spazio, mentre il testo resta della sua altezza naturale.
+      flex:"1 1 auto", minHeight:height, minWidth:0,
+      position:"relative", overflow:"hidden",
     }}>
       <CornerBrackets color={color} size={13} inset={-3} thickness={2} glow />
       <div style={{
-        flexShrink:0, width:"110px", borderRight:`1px solid ${color}44`,
-        background:`linear-gradient(180deg, ${color}08 0%, transparent 100%)`,
+        // flex:1 → il ritratto assorbe tutta l'altezza in eccesso invece di
+        // lasciarla come vuoto attorno al box.
+        flex:"1 1 auto", minHeight:0, borderBottom:`1px solid ${color}44`,
+        background:`linear-gradient(180deg, ${color}12 0%, transparent 100%)`,
         display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
-        padding:"10px 6px", overflow:"hidden",
+        padding:"12px 6px 10px", overflow:"hidden",
       }}>
-        <div style={{
-          display:"inline-block", background: color, color:"#000",
-          fontSize:"7px", fontWeight:"bold", letterSpacing:"1.5px",
-          padding:"2px 5px", marginBottom:"8px",
-          boxShadow:`0 0 8px ${color}aa`,
-          whiteSpace:"nowrap", maxWidth:"96px",
-          overflow:"hidden", textOverflow:"ellipsis",
-        }}>★ {name.toUpperCase()} ★</div>
-        {portrait && (
-          <pre style={{color:color+"cc", fontSize:"7px", lineHeight:"1.3", margin:0,
+        {hasAsset(`spr-${npc}`) ? (
+          <Asset id={`spr-${npc}`} size={176} style={{
+            width:"auto", maxWidth:"min(340px, 40vw)", height:"100%", minHeight:"120px",
+            objectFit:"contain",
+            filter:`drop-shadow(0 0 14px ${color}66)`,
+          }} />
+        ) : portrait && (
+          <pre style={{color:color+"cc", fontSize:"11px", lineHeight:"1.3", margin:0,
             fontFamily:FONT, textShadow:`0 0 6px ${color}55`, overflow:"hidden",
           }}>{normalizePortrait(portrait).join("\n")}</pre>
         )}
+        <div style={{
+          display:"inline-block", background: color, color:"#000",
+          fontSize:"10px", fontWeight:"bold", letterSpacing:"2px",
+          padding:"3px 12px", marginTop:"8px",
+          boxShadow:`0 0 10px ${color}aa`,
+          whiteSpace:"nowrap", maxWidth:"90%",
+          overflow:"hidden", textOverflow:"ellipsis",
+        }}>★ {name.toUpperCase()} ★</div>
       </div>
-      <div style={{flex:1, padding:"12px 14px", display:"flex", flexDirection:"column", minHeight:0}}>
+      <div style={{flex:"0 0 auto", maxHeight:"58%", padding:"12px 18px 14px", display:"flex", flexDirection:"column", minHeight:0}}>
         <div style={{color, fontSize:"12px", fontWeight:"bold", letterSpacing:"1.5px",
           marginBottom:"10px",
           textShadow:`0 0 10px ${color}, 0 0 18px ${color}55`,

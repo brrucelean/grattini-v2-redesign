@@ -18,4 +18,23 @@ export const C = {
 
 export const FONT = "'Courier New', Courier, monospace";
 
+// ─── SCALA TIPOGRAFICA — 3 taglie fisse, minimo assoluto 10px ─────────
+// Elimina i micro-testi 7-9px: più respiro, meno rumore.
+export const FS = {
+  xs: "10px",   // minimo assoluto — badge, label nodi, subtitle, legenda
+  sm: "12px",   // testo secondario / descrizioni
+  md: "15px",   // titoli di sezione / voci principali
+};
+
 export const MAX_ITEMS = 8; // Inventory cap
+
+// ─── LARGHEZZE DI LAYOUT ─────────────────────────────────────
+// Il tetto storico era 900px: su un Mac a schermo intero (1512-2560px)
+// il contenuto occupava meno di due terzi della larghezza, lasciando grandi
+// vuoti laterali. CONTENT è il tetto per le schermate di gioco (combat, shop,
+// mappa, intro); READABLE resta stretto per i pannelli di solo testo, dove
+// righe troppo lunghe peggiorano la leggibilità.
+export const W = {
+  content: "1280px",
+  readable: "900px",
+};

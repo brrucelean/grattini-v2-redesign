@@ -4,6 +4,8 @@ import { NPC_ART, SPR_BIG, NPC_PALETTE, VECCHIO_DIALOGHI } from "../data/art.js"
 import { MACELLAIO_IMPLANTS, GRATTATORE_DEFS } from "../data/items.js";
 import { S } from "../utils/styles.js";
 import { normalizePortrait } from "../utils/nail.js";
+import { Asset } from "./Asset.jsx";
+import { hasAsset } from "../assets/registry.js";
 import { Tooltip } from "./Tooltip.jsx";
 
 // ─── NPC CATEGORIES ─────────────────────────────────────────────
@@ -631,21 +633,27 @@ export function EventView({ node, player, onChoice }) {
               <span style={cornerBrackets(accent+"88", 7, -2, 1).tr}/>
               <span style={cornerBrackets(accent+"88", 7, -2, 1).bl}/>
               <span style={cornerBrackets(accent+"88", 7, -2, 1).br}/>
-              <pre style={{
-                color: accent+"cc", fontSize:"7px", lineHeight:"1.2",
-                margin:0, padding:"4px 2px",
-                fontFamily:FONT,
-                background:"#020208",
-                border:`1px solid ${accent}22`,
-                textShadow:`0 0 5px ${accent}44`,
-                overflow:"hidden",
-                maxHeight:"140px",
-              }}>
-                {normalizePortrait(bigArt).map((line, i) => {
-                  const t = blink && (i === 4 || i === 5) ? line.replace(/[•◕⊕∞☠><=;.]/g, "─") : line;
-                  return <span key={i} style={{color:accent, textShadow:`0 0 4px ${accent}44`}}>{t}{"\n"}</span>;
-                })}
-              </pre>
+              {hasAsset(`spr-${node.type}`) ? (
+                <Asset id={`spr-${node.type}`} size={108}
+                  style={{width:"100%", height:"auto", display:"block",
+                    filter:`drop-shadow(0 0 6px ${accent}66)`}} />
+              ) : (
+                <pre style={{
+                  color: accent+"cc", fontSize:"7px", lineHeight:"1.2",
+                  margin:0, padding:"4px 2px",
+                  fontFamily:FONT,
+                  background:"#020208",
+                  border:`1px solid ${accent}22`,
+                  textShadow:`0 0 5px ${accent}44`,
+                  overflow:"hidden",
+                  maxHeight:"140px",
+                }}>
+                  {normalizePortrait(bigArt).map((line, i) => {
+                    const t = blink && (i === 4 || i === 5) ? line.replace(/[•◕⊕∞☠><=;.]/g, "─") : line;
+                    return <span key={i} style={{color:accent, textShadow:`0 0 4px ${accent}44`}}>{t}{"\n"}</span>;
+                  })}
+                </pre>
+              )}
             </div>
             {/* NPC name plate */}
             <div style={{

@@ -5,6 +5,7 @@ import { GRATTATORE_DEFS, ALL_IMPLANTS_META, CHIRURGO_IMPLANT_IDS } from "../dat
 import { makeNailCursor, NAIL_CURSOR, getNailVisual } from "../utils/nail.js";
 import { Tooltip } from "./Tooltip.jsx";
 import { VintageBadge } from "./Vintage.jsx";
+import { Asset } from "./Asset.jsx";
 
 // Chirurgo implants: slot totali e colore per tipo
 const CHIRURGO_SLOTS = {
@@ -128,7 +129,7 @@ export function NailSidebar({ nails, activeNail, onSelectNail, locked=false, gra
                         ? `drop-shadow(0 0 6px ${col})` : "none",
                       animation: isActive && !isDead ? "crtFlicker 6s ease-in-out infinite" : "none",
                     }}>
-                      {visual?.emoji || "🖐"}
+                      <Asset id={!n.implant ? `nail-${n.state}` : null} emoji={visual?.emoji || "🖐"} size={34} />
                     </span>
                     {/* Etichetta stato */}
                     <span style={{
@@ -190,7 +191,7 @@ export function NailSidebar({ nails, activeNail, onSelectNail, locked=false, gra
                       fontSize:"15px", lineHeight:1, flexShrink:0,
                       filter: !isDead && visual?.glow && visual.glow !== "none" ? `drop-shadow(0 0 4px ${col})` : "none",
                     }}>
-                      {visual?.emoji || "🖐"}
+                      <Asset id={!n.implant ? `nail-${n.state}` : null} emoji={visual?.emoji || "🖐"} size={30} />
                     </span>
                     <span style={{flex:1, minWidth:0}}>
                       <span style={{display:"flex", alignItems:"center", gap:"4px"}}>
@@ -319,7 +320,7 @@ export function NailSidebar({ nails, activeNail, onSelectNail, locked=false, gra
               display:"flex", alignItems:"center", gap:"6px",
               ...(horizontal ? { minWidth:"122px", flexShrink:0 } : {}),
             }}>
-              <span style={{fontSize:"15px", lineHeight:1, flexShrink:0}}>{g.emoji}</span>
+              <span style={{fontSize:"15px", lineHeight:1, flexShrink:0}}><Asset id={`item-${g.id}`} emoji={g.emoji} size={15} /></span>
               <span style={{flex:1, minWidth:0}}>
                 <span style={{color:C.cyan, fontSize:"9px", fontWeight:"bold", display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>{g.name}</span>
                 <span style={{display:"flex", gap:"2px", marginTop:"3px", flexWrap:"wrap", alignItems:"center"}}>

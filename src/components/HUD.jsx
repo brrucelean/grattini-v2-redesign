@@ -7,6 +7,7 @@ import { fmtMoney } from "../utils/money.js";
 import { GRATTATORE_DEFS } from "../data/items.js";
 import { Tooltip } from "./Tooltip.jsx";
 import { NewsTicker } from "./NewsTicker.jsx";
+import { Asset } from "./Asset.jsx";
 
 // ─── StatusChip: pill riutilizzabile per status effects dell'HUD ───
 // Style unificato: gradient sottile + border colorato + neon glow.
@@ -66,28 +67,28 @@ export function HUD({ player, onOpenInventory, inventoryOpen = false, moneyBling
       {player.items.includes("cappelloSbirro") && (
         <Tooltip text={player.cappelloSbirroWorn ? "🎩 INDOSSATO — clicca per toglierlo." : "🎩 In borsa — non ti protegge! Clicca per indossarlo."}>
           <StatusChip color={player.cappelloSbirroWorn ? C.gold : C.dim} active={player.cappelloSbirroWorn} onClick={onOpenInventory}>
-            🎩{player.cappelloSbirroWorn ? "▲" : "▼"}
+            <Asset id="hud-cappello" emoji="🎩" size={13} />{player.cappelloSbirroWorn ? "▲" : "▼"}
           </StatusChip>
         </Tooltip>
       )}
       {player.clipViraleActive && (
         <Tooltip text="🎬 CLIP VIRALE ATTIVA! Prossima vincita x2!">
-          <StatusChip color={C.gold} active pulse pulseSpeed="1s">🎬 x2</StatusChip>
+          <StatusChip color={C.gold} active pulse pulseSpeed="1s"><Asset id="hud-clip" emoji="🎬" size={13} /> x2</StatusChip>
         </Tooltip>
       )}
       {player.equippedGrattatore && (
         <Tooltip text={`${player.equippedGrattatore.name} — ${GRATTATORE_DEFS[player.equippedGrattatore.id]?.desc || "grattatore equipaggiato"}\n\n${player.equippedGrattatore.usesLeft} usi rimasti`}>
-          <StatusChip color={C.cyan}>{player.equippedGrattatore.emoji} <b>{player.equippedGrattatore.usesLeft}</b></StatusChip>
+          <StatusChip color={C.cyan}><Asset id={`item-${player.equippedGrattatore.id}`} emoji={player.equippedGrattatore.emoji} size={13} /> <b>{player.equippedGrattatore.usesLeft}</b></StatusChip>
         </Tooltip>
       )}
       {player.fortune > 0 && (
         <Tooltip text={`🍀 FORTUNA +${player.fortune} — ${player.fortuneTurns} turni rimasti`}>
-          <StatusChip color={C.green} active>🍀 +{player.fortune}<span style={{fontSize:"8px", opacity:0.65, marginLeft:"2px"}}>({player.fortuneTurns}t)</span></StatusChip>
+          <StatusChip color={C.green} active><Asset id="hud-fortuna" emoji="🍀" size={13} /> +{player.fortune}<span style={{fontSize:"8px", opacity:0.65, marginLeft:"2px"}}>({player.fortuneTurns}t)</span></StatusChip>
         </Tooltip>
       )}
       {player.tumore && (
         <Tooltip text="💀 TUMORE AI POLMONI — -5 Fortuna permanente.">
-          <StatusChip color={C.red} danger pulse pulseSpeed="1.5s">💀 −5F</StatusChip>
+          <StatusChip color={C.red} danger pulse pulseSpeed="1.5s"><Asset id="hud-tumore" emoji="💀" size={13} /> −5F</StatusChip>
         </Tooltip>
       )}
       {player.skills?.includes("ambidestri") && (
@@ -95,12 +96,12 @@ export function HUD({ player, onOpenInventory, inventoryOpen = false, moneyBling
       )}
       {player.grattaMania && (
         <Tooltip text="⚡ GRATTAMANIA — Premi x2 MA ogni grattata fa danni!">
-          <StatusChip color={C.red} danger pulse pulseSpeed="0.6s">⚡☠</StatusChip>
+          <StatusChip color={C.red} danger pulse pulseSpeed="0.6s"><Asset id="hud-grattamania" emoji="⚡" size={13} />☠</StatusChip>
         </Tooltip>
       )}
       {player.relics?.length > 0 && player.relics.map((r, i) => (
         <Tooltip key={i} text={`${r.emoji} ${r.name} — ${r.desc}`}>
-          <StatusChip color={C.magenta} active>{r.emoji}</StatusChip>
+          <StatusChip color={C.magenta} active><Asset id={`item-${r.id}`} emoji={r.emoji} size={13} /></StatusChip>
         </Tooltip>
       ))}
     </>
@@ -137,7 +138,7 @@ export function HUD({ player, onOpenInventory, inventoryOpen = false, moneyBling
             textShadow:`0 0 8px ${C.gold}99`,
             animation: moneyBling > 0 ? "moneyBling 0.6s ease-out" : "none",
             cursor:"default", flexShrink:0,
-          }}>💰 €{fmtMoney(player.money)}</span>
+          }}><Asset id="hud-soldi" emoji="💰" size={15} style={{marginRight:"1px"}} /> €{fmtMoney(player.money)}</span>
           {/* Grattini */}
           <span style={{
             display:"inline-flex", alignItems:"center", gap:"3px",
@@ -253,7 +254,7 @@ export function HUD({ player, onOpenInventory, inventoryOpen = false, moneyBling
             textShadow:`0 0 6px ${C.gold}88`,
             cursor:"default",
             animation: moneyBling > 0 ? "moneyBling 0.6s ease-out" : "none",
-          }}>💰 €{fmtMoney(player.money)}</span>
+          }}><Asset id="hud-soldi" emoji="💰" size={15} style={{marginRight:"1px"}} /> €{fmtMoney(player.money)}</span>
         </Tooltip>
         <Tooltip text={`🎫 grattini tuoi — comprati al tabaccaio`}>
           <span style={{
@@ -262,7 +263,7 @@ export function HUD({ player, onOpenInventory, inventoryOpen = false, moneyBling
             border:`2px solid ${C.cyan}88`,
             padding:"2px 7px",
             boxShadow:`inset 0 0 6px ${C.cyan}18`,
-          }}>🎫 <b>{ownedCards}</b></span>
+          }}><Asset id="hud-grattino" emoji="🎫" size={15} style={{marginRight:"1px"}} /> <b>{ownedCards}</b></span>
         </Tooltip>
       </div>
       {/* ── STATUS CHIPS ── */}
@@ -324,7 +325,7 @@ export function HUD({ player, onOpenInventory, inventoryOpen = false, moneyBling
                 onClick={onOpenInventory}
                 style={{opacity: inventoryOpen || tot > 0 ? 1 : 0.7}}
               >
-                🎒 <b>{tot}</b>
+                <Asset id="hud-zaino" emoji="🎒" size={15} style={{marginRight:"1px"}} /> <b>{tot}</b>
               </StatusChip>
             </Tooltip>
           );

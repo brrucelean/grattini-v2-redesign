@@ -8,9 +8,11 @@ import { roll, pick, shuffle } from "../utils/random.js";
 import { S } from "../utils/styles.js";
 import { Btn } from "./Btn.jsx";
 import { ScratchCell } from "./ScratchCell.jsx";
+import { hasAsset, assetUrl } from "../assets/registry.js";
+import { ticketLayout, inset } from "../data/ticketLayout.js";
 
 // ─── SCRATCH CARD COMPONENT (per-cell nail damage + early stop) ───
-export function ScratchCardView({ card, onDone, nailState, nailImplant=null, fortune, grattaMania, equippedGrattatore, onCellScratch, onNailDamage=null, onItemFound=null, showFirstWarning, ambidestri=false, onCardActivate=null, lastWonPrize=0, extraTiles=[], onExtraTileUsed=null, relicEffects=[], onAdviceShown=null }) {
+export function ScratchCardView({ card, onDone, nailState, nailImplant=null, fortune, grattaMania, equippedGrattatore, onCellScratch, onNailDamage=null, onItemFound=null, showFirstWarning, ambidestri=false, onCardActivate=null, lastWonPrize=0, extraTiles=[], onExtraTileUsed=null, relicEffects=[], onAdviceShown=null, layoutOverride=null }) {
   const cardId = useRef(card.name + card.prize + card.symbols?.join(""));
   const [cells, setCells] = useState(card.cells.map(c => ({...c})));
   const [scratched, setScratched] = useState(0);
@@ -25,6 +27,12 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
   const [winPrizeFull, setWinPrizeFull] = useState(0);
   const [cancelled, setCancelled] = useState(false);
   const [nailAdviceDismissed, setNailAdviceDismissed] = useState(false);
+  const [deadNailWarn, setDeadNailWarn] = useState(false);
+  const warnDeadNail = () => {
+    setDeadNailWarn(true);
+    clearTimeout(warnDeadNail._t);
+    warnDeadNail._t = setTimeout(() => setDeadNailWarn(false), 2000);
+  };
   const scratchedWhileMarcia = useRef(false);
   // Celle "sporcate di sangue" — set di indici grattati con unghia marcia/sanguinante.
   // Usato per renderizzare macchie rosse persistenti sulla schedina.
@@ -381,7 +389,13 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
     if (card.mechanic === "doppioOnulla") {
       const cell = newCells[idx];
       if (cell.isDoppioWin) {
-        const doubledPrize = Math.round((lastWonPrize || 50) * 2);
+        // "Raddoppia l'ultimo premio". Senza un premio precedente si usa il premio
+        // calibrato della carta (CARD_BALANCE: €28-48) invece del vecchio fallback
+        // fisso a €50, che pagava €100 su una carta da €20 a inizio run.
+        const { prize: rawP, cancelled: wc } = calcPrize();
+        const doubledPrize = lastWonPrize > 0
+          ? Math.round(lastWonPrize * 2)
+          : (wc ? 0 : rawP);
         setWinFound(true); setWinPrize(doubledPrize); setWinPrizeFull(doubledPrize); setCancelled(false);
         AudioEngine.win();
       } else {
@@ -459,11 +473,15 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
     if (finished || finishedRef.current) return;
 
     // ── setteemezzo incassa anticipato ──
-    if (card.mechanic === "setteemezzo" && claiming && !winFound) {
+    // IMPORTANTE: solo su carte generate come vincenti. Su una carta perdente
+    // (card.prize === 0) il fallback pagava comunque cost*3 — le celle perdenti
+    // sono 5/6/7 e la PRIMA carta batte spesso un banco basso, quindi il 60%
+    // delle carte perdenti era incassabile (RTP 221% invece del 95-100% target).
+    // Ora le carte perdenti sono generate senza prefissi "stand-and-win"
+    // (vedi generateCard/setteemezzo) e qui restano comunque una sconfitta.
+    if (card.mechanic === "setteemezzo" && claiming && !winFound && card.prize > 0) {
       const effMarcia = nailState === "marcia" || scratchedWhileMarcia.current;
-      const margin = Math.max(0, runningSumRef.current - (card.bancoTotal || 0));
-      const marginRatio = Math.min(margin / 7.5, 1);
-      const basePrize = card.prize > 0 ? card.prize : Math.max(card.cost * 3, Math.round(card.cost + marginRatio * (card.maxPrize - card.cost)));
+      const basePrize = card.prize;
       const p = effMarcia ? Math.round(basePrize * 0.15) : basePrize;
       const boostedP = applyGrattatoreBonus(p);
       const boostedFull = applyGrattatoreBonus(basePrize);
@@ -589,21 +607,230 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
 
   const panelBorder = winFound ? C.green : accent;
 
+  // ── Biglietto AI: se esiste ticket-<id> uso l'immagine come faccia del biglietto
+  //    (proporzione 4:3 fissa) con griglia in overlay; altrimenti layout classico.
+  const hasTicket = hasAsset(`ticket-${card.id}`);
+  const ticketUrl = hasTicket ? assetUrl(`ticket-${card.id}`) : null;
+  // layoutOverride = anteprima dal vivo dell'editor dev (?edit=1)
+  const layout = layoutOverride || ticketLayout(card.id);
+  // Griglia che RIEMPIE il pannello scuro dell'arte: righe e colonne in frazioni
+  // uguali, le celle si stirano per occuparlo tutto. Niente fasce vuote, e ogni
+  // biglietto detta la forma delle sue celle. Solo le griglie minuscole (1 cella)
+  // vengono limitate, altrimenti diventerebbero enormi.
+  const GRID_COLS = card.cols || 1;
+  const gridRows = Math.max(1, Math.ceil(cells.length / GRID_COLS));
+  const gridSize = cells.length <= 1 ? "52%" : "100%";
+
+  // ── Contenuto "zona-gioco" (griglia celle-argento o display meccanica) ──
+  // Estratto in una const così viene renderizzato UNA sola volta: in overlay
+  // sul biglietto AI (hasTicket) oppure nel flusso classico (fallback).
+  const playContent = card.mechanic === "ruota" ? (
+    <div style={{display:"flex", flexDirection:"column", alignItems:"center", gap:"8px", margin:"10px auto 12px"}}>
+      <div style={{color:C.gold, fontSize:"11px", letterSpacing:"3px", fontFamily:FONT}}>
+        ★ FERMA I RULLI ★
+      </div>
+      <div style={{
+        display:"flex", justifyContent:"center", gap:"8px",
+        border:`2px solid ${C.dim}`, padding:"8px 12px", background:"#000000",
+      }}>
+        {cells.map((cell, idx) => {
+          const allScratched = cells.every(c => c.scratched);
+          const isMatch = allScratched && winFound;
+          const spinning = !cell.scratched && !finished;
+          const displaySym = cell.scratched ? cell.symbol : (reelSpinSyms[idx] || "?");
+          return (
+            <div key={idx}
+              onClick={() => !cell.scratched && !finished && doScratch(idx)}
+              style={{
+                // sul biglietto AI i rulli crescono col pannello (container query)
+                width: hasTicket ? "clamp(72px, 24cqw, 150px)" : "80px",
+                height: hasTicket ? "clamp(82px, 42cqh, 175px)" : "90px",
+                border:`2px solid ${cell.scratched ? (isMatch ? C.gold : C.cyan) : C.text}`,
+                background: cell.scratched ? (isMatch ? "#555500" : "#080808") : "#111",
+                display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+                cursor: spinning ? "pointer" : "default",
+                userSelect:"none", gap:"4px",
+                animation: isMatch ? "winFlash 0.6s infinite" : "none",
+              }}>
+              <div style={{fontSize: hasTicket ? "clamp(30px, 16cqh, 60px)" : "32px", lineHeight:1}}>{displaySym}</div>
+              <div style={{
+                fontSize:"9px", letterSpacing:"1px",
+                color: cell.scratched ? (isMatch ? C.gold : C.dim) : C.text,
+              }}>
+                {cell.scratched ? (isMatch ? "STOP!" : "STOP") : "▶ CLICK"}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{fontSize:"10px", color:C.dim, letterSpacing:"1px"}}>
+        {cells.filter(c=>c.scratched).length === 0 && "Clicca per fermare ogni rullo"}
+        {cells.filter(c=>c.scratched).length === 1 && "2 rulli ancora in giro..."}
+        {cells.filter(c=>c.scratched).length === 2 && (nearWin ? `⚡ QUASI! Ferma l'ultimo!` : "Ultimo rullo — dai!")}
+        {cells.every(c=>c.scratched) && (winFound ? "🎰 JACKPOT!" : "Niente...")}
+      </div>
+    </div>
+  ) : (
+    <>
+      {deadNailWarn && (
+        <div style={{
+          margin:"0 auto 8px", maxWidth:"min(340px, 94vw)", padding:"8px 12px", textAlign:"center",
+          border:`2px solid ${C.red}`, background:"#1a0005", color:C.red, fontWeight:"bold",
+          fontSize:"12px", letterSpacing:"0.5px", boxShadow:`0 0 14px ${C.red}88, inset 0 0 10px ${C.red}22`,
+          animation:"pulse 0.8s infinite",
+        }}>
+          ✝ UNGHIA MORTA — seleziona un'unghia sana per grattare
+        </div>
+      )}
+      <div style={{
+        display:"grid", gridTemplateColumns:`repeat(${card.cols}, 1fr)`,
+        ...(hasTicket ? {
+          // Overlay sul biglietto AI: la griglia riempie il pannello scuro dell'arte.
+          gridTemplateRows: `repeat(${gridRows}, 1fr)`,
+          gap: "2.4%",
+          width: gridSize, height: gridSize, margin: "auto",
+        } : {
+          gap: "4px", maxWidth: "min(340px, 94vw)", width: "100%", margin: "6px auto 8px",
+        }),
+        padding: (bloodyCells.size > 0 || scratchedWhileMarcia.current) ? "4px" : 0,
+        background: (bloodyCells.size > 0 || scratchedWhileMarcia.current)
+          ? "radial-gradient(circle at 30% 40%, rgba(170,0,15,0.18), transparent 60%), radial-gradient(circle at 70% 70%, rgba(120,0,10,0.14), transparent 55%)"
+          : "transparent",
+        transition: "background 0.4s",
+      }}>
+        {cells.map((cell, idx) => {
+          const matchCount = revealedCounts[cell.symbol] || 0;
+          const isWinSymbol = cell.scratched && winFound && cell.symbol === winSymbol;
+          const isPartialMatch = cell.scratched && !winFound && matchCount >= 2 && matchCount < card.matchNeeded;
+          return (
+            <ScratchCell key={idx} cell={cell} idx={idx}
+              onScratch={doScratch} finished={finished}
+              isWinSymbol={isWinSymbol} isPartialMatch={isPartialMatch}
+              bloodMode={nailState === "marcia"}
+              isBloody={bloodyCells.has(idx)}
+              blocked={nailState === "morta"} onBlockedAttempt={warnDeadNail}
+              ambidestri={ambidestri} themeColor={card.theme?.border} fill={hasTicket} />
+          );
+        })}
+      </div>
+    </>
+  );
+
+  // ── Header del biglietto (nome / costo / max) — overlay dentro il cartiglio ──
+  // Il rect viene da TICKET_LAYOUT: il testo si dimensiona sul contenitore
+  // (container query), così entra sia nei cartigli stretti sia nelle fasce larghe.
+  const headerRow = layout.header.dir === "row";
+  // Alone cromatico "da sala giochi": neon accento + sfrangiatura ciano/magenta.
+  const haloTitle = [
+    `0 0 6px ${accent}`, `0 0 14px ${accent}cc`, `0 0 26px ${accent}66`,
+    `-1.5px 0 6px ${C.cyan}88`, `1.5px 0 6px ${C.magenta}88`,
+    "0 2px 3px #000", "-1px -1px 0 #000", "1px 1px 0 #000",
+  ].join(", ");
+  const neonPill = (bg, label) => (
+    <span style={{
+      fontSize: "clamp(8px, min(3.4cqw, 30cqh), 13px)",
+      color: "#000", fontWeight: "bold", fontFamily: FONT,
+      background: bg, padding: "0.15em 0.6em", letterSpacing: "1px",
+      whiteSpace: "nowrap", lineHeight: 1.5,
+      border: `1px solid ${bg}`,
+      boxShadow: `0 0 8px ${bg}cc, 0 0 18px ${bg}55, 0 1px 2px #000`,
+    }}>{label}</span>
+  );
+
+  const ticketHeaderOverlay = (
+    <div style={{
+      position: "absolute", inset: inset(layout.header), zIndex: 3,
+      containerType: "size",
+      display: "flex", pointerEvents: "none",
+      flexDirection: headerRow ? "row" : "column",
+      alignItems: "center",
+      justifyContent: headerRow ? "space-between" : "center",
+      gap: headerRow ? "2%" : "0.35em",
+    }}>
+      {/* Titolo — come un vero gratta e vinci, dentro al cartiglio dell'arte */}
+      <div style={{
+        color: "#fff", fontWeight: "bold",
+        fontSize: headerRow
+          ? "clamp(12px, min(6.5cqw, 62cqh), 30px)"
+          : "clamp(12px, min(9.5cqw, 46cqh), 30px)",
+        letterSpacing: "1.5px", lineHeight: 1.05,
+        WebkitTextStroke: `0.6px ${accent}`,
+        textShadow: haloTitle,
+        animation: "ticketNeon 3.2s ease-in-out infinite",
+        fontFamily: FONT, textAlign: "center",
+        maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+        textTransform: "uppercase",
+      }}>
+        {card.name}
+      </div>
+      {/* Badge costo / max — pill neon, mai sopra il titolo */}
+      <div style={{
+        display: "flex", gap: "0.5em", flexWrap: "nowrap",
+        justifyContent: "center", alignItems: "center",
+      }}>
+        {neonPill(C.gold, `COSTO €${card.cost}`)}
+        {neonPill(C.green, `MAX €${card.maxPrize}`)}
+      </div>
+    </div>
+  );
+
   return (
-    <div className={tier >= 3 ? "holo" : undefined} style={{
+    <div className={tier >= 3 && !hasTicket ? "holo" : undefined} style={{
       ...S.panel, textAlign:"center",
-      maxWidth:"440px", margin:"8px auto",
+      maxWidth: hasTicket ? "620px" : "440px", margin:"8px auto",
       position: "relative",
-      border:`2px solid ${panelBorder}`,
-      background: `linear-gradient(180deg, ${panelBorder}08 0%, #05050b 18%)`,
-      boxShadow: `0 0 28px ${panelBorder}33, inset 0 0 32px ${panelBorder}0a, 4px 4px 0 #000`,
+      // Con biglietto AI: nessuna cornice CSS (la fornisce l'immagine); solo contenitore trasparente.
+      border: hasTicket ? "none" : `2px solid ${panelBorder}`,
+      background: hasTicket ? "transparent" : `linear-gradient(180deg, ${panelBorder}08 0%, #05050b 18%)`,
+      boxShadow: hasTicket ? "none" : `0 0 28px ${panelBorder}33, inset 0 0 32px ${panelBorder}0a, 4px 4px 0 #000`,
+      padding: hasTicket ? "0" : undefined,
       animation: winFound ? "winFlash 1.5s ease-out" : "screenIn 0.25s ease-out",
       transition: "border-color 0.3s, box-shadow 0.3s",
     }}>
-      {cornerBrackets(panelBorder, 12, 6, true)}
+      {/* Respiro neon dell'insegna — definito qui così vale anche fuori dal gioco. */}
+      <style>{`
+        @keyframes ticketNeon {
+          0%, 100% { filter: brightness(1); }
+          45%      { filter: brightness(1.16); }
+          52%      { filter: brightness(0.97); }
+        }
+      `}</style>
+      {!hasTicket && cornerBrackets(panelBorder, 12, 6, true)}
+
+      {/* ═══ BIGLIETTO AI — faccia 4:3 con header + griglia in overlay ═══ */}
+      {hasTicket && (
+        <div data-ticket-face={card.id} style={{
+          position: "relative", width: "100%",
+          aspectRatio: "4 / 3",
+          isolation: "isolate",
+          maxHeight: "62vh",
+          margin: "0 auto 8px",
+          backgroundImage: `url(${ticketUrl})`,
+          backgroundSize: "100% 100%",
+          backgroundRepeat: "no-repeat",
+          filter: winFound ? `drop-shadow(0 0 18px ${C.green}66)` : "none",
+          transition: "filter 0.3s",
+        }}>
+          {ticketHeaderOverlay}
+          {/* AREA-GIOCO — nessun box grigio: solo una cornice neon sul rettangolo
+              scuro già presente nell'arte, e dentro la griglia che lo riempie. */}
+          <div style={{
+            position: "absolute", inset: inset(layout.play), zIndex: 2,
+            containerType: "size",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            border: `1px solid ${winFound ? C.green : accent}55`,
+            boxShadow: `0 0 12px ${winFound ? C.green : accent}44, inset 0 0 22px ${winFound ? C.green : accent}22`,
+            animation: "ticketNeon 3.2s ease-in-out infinite",
+          }}>
+            {playContent}
+          </div>
+        </div>
+      )}
 
       {<>
       {/* ═══ CARD HEADER — Vintage neon title + tier badge + meta pills ═══ */}
+      {/* Nascosto col biglietto AI: il nome/costo/max sono in overlay sul ticket. */}
+      {!hasTicket && (
       <div style={{
         position: "relative",
         paddingBottom: "8px", marginBottom: "8px",
@@ -679,6 +906,7 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
           }}>MAX €{card.maxPrize}</span>
         </div>
       </div>
+      )}
 
       {/* 🎲 DoppioOnulla banner — Vintage */}
       {card.mechanic === "doppioOnulla" && (
@@ -932,76 +1160,8 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
         </div>
       )}
 
-      {/* Grid — canvas scratch cells */}
-      {card.mechanic === "ruota" ? (
-        <div style={{display:"flex", flexDirection:"column", alignItems:"center", gap:"8px", margin:"10px auto 12px"}}>
-          <div style={{color:C.gold, fontSize:"11px", letterSpacing:"3px", fontFamily:FONT}}>
-            ★ FERMA I RULLI ★
-          </div>
-          <div style={{
-            display:"flex", justifyContent:"center", gap:"8px",
-            border:`2px solid ${C.dim}`, padding:"8px 12px", background:"#000000",
-          }}>
-            {cells.map((cell, idx) => {
-              const allScratched = cells.every(c => c.scratched);
-              const isMatch = allScratched && winFound;
-              const spinning = !cell.scratched && !finished;
-              const displaySym = cell.scratched ? cell.symbol : (reelSpinSyms[idx] || "?");
-              return (
-                <div key={idx}
-                  onClick={() => !cell.scratched && !finished && doScratch(idx)}
-                  style={{
-                    width:"80px", height:"90px",
-                    border:`2px solid ${cell.scratched ? (isMatch ? C.gold : C.cyan) : C.text}`,
-                    background: cell.scratched ? (isMatch ? "#555500" : "#080808") : "#111",
-                    display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
-                    cursor: spinning ? "pointer" : "default",
-                    userSelect:"none", gap:"4px",
-                    animation: isMatch ? "winFlash 0.6s infinite" : "none",
-                  }}>
-                  <div style={{fontSize:"32px", lineHeight:1}}>{displaySym}</div>
-                  <div style={{
-                    fontSize:"9px", letterSpacing:"1px",
-                    color: cell.scratched ? (isMatch ? C.gold : C.dim) : C.text,
-                  }}>
-                    {cell.scratched ? (isMatch ? "STOP!" : "STOP") : "▶ CLICK"}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          <div style={{fontSize:"10px", color:C.dim, letterSpacing:"1px"}}>
-            {cells.filter(c=>c.scratched).length === 0 && "Clicca per fermare ogni rullo"}
-            {cells.filter(c=>c.scratched).length === 1 && "2 rulli ancora in giro..."}
-            {cells.filter(c=>c.scratched).length === 2 && (nearWin ? `⚡ QUASI! Ferma l'ultimo!` : "Ultimo rullo — dai!")}
-            {cells.every(c=>c.scratched) && (winFound ? "🎰 JACKPOT!" : "Niente...")}
-          </div>
-        </div>
-      ) : (
-      <div style={{
-        display:"grid", gridTemplateColumns:`repeat(${card.cols}, 1fr)`,
-        gap:"4px", maxWidth:"min(340px, 94vw)", width:"100%", margin:"6px auto 8px",
-        padding: (bloodyCells.size > 0 || scratchedWhileMarcia.current) ? "4px" : 0,
-        background: (bloodyCells.size > 0 || scratchedWhileMarcia.current)
-          ? "radial-gradient(circle at 30% 40%, rgba(170,0,15,0.18), transparent 60%), radial-gradient(circle at 70% 70%, rgba(120,0,10,0.14), transparent 55%)"
-          : "transparent",
-        transition: "background 0.4s",
-      }}>
-        {cells.map((cell, idx) => {
-          const matchCount = revealedCounts[cell.symbol] || 0;
-          const isWinSymbol = cell.scratched && winFound && cell.symbol === winSymbol;
-          const isPartialMatch = cell.scratched && !winFound && matchCount >= 2 && matchCount < card.matchNeeded;
-          return (
-            <ScratchCell key={idx} cell={cell} idx={idx}
-              onScratch={doScratch} finished={finished}
-              isWinSymbol={isWinSymbol} isPartialMatch={isPartialMatch}
-              bloodMode={nailState === "marcia"}
-              isBloody={bloodyCells.has(idx)}
-              ambidestri={ambidestri} themeColor={card.theme?.border} />
-          );
-        })}
-      </div>
-      )}
+      {/* Grid — celle-argento (nel flusso classico; col biglietto AI è in overlay) */}
+      {!hasTicket && playContent}
 
       {/* Extra tiles */}
       {extraTiles.length > 0 && (

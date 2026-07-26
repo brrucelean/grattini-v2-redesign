@@ -3,6 +3,28 @@ import { CHIRURGO_IMPLANT_IDS } from "../data/items.js";
 
 export function nailStateIndex(state) { return NAIL_ORDER.indexOf(state); }
 
+// ─── RANKING COMPLETO DEGLI STATI ────────────────────────────
+// NAIL_ORDER contiene solo la catena di degrado: piede/polliceVerde/unghiaNera
+// ne sono fuori e `indexOf` restituisce -1, cioè "peggio di morta" (indice 0).
+// Risultato: gli impianti sostituivano un 🦶 PIEDE (×3.0) o un 🌿 POLLICE VERDE
+// (×2.5) invece dell'unghia rovinata, e le cure li declassavano a Sana.
+// nailRank ordina TUTTI gli stati per desiderabilità reale (mult crescente).
+const NAIL_RANK = {
+  morta: 0,
+  marcia: 1,
+  unghiaNera: 1.5,   // ×0.4 + rischio annullo: tra marcia (×0.25) e sanguinante (×0.5)
+  sanguinante: 2,
+  graffiata: 3,
+  sana: 4,
+  kawaii: 5,         // ×2.0
+  polliceVerde: 6,   // ×2.5
+  piede: 7,          // ×3.0
+};
+export function nailRank(state) {
+  const r = NAIL_RANK[state];
+  return r === undefined ? NAIL_RANK.sana : r; // stato ignoto → trattalo come sano
+}
+
 // ─── ASCII PORTRAIT NORMALIZER ────────────────────────────────
 // Centers every line of an ASCII portrait within the max visual width.
 // Accounts for wide chars (CJK, emoji) that occupy 2 terminal columns.
@@ -174,25 +196,29 @@ export function degradeNailObj(nail, amount=1) {
   return newNail;
 }
 
+// Cura verso `target` — non declassa mai. Usa nailRank così un 🦶 PIEDE (×3.0)
+// o un 🌿 POLLICE VERDE (×2.5) non vengono "curati" verso Sana (×1.0).
 export function healNail(state, target) {
-  const idx = nailStateIndex(state);
-  const tIdx = nailStateIndex(target);
-  return tIdx > idx ? target : state;
+  return nailRank(target) > nailRank(state) ? target : state;
 }
 
-// Trova l'indice dell'unghia più degradata (stato più basso nella scala)
+// Trova l'indice dell'unghia più degradata (rank più basso).
 // Include "morta" nel confronto. Per escludere morte usa findWorstAliveIdx.
 export function findWorstNailIdx(nails) {
   return nails.reduce((a, n, i) =>
-    nailStateIndex(n.state) < nailStateIndex(nails[a].state) ? i : a, 0);
+    nailRank(n.state) < nailRank(nails[a].state) ? i : a, 0);
 }
 
 // Trova l'indice dell'unghia più degradata tra quelle vive (!= morta).
-// Se tutte morte ritorna 0 (fallback sicuro per array non vuoti).
+// Se tutte morte ritorna 0 (fallback sicuro per array non vuoti): i chiamanti
+// controllano comunque `state !== "morta"` prima di curare.
 export function findWorstAliveIdx(nails) {
-  return nails.reduce((wi, n, i) =>
-    n.state !== "morta" && nailStateIndex(n.state) < nailStateIndex(nails[wi]?.state || "kawaii")
-      ? i : wi, 0);
+  let worst = -1;
+  for (let i = 0; i < nails.length; i++) {
+    if (nails[i]?.state === "morta") continue;
+    if (worst === -1 || nailRank(nails[i].state) < nailRank(nails[worst].state)) worst = i;
+  }
+  return worst === -1 ? 0 : worst;
 }
 
 // ─── NAIL CURSOR — pixel art hand con sangue progressivo ─────
@@ -295,3 +321,14 @@ export function makeNailCursor(nailState = "sana") {
 }
 
 export const NAIL_CURSOR = makeNailCursor("sana");
+
+// ─── CURSORE = SPRITE DEL DITO ───────────────────────────────
+// Usa lo sprite PNG (cursor-<stato>) come cursore del mouse, con hotspot
+// sulla punta dell'unghia. Fallback all'hand SVG se lo sprite manca.
+import { assetUrl } from "../assets/registry.js";
+const CURSOR_STATE_ALIAS = { scheletro: "morta" };
+export function nailCursor(nailState = "sana") {
+  const key = CURSOR_STATE_ALIAS[nailState] || nailState;
+  const url = assetUrl(`cursor-${key}`);
+  return url ? `url("${url}") 28 2, pointer` : makeNailCursor(nailState);
+}

@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from "react";
-import { C, FONT } from "../data/theme.js";
+import { C, FONT, FS, W } from "../data/theme.js";
 import { ITEM_DEFS, GRATTATORE_DEFS } from "../data/items.js";
 import { CARD_TYPES } from "../data/cards.js";
-import { TABACCAIO_LINES, NPC_ART } from "../data/art.js";
+import { TABACCAIO_LINES } from "../data/art.js";
 import { rng } from "../utils/random.js";
 import { S } from "../utils/styles.js";
 import { Btn } from "./Btn.jsx";
 import { Tooltip } from "./Tooltip.jsx";
+import { Asset } from "./Asset.jsx";
 
 const SLOT_SYMBOLS = ["🍋","🍒","🔔","💎","7️⃣","⭐"];
 
@@ -55,7 +56,7 @@ function ScrollRow({ children, bg = "#05050b" }) {
 }
 
 // ─── ProductTile: card App-Store style ───────────────────────
-function ProductTile({ emoji, name, subtitle, cost, maxPrize, accent, canAfford, onClick, tooltip, badgeLabel, shimmer = false, disabled = false }) {
+function ProductTile({ emoji, assetId, name, subtitle, cost, maxPrize, accent, canAfford, onClick, tooltip, badgeLabel, shimmer = false, disabled = false }) {
   const cantPay = !canAfford || disabled;
   return (
     <Tooltip text={tooltip}>
@@ -65,11 +66,14 @@ function ProductTile({ emoji, name, subtitle, cost, maxPrize, accent, canAfford,
         style={{
           flexShrink: 0,          // non si schiaccia nel row orizzontale
           width: "130px",
-          background: "#0a0a14",
+          // Passata ottone: base calda con sheen dall'alto invece del nero piatto
+          background: cantPay
+            ? "linear-gradient(180deg, #12110d 0%, #0a0a12 100%)"
+            : "linear-gradient(180deg, #1a150b 0%, #0c0b13 46%, #08080e 100%)",
           border: `2px solid ${cantPay ? "#333" : accent.c}`,
           boxShadow: cantPay
             ? "inset 0 0 10px #0008"
-            : `0 0 10px ${accent.c}${accent.glow === "aa" ? "66" : "33"}, inset 0 0 14px ${accent.c}14`,
+            : `0 0 10px ${accent.c}${accent.glow === "aa" ? "66" : "33"}, inset 0 1px 0 ${C.gold}33, inset 0 0 14px ${accent.c}14`,
           cursor: cantPay ? "not-allowed" : "pointer",
           userSelect: "none",
           display: "flex", flexDirection: "column",
@@ -80,12 +84,12 @@ function ProductTile({ emoji, name, subtitle, cost, maxPrize, accent, canAfford,
         onMouseEnter={e => {
           if (cantPay) return;
           e.currentTarget.style.transform = "translateY(-2px)";
-          e.currentTarget.style.boxShadow = `0 0 18px ${accent.c}aa, 0 4px 12px #000a, inset 0 0 18px ${accent.c}22`;
+          e.currentTarget.style.boxShadow = `0 0 18px ${accent.c}aa, 0 4px 12px #000a, inset 0 1px 0 ${C.gold}55, inset 0 0 18px ${accent.c}22`;
         }}
         onMouseLeave={e => {
           if (cantPay) return;
           e.currentTarget.style.transform = "translateY(0)";
-          e.currentTarget.style.boxShadow = `0 0 10px ${accent.c}${accent.glow === "aa" ? "66" : "33"}, inset 0 0 14px ${accent.c}14`;
+          e.currentTarget.style.boxShadow = `0 0 10px ${accent.c}${accent.glow === "aa" ? "66" : "33"}, inset 0 1px 0 ${C.gold}33, inset 0 0 14px ${accent.c}14`;
         }}
       >
         {/* Preview area */}
@@ -117,7 +121,7 @@ function ProductTile({ emoji, name, subtitle, cost, maxPrize, accent, canAfford,
             fontSize: "28px", position: "relative", zIndex: 2,
             textShadow: `0 0 12px ${accent.c}`,
             filter: cantPay ? "grayscale(0.6) brightness(0.7)" : "none",
-          }}>{emoji}</div>
+          }}><Asset id={assetId} emoji={emoji} size={28} /></div>
           {/* Shimmer foil per rarità alta */}
           {shimmer && !cantPay && (
             <div style={{
@@ -135,11 +139,11 @@ function ProductTile({ emoji, name, subtitle, cost, maxPrize, accent, canAfford,
         <div style={{
           background: cantPay ? "#222" : accent.c,
           color: cantPay ? "#666" : "#000",
-          padding: "3px 5px", fontSize: "9px", fontWeight: "bold",
+          padding: "3px 5px", fontSize: FS.xs, fontWeight: "bold",
           letterSpacing: "1px", textAlign: "center",
           borderBottom: `1px solid ${accent.c}55`,
           whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-          lineHeight: "14px", height: "20px", boxSizing: "border-box",
+          lineHeight: "15px", height: "21px", boxSizing: "border-box",
         }}>
           ★ {(() => {
             const s = (badgeLabel || name).toUpperCase();
@@ -148,16 +152,16 @@ function ProductTile({ emoji, name, subtitle, cost, maxPrize, accent, canAfford,
         </div>
 
         {/* Body: name + cost */}
-        <div style={{padding: "6px 7px 7px", background: "#07070d", flex: 1}}>
+        <div style={{padding: "6px 7px 7px", background: "linear-gradient(180deg, #0e0c08 0%, #07070d 100%)", flex: 1}}>
           <div style={{
-            fontSize: "10px", color: C.bright, lineHeight: 1.3,
+            fontSize: FS.xs, color: C.bright, lineHeight: 1.3,
             marginBottom: "4px", minHeight: "26px",
           }}>
             {name}
           </div>
           <div style={{
             display: "flex", justifyContent: "space-between", alignItems: "center",
-            fontSize: "10px",
+            fontSize: FS.xs,
           }}>
             <span style={{
               color: canAfford ? C.gold : C.red,
@@ -167,13 +171,13 @@ function ProductTile({ emoji, name, subtitle, cost, maxPrize, accent, canAfford,
               padding: "1px 5px",
             }}>€{cost}</span>
             {subtitle && (
-              <span style={{color: accent.c, fontSize: "8px", letterSpacing: "0.5px"}}>
+              <span style={{color: accent.c, fontSize: FS.xs, letterSpacing: "0.5px"}}>
                 {subtitle}
               </span>
             )}
           </div>
           {maxPrize != null && (
-            <div style={{color: C.dim, fontSize: "8px", marginTop: "3px", letterSpacing: "0.5px"}}>
+            <div style={{color: C.dim, fontSize: FS.xs, marginTop: "3px", letterSpacing: "0.5px"}}>
               max €{maxPrize}
             </div>
           )}
@@ -210,7 +214,7 @@ function SectionHeader({ icon, label, count, accent = C.gold, subtitle, scrollHi
         {scrollHint && count > 2 && (
           <div style={{
             marginLeft: "auto",
-            color: accent, fontSize: "9px", letterSpacing: "1px",
+            color: accent, fontSize: FS.xs, letterSpacing: "1px",
             opacity: 0.7, flexShrink: 0,
             animation: "pulse 2s ease-in-out infinite",
           }}>
@@ -362,8 +366,11 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
     <div style={{
       ...S.panel,
       margin: mobile ? "0" : "10px auto",
-      maxWidth: "900px",
-      background: "#05050b",
+      maxWidth: W.content,
+      /* Vetro traslucido: lascia intravedere scene-shop dietro, senza perdere leggibilità */
+      background: "linear-gradient(180deg, rgba(10,9,18,0.82) 0%, rgba(4,3,8,0.9) 100%)",
+      backdropFilter: "blur(10px) saturate(1.3)",
+      WebkitBackdropFilter: "blur(10px) saturate(1.3)",
       border: mobile ? "none" : `2px solid ${C.gold}66`,
       boxShadow: mobile ? "none" : `0 0 22px ${C.gold}22, inset 0 0 30px ${C.gold}08`,
       display: "flex", flexDirection: "column",
@@ -389,17 +396,19 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
           animation: "variantSparkle 2.2s ease-in-out infinite",
         }}>✦</div>
 
-        {/* NPC art — nascosto su mobile molto stretto */}
+        {/* Ritratto tabaccaio — sprite PNG in un riquadro CRT ottone */}
         {!mobile && (
-          <pre style={{
-            ...S.pre, fontSize: "11px", color: C.gold, margin: 0, lineHeight: 1.2,
-            textShadow: `0 0 8px ${C.gold}66`,
-            padding: "4px 10px",
-            border: `1px solid ${C.gold}33`,
-            background: "#0a0800",
-            boxShadow: `inset 0 0 14px ${C.gold}10`,
+          <div style={{
             flexShrink: 0,
-          }}>{NPC_ART.tabaccaio}</pre>
+            padding: "6px",
+            border: `1px solid ${C.gold}44`,
+            background: "#0a0800",
+            boxShadow: `inset 0 0 14px ${C.gold}14, 0 0 10px ${C.gold}22`,
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            <Asset id="spr-tabaccaio" emoji="🏪" size={72}
+              style={{ filter: `drop-shadow(0 0 6px ${C.gold}66)` }} />
+          </div>
         )}
 
         {/* Testo header */}
@@ -417,7 +426,7 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
           <div style={{
             display: "inline-block",
             color: "#000", background: C.gold,
-            fontSize: "9px", letterSpacing: mobile ? "1px" : "3px", fontWeight: "bold",
+            fontSize: FS.xs, letterSpacing: mobile ? "1px" : "3px", fontWeight: "bold",
             padding: "1px 7px", marginBottom: "6px",
             boxShadow: `0 0 8px ${C.gold}aa`,
           }}>
@@ -459,6 +468,7 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
               <ProductTile
                 key={c.id}
                 emoji={c.emoji || "🎫"}
+                assetId={`card-${c.id}`}
                 name={c.name}
                 subtitle={accent.label}
                 cost={c.cost}
@@ -489,6 +499,7 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
               <ProductTile
                 key={id}
                 emoji={g.emoji}
+                assetId={`item-${id}`}
                 name={g.name}
                 subtitle={`${g.maxUses === 99 ? "∞" : g.maxUses} usi`}
                 cost={g.cost}
@@ -520,6 +531,7 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
                   <ProductTile
                     key={id}
                     emoji={item.emoji}
+                    assetId={`item-${id}`}
                     name={item.name}
                     subtitle={accent.label}
                     cost={item.cost}
@@ -558,6 +570,7 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
                     <ProductTile
                       key={c.id}
                       emoji={c.emoji || "🎫"}
+                      assetId={`card-${c.id}`}
                       name={c.name}
                       subtitle="VIP"
                       cost={c.cost}
@@ -609,7 +622,7 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
           {/* Prize table */}
           <div style={{
             display: "flex", justifyContent: "center", gap: "10px",
-            fontSize: "9px", letterSpacing: "1px",
+            fontSize: FS.xs, letterSpacing: "1px",
             marginBottom: "10px", color: C.dim,
             flexWrap: "wrap",
           }}>
@@ -706,7 +719,7 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
             <div style={{display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px"}}>
               <div style={{
                 background: C.red, color: "#000",
-                padding: "2px 8px", fontSize: "9px", fontWeight: "bold",
+                padding: "2px 8px", fontSize: FS.xs, fontWeight: "bold",
                 letterSpacing: "2px",
                 boxShadow: `0 0 8px ${C.red}aa`,
               }}>★ IL BROKER SUSSURRA ★</div>
@@ -744,7 +757,9 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
         display: "flex", gap: "8px", alignItems: "center",
         borderTop: `1px solid ${C.gold}33`,
         padding: mobile ? "8px 10px" : "10px 12px",
-        background: "#05050b",
+        background: "linear-gradient(180deg, rgba(6,5,12,0.85), rgba(4,3,8,0.95))",
+        backdropFilter: "blur(8px)",
+        WebkitBackdropFilter: "blur(8px)",
         flexShrink: 0,
         position: "sticky", bottom: 0, zIndex: 10,
       }}>

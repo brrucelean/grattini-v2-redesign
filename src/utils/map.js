@@ -296,55 +296,93 @@ export function generateMap(biomeIdx = 0) {
 }
 
 // ─── LABIRINTO GENERATOR ────────────────────────────────────
+// Costanti di bilanciamento (costo carta €15, target RTP 91% = evTarget -0.09).
+// Calibrate risolvendo l'EV di ogni strategia "fermati dopo n passi" sulla
+// distribuzione reale delle lunghezze di percorso (6:31% 8:29% 10:18% 12:13% 14:10%):
+// il massimo su tutte le strategie è €13.66 → RTP 91.0%, e l'ottimo è spingere
+// fino all'uscita, così il jackpot resta un'esca vera e non decorativa.
+// (le celle a rischio sono L-1: start e uscita sono sempre sicure)
+export const LABIRINTO_DEATH_P = 0.24;   // chance che una cella del percorso sia 💀
+export const LABIRINTO_CELL_PRIZE = 6;   // € per ogni cella nuova superata
+export const LABIRINTO_JACKPOT = 50;     // bonus all'uscita 🏆
+
 export function generateLabirintoGrid() {
   // 4x4 grid, start [0,0], end [3,3]
   // Genera percorso valido e riempi le altre celle con direzioni random o 💀
   const DIRS = ["→", "↓", "←", "↑"];
   const DELTA = { "→":[0,1], "↓":[1,0], "←":[0,-1], "↑":[-1,0] };
-  const grid = Array.from({length:4}, () => Array(4).fill(null));
 
-  // Genera percorso casuale da [0,0] a [3,3]
-  const path = [[0,0]];
-  const pathSet = new Set(["0,0"]);
-  let cur = [0,0];
-  let attempts = 0;
-  while ((cur[0] !== 3 || cur[1] !== 3) && attempts < 200) {
-    attempts++;
-    const possible = DIRS.filter(d => {
-      const [dr,dc] = DELTA[d];
-      const nr = cur[0]+dr, nc = cur[1]+dc;
-      return nr>=0 && nr<4 && nc>=0 && nc<4 && !pathSet.has(`${nr},${nc}`);
-    });
-    if (possible.length === 0) break;
-    const dir = pick(possible);
-    const [dr,dc] = DELTA[dir];
-    grid[cur[0]][cur[1]] = dir;
-    cur = [cur[0]+dr, cur[1]+dc];
-    path.push([...cur]);
-    pathSet.add(`${cur[0]},${cur[1]}`);
+  // Il giocatore non sceglie la direzione: segue la freccia della cella.
+  // Quindi il percorso DEVE arrivare a [3,3], altrimenti il jackpot è
+  // irraggiungibile e la traiettoria può finire in un ciclo (soldi infiniti,
+  // +€8 a click). Il random walk falliva nel 43% dei casi: qui si ritenta,
+  // con fallback deterministico a L (riga 0 → colonna 3).
+  let grid = null, pathSet = null;
+  for (let tries = 0; tries < 40 && !grid; tries++) {
+    const g = Array.from({length:4}, () => Array(4).fill(null));
+    const seen = new Set(["0,0"]);
+    let cur = [0,0];
+    let steps = 0;
+    while ((cur[0] !== 3 || cur[1] !== 3) && steps < 200) {
+      steps++;
+      const possible = DIRS.filter(d => {
+        const [dr,dc] = DELTA[d];
+        const nr = cur[0]+dr, nc = cur[1]+dc;
+        return nr>=0 && nr<4 && nc>=0 && nc<4 && !seen.has(`${nr},${nc}`);
+      });
+      if (possible.length === 0) break; // vicolo cieco → si ritenta da capo
+      const dir = pick(possible);
+      const [dr,dc] = DELTA[dir];
+      g[cur[0]][cur[1]] = dir;
+      cur = [cur[0]+dr, cur[1]+dc];
+      seen.add(`${cur[0]},${cur[1]}`);
+    }
+    if (cur[0] === 3 && cur[1] === 3) { grid = g; pathSet = seen; }
   }
-  // Mark last path cell direction to exit (se siamo arrivati a [3,3])
-  if (cur[0]===3 && cur[1]===3) grid[3][3] = "🏆";
+  if (!grid) {
+    // Fallback deterministico: → → → poi ↓ ↓ ↓ fino a [3,3]
+    grid = Array.from({length:4}, () => Array(4).fill(null));
+    pathSet = new Set();
+    for (let c = 0; c < 3; c++) { grid[0][c] = "→"; pathSet.add(`0,${c}`); }
+    for (let r = 0; r < 3; r++) { grid[r][3] = "↓"; pathSet.add(`${r},3`); }
+    pathSet.add("3,3");
+  }
+  grid[3][3] = "🏆";
+  pathSet.add("3,3");
 
-  // Riempi le celle non del percorso con direzioni random
+  // Riempi le celle non del percorso con direzioni random (puramente decorative:
+  // il giocatore segue le frecce e non esce mai dal percorso).
   for (let r=0; r<4; r++) for (let c=0; c<4; c++) {
     if (grid[r][c] === null) grid[r][c] = pick(DIRS);
   }
 
-  // Sostituisci 3 celle non-percorso con 💀
-  const nonPath = [];
-  for (let r=0; r<4; r++) for (let c=0; c<4; c++) {
-    if (!pathSet.has(`${r},${c}`) && !(r===3&&c===3)) nonPath.push([r,c]);
+  // 💀 SUL percorso, non fuori. Prima erano piazzate solo su celle non-percorso,
+  // quindi irraggiungibili: il giocatore arrivava sempre al 🏆 senza alcun
+  // rischio (RTP 2472%). Ogni passo ha ora LABIRINTO_DEATH_P di essere fatale,
+  // così "incassa e scappa" diventa una decisione vera.
+  for (const key of pathSet) {
+    if (key === "0,0" || key === "3,3") continue; // start e uscita sempre sicuri
+    if (roll(LABIRINTO_DEATH_P)) {
+      const [r, c] = key.split(",").map(Number);
+      grid[r][c] = "💀";
+    }
   }
-  shuffle(nonPath).slice(0,3).forEach(([r,c]) => { grid[r][c] = "💀"; });
 
   return grid;
 }
 
 // ─── GRATTA & COMBINA GENERATOR ─────────────────────────────
+// Bilanciamento (costo €25, target RTP 90% = evTarget -0.10).
+// La carta non ha stato di sconfitta e il giocatore sceglie l'ordine dei click,
+// quindi può sempre accoppiare i simboli uguali: con 5 simboli e 15% di celle
+// vuote la MEGA COMBO scattava nel 56% dei casi (RTP 1099%). Con 9 simboli e
+// 35% di vuoti la MEGA torna un evento raro (~8%) e l'RTP scende a ~89%.
+export const COMBINA_COMBO_PRIZE = 10;
+export const COMBINA_MEGA_MULT = 5;
+
 export function generateCombinaState() {
-  const SYMS = ["⭐","🔔","💎","🍋","🎯"];
-  const makeGrid = () => Array.from({length:6}, () => roll(0.15) ? null : pick(SYMS));
+  const SYMS = ["⭐","🔔","💎","🍋","🎯","🍒","🔥","🍀","👑"];
+  const makeGrid = () => Array.from({length:6}, () => roll(0.35) ? null : pick(SYMS));
   return {
     gridA: makeGrid(), gridB: makeGrid(),
     revealedA: Array(6).fill(false), revealedB: Array(6).fill(false),
@@ -354,10 +392,18 @@ export function generateCombinaState() {
 }
 
 // ─── MAPPA DEL TESORO GENERATOR ─────────────────────────────
+// Bilanciamento (costo €35, target RTP 90% = evTarget -0.10).
+// Con 2 bombe su 16 e gli hint di distanza un giocatore informato trovava
+// quasi sempre entrambi i tesori: RTP 953%. Con 4 bombe e premi ridotti
+// (vedi TESORO_X_PRIZE / TESORO_JACKPOT) il Monte Carlo dà RTP ≈ 90%.
+export const TESORO_BOMBS = 4;
+export const TESORO_X_PRIZE = 30;   // € per ogni X trovata
+export const TESORO_JACKPOT = 75;   // bonus per aver trovato entrambe
+
 export function generateTesoroState() {
   const positions = shuffle([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]);
   const treasures = new Set([positions[0], positions[1]]);
-  const bombs = new Set([positions[2], positions[3]]);
+  const bombs = new Set(positions.slice(2, 2 + TESORO_BOMBS));
   return {
     treasures, bombs,
     revealed: Array(16).fill(false),

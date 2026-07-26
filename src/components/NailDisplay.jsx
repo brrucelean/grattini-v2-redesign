@@ -2,6 +2,7 @@ import { C, FONT } from "../data/theme.js";
 import { NAIL_INFO, NAIL_ORDER } from "../data/nails.js";
 import { CHIRURGO_IMPLANT_IDS } from "../data/items.js";
 import { getNailVisual } from "../utils/nail.js";
+import { Asset } from "./Asset.jsx";
 
 // Slot totali per impianto chirurgo (deve matchare NailSidebar)
 const CHIRURGO_SLOT_MAX = { plastica: 2, ferro: 4, oro: 5 };
@@ -99,7 +100,7 @@ export function NailDisplay({ nails, activeNail, compact=false, onSelectNail=nul
             <div style={{
               fontSize:"18px",
               filter: !isDead && visual?.glow && visual.glow !== "none" ? `drop-shadow(0 0 4px ${col})` : "none",
-            }}>{visual?.emoji || "🖐"}</div>
+            }}><Asset id={!n.implant ? `nail-${n.state}` : null} emoji={visual?.emoji || "🖐"} size={30} /></div>
             <div style={{color: isActive ? col : isDead ? "#555" : col + "aa", fontSize:"10px", fontWeight: isActive ? "bold" : "normal"}}>
               {isChirurgo ? n.implant.toUpperCase() : info.label}
             </div>

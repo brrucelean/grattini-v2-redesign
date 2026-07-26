@@ -2,6 +2,7 @@ import { C } from "../data/theme.js";
 import { ITEM_DEFS, GRATTATORE_DEFS } from "../data/items.js";
 import { Tooltip } from "./Tooltip.jsx";
 import { CornerBrackets, FoilShimmer, VintageBadge } from "./Vintage.jsx";
+import { Asset } from "./Asset.jsx";
 
 // Pip visuali per gli usi (max 5, poi numero)
 function UsesPips({ count, color }) {
@@ -104,7 +105,7 @@ export function InventorySidebar({ items, grattatori, equippedGrattatore, onUseI
                   <span style={{
                     fontSize:"14px", lineHeight:1, flexShrink:0,
                     filter: isEquipped ? `drop-shadow(0 0 4px ${C.cyan})` : "none",
-                  }}>{g.emoji}</span>
+                  }}><Asset id={`item-${g.id}`} emoji={g.emoji} size={14} /></span>
                   <div style={{flex:1, minWidth:0}}>
                     <div style={{
                       color: isEquipped ? C.cyan : C.cyan+"aa",
@@ -164,7 +165,7 @@ export function InventorySidebar({ items, grattatori, equippedGrattatore, onUseI
                     e.currentTarget.style.boxShadow = "none";
                   }}>
                   <CornerBrackets color={C.gold+"aa"}/>
-                  <span style={{fontSize:"14px", lineHeight:1, flexShrink:0}}>{item.emoji}</span>
+                  <span style={{fontSize:"14px", lineHeight:1, flexShrink:0}}><Asset id={item.id ? `item-${item.id}` : null} emoji={item.emoji} size={14} /></span>
                   <div style={{flex:1, minWidth:0}}>
                     <div style={{
                       color: C.gold+"cc", fontSize:"8px",

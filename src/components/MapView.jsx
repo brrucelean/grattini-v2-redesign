@@ -1,13 +1,22 @@
 import { useMemo, useRef, useEffect } from "react";
-import { C, FONT } from "../data/theme.js";
+import { C, FONT, FS } from "../data/theme.js";
 import { NODE_ICONS, NODE_TOOLTIPS } from "../data/map.js";
+import { Asset } from "./Asset.jsx";
+import { hasAsset } from "../assets/registry.js";
 import { BIOMES, BIOME_MODIFIERS } from "../data/biomes.js";
 import { Tooltip } from "./Tooltip.jsx";
 import { AudioEngine } from "../audio.js";
 import { Haptics } from "../utils/haptics.js";
+import { useIsMobile } from "../hooks/useIsMobile.js";
 
 // ─── COSTANTI LAYOUT ─────────────────────────────────────────────
-const ROW_H = 88;    // altezza per riga — ottimizzata iPhone 16 Pro (touch target ≥44pt)
+// Altezza riga: 88px è il minimo per il touch su iPhone 16 Pro (target ≥44pt).
+// Su desktop non c'è quel vincolo, quindi la riga si stringe fino a 62px per far
+// entrare l'intera run (11 righe) in una schermata senza scroll.
+const ROW_H_TOUCH = 88;
+const ROW_H_MIN_DESKTOP = 62;
+const MAP_W_MOBILE = 780;    // larghezza max su telefono
+const MAP_W_DESKTOP = 1180;  // su Mac a schermo intero i nodi non restano ammassati al centro
 const DANGER_TYPES = new Set(["ladro","spacciatore","miniboss","poliziotto"]);
 const SAFE_TYPES   = new Set(["locanda","tabaccaio","mendicante","sacerdote","chirurgo","maestroTe"]);
 
@@ -21,6 +30,16 @@ const LEGEND = [
 
 export function MapView({ map, currentRow, visitedNodes, onSelectNode, reachableNodes, currentBiome = 0, playerFortuna = 0 }) {
   const scrollRef = useRef(null);
+  const { isMobile, vw, vh } = useIsMobile();
+
+  // Su desktop comprimi le righe quanto basta a far entrare tutta la mappa
+  // nell'altezza disponibile (≈ viewport meno HUD, header bioma e legenda).
+  const ROW_H = useMemo(() => {
+    if (isMobile) return ROW_H_TOUCH;
+    const rows = map.rows.length || 1;
+    const avail = Math.max(320, vh - 250);
+    return Math.round(Math.min(ROW_H_TOUCH, Math.max(ROW_H_MIN_DESKTOP, avail / rows)));
+  }, [isMobile, vh, map.rows.length]);
 
   // ── Scroll snap a scatti con suoni ────────────────────────────
   useEffect(() => {
@@ -62,7 +81,7 @@ export function MapView({ map, currentRow, visitedNodes, onSelectNode, reachable
       clearTimeout(snapTimer);
       if (rafId) cancelAnimationFrame(rafId);
     };
-  }, [map]);
+  }, [map, ROW_H]);
 
   // ── Auto-scroll centrato con cascade tick ─────────────────────
   useEffect(() => {
@@ -77,16 +96,15 @@ export function MapView({ map, currentRow, visitedNodes, onSelectNode, reachable
       setTimeout(() => AudioEngine.mapTick(), i * 70 + 30);
     }
     el.scrollTo({ top: Math.max(0, targetY), behavior: "smooth" });
-  }, [currentRow, map]);
+  }, [currentRow, map, ROW_H]);
 
   const rowsCount = map.rows.length || 1;
   const totalH    = rowsCount * ROW_H;
-  const vw        = typeof window !== "undefined" ? window.innerWidth : 393;
-  const W         = Math.min(780, vw - 8);
+  const W         = Math.min(isMobile ? MAP_W_MOBILE : MAP_W_DESKTOP, vw - 8);
 
   // Nodi: dimensioni ottimizzate per iPhone 16 Pro touch target
   const maxNodesPerRow = map.rows.reduce((acc, r) => Math.max(acc, r.length), 1);
-  const NW = Math.min(92, Math.max(64, Math.floor(W / Math.max(1, maxNodesPerRow)) - 10));
+  const NW = Math.min(isMobile ? 92 : 118, Math.max(64, Math.floor(W / Math.max(1, maxNodesPerRow)) - 10));
   const NH = Math.round(NW * 0.72);
 
   const nodePos = useMemo(() => {
@@ -101,7 +119,7 @@ export function MapView({ map, currentRow, visitedNodes, onSelectNode, reachable
       });
     });
     return pos;
-  }, [map, W, NW]);
+  }, [map, W, NW, ROW_H]);
 
   const edges = useMemo(() => {
     const list = [];
@@ -129,7 +147,9 @@ export function MapView({ map, currentRow, visitedNodes, onSelectNode, reachable
     return `${C.gold}99`;
   };
 
-  const biomeColor = BIOMES[currentBiome]?.color || C.cyan;
+  // Regola cromatica per schermata: la MAPPA è ciano-dominante (chrome/frame/header).
+  // I colori dei nodi (rosso pericolo / verde sicuro / oro) restano di supporto semantico.
+  const biomeColor = C.cyan;
   const biomeName  = BIOMES[currentBiome]?.name  || "Tabacchitalia Nord";
   const biomeBoss  = BIOMES[currentBiome]?.boss  || "Il Broker";
   const totalRows  = map.rows.length;
@@ -142,8 +162,8 @@ export function MapView({ map, currentRow, visitedNodes, onSelectNode, reachable
     <div style={{
       display:"flex", flexDirection:"column",
       border:`2px solid ${biomeColor}`,
-      background:"#05050f",
-      position:"relative",
+      background:"rgba(5,5,15,0.55)",
+      position:"relative", zIndex:1,
       boxShadow:`0 0 0 1px #000, 0 0 32px ${biomeColor}33`,
       flex:1, minHeight:0, overflow:"hidden",
     }}>
@@ -218,14 +238,14 @@ export function MapView({ map, currentRow, visitedNodes, onSelectNode, reachable
               <span style={{
                 background: biomeColor, color:"#000",
                 fontFamily:FONT, fontWeight:"bold",
-                fontSize:"7px", letterSpacing:"2px",
+                fontSize:FS.xs, letterSpacing:"2px",
                 padding:"1px 6px",
                 boxShadow:`0 0 6px ${biomeColor}`,
               }}>BIOMA {currentBiome + 1}/4</span>
               <span style={{
                 background:`${biomeColor}22`,
                 border:`1px solid ${biomeColor}55`,
-                color:biomeColor, fontSize:"7px",
+                color:biomeColor, fontSize:FS.xs,
                 fontFamily:FONT, letterSpacing:"1px",
                 padding:"1px 5px",
               }}>RIGA {progressRow}/{totalRows}</span>
@@ -243,12 +263,12 @@ export function MapView({ map, currentRow, visitedNodes, onSelectNode, reachable
               <span style={{
                 background:`${C.red}cc`, color:"#fff",
                 fontFamily:FONT, fontWeight:"bold",
-                fontSize:"7px", letterSpacing:"1px",
+                fontSize:FS.xs, letterSpacing:"1px",
                 padding:"1px 5px",
                 boxShadow:`0 0 6px ${C.red}88`,
               }}>BOSS</span>
               <span style={{
-                color:`${C.red}dd`, fontSize:"10px",
+                color:`${C.red}dd`, fontSize:FS.xs,
                 fontFamily:FONT, fontWeight:"bold",
                 letterSpacing:"0.5px",
                 textShadow:`0 0 6px ${C.red}88`,
@@ -281,7 +301,7 @@ export function MapView({ map, currentRow, visitedNodes, onSelectNode, reachable
               }}/>
             </div>
             <div style={{
-              color:C.red, fontSize:"8px",
+              color:C.red, fontSize:FS.xs,
               fontFamily:FONT, letterSpacing:"1px",
               textShadow:`0 0 4px ${C.red}99`,
             }}>→ BOSS</div>
@@ -373,8 +393,8 @@ export function MapView({ map, currentRow, visitedNodes, onSelectNode, reachable
               position:"absolute",
               right:2,
               top: rIdx * ROW_H + 2,
-              color: rIdx === currentRow ? biomeColor : "#222233",
-              fontSize:"8px", fontFamily:FONT,
+              color: rIdx === currentRow ? biomeColor : "#33334a",
+              fontSize:FS.xs, fontFamily:FONT,
               letterSpacing:"1px",
               pointerEvents:"none", zIndex:1,
               fontWeight: rIdx === currentRow ? "bold" : "normal",
@@ -591,17 +611,23 @@ export function MapView({ map, currentRow, visitedNodes, onSelectNode, reachable
                     }}/>
                   )}
 
-                  {/* Riflesso superiore per nodi attivi */}
+                  {/* Passata ottone: sheen diagonale caldo + luce superiore (rilievo materiale) */}
                   {isActive && !visited && (
-                    <div style={{
-                      position:"absolute", top:0, left:0, right:0,
-                      height:"30%",
-                      background:`linear-gradient(180deg,${borderCol}16 0%,transparent 100%)`,
-                      pointerEvents:"none",
-                    }}/>
+                    <>
+                      <div style={{
+                        position:"absolute", inset:0,
+                        background:`linear-gradient(135deg, ${C.gold}1c 0%, transparent 42%, transparent 62%, ${borderCol}14 100%)`,
+                        pointerEvents:"none",
+                      }}/>
+                      <div style={{
+                        position:"absolute", top:0, left:0, right:0, height:"34%",
+                        background:"linear-gradient(180deg, rgba(255,236,150,0.18) 0%, transparent 100%)",
+                        pointerEvents:"none",
+                      }}/>
+                    </>
                   )}
 
-                  {/* Emoji icona */}
+                  {/* Icona nodo — sprite se disponibile, altrimenti emoji */}
                   <span style={{
                     fontSize: isBoss ? "28px" : "22px",
                     lineHeight:1,
@@ -611,13 +637,16 @@ export function MapView({ map, currentRow, visitedNodes, onSelectNode, reachable
                         ? `drop-shadow(0 0 6px ${borderCol}) drop-shadow(0 0 12px ${borderCol}66)`
                         : "none",
                     position:"relative", zIndex:1,
+                    display:"inline-flex", alignItems:"center", justifyContent:"center",
                   }}>
-                    {icon}
+                    {!effectivelyHidden && !isSecret && hasAsset(`spr-${node.type}`)
+                      ? <Asset id={`spr-${node.type}`} emoji={icon} size={isBoss ? 34 : 26} />
+                      : icon}
                   </span>
 
                   {/* Etichetta */}
                   <span style={{
-                    fontSize: isBoss ? "8px" : "7px",
+                    fontSize: FS.xs,
                     color: labelColor,
                     fontFamily:FONT, fontWeight:"bold",
                     textAlign:"center", lineHeight:"1.15",
@@ -651,7 +680,7 @@ export function MapView({ map, currentRow, visitedNodes, onSelectNode, reachable
                   {isElite && (
                     <span style={{
                       position:"absolute", top:-8, right:-8,
-                      fontSize:"9px", background:C.orange, color:"#000",
+                      fontSize:FS.xs, background:C.orange, color:"#000",
                       width:"17px", height:"17px",
                       display:"flex", alignItems:"center", justifyContent:"center",
                       fontWeight:"bold",
@@ -680,7 +709,7 @@ export function MapView({ map, currentRow, visitedNodes, onSelectNode, reachable
           {LEGEND.map(({ col, label }) => (
             <span key={label} style={{
               display:"flex", alignItems:"center", gap:"3px",
-              color: col, fontSize:"8px", fontFamily:FONT, letterSpacing:"1px",
+              color: col, fontSize:FS.xs, fontFamily:FONT, letterSpacing:"1px",
               flexShrink:0,
             }}>
               <span style={{
@@ -696,7 +725,7 @@ export function MapView({ map, currentRow, visitedNodes, onSelectNode, reachable
         {/* Hint scroll */}
         <span style={{
           flexShrink:0,
-          color:`${biomeColor}55`, fontSize:"9px",
+          color:`${biomeColor}88`, fontSize:FS.xs,
           fontFamily:FONT, letterSpacing:"1px",
           marginLeft:"8px",
         }}>↕ SCORRI</span>

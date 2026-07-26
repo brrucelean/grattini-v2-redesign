@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, lazy, Suspense } from "react";
-import { C, FONT, MAX_ITEMS } from "./data/theme.js";
+import { C, FONT, MAX_ITEMS, W } from "./data/theme.js";
 import { NAIL_INFO } from "./data/nails.js";
 import { ACHIEVEMENTS } from "./data/achievements.js";
 import { useLog } from "./hooks/useLog.js";
@@ -23,14 +23,24 @@ import { ASCII_TITLE } from "./data/art.js";
 import { AudioEngine } from "./audio.js";
 import { clamp } from "./utils/random.js";
 import { Haptics } from "./utils/haptics.js";
-import { degradeNailObj, healNail, makeNailCursor } from "./utils/nail.js";
+import { degradeNailObj, healNail, makeNailCursor, nailCursor } from "./utils/nail.js";
 import { generateCard } from "./utils/card.js";
-import { generateMap } from "./utils/map.js";
+import {
+  generateMap,
+  LABIRINTO_CELL_PRIZE, LABIRINTO_JACKPOT,
+  TESORO_X_PRIZE, TESORO_JACKPOT,
+  COMBINA_COMBO_PRIZE, COMBINA_MEGA_MULT,
+} from "./utils/map.js";
 
 import { S } from "./utils/styles.js";
 // uiZoom reserved for future use
 import { Tooltip } from "./components/Tooltip.jsx";
 import { Btn } from "./components/Btn.jsx";
+import { Asset } from "./components/Asset.jsx";
+import { hasAsset } from "./assets/registry.js";
+import { TicketThumb } from "./components/TicketThumb.jsx";
+import { assetIdByName } from "./assets/nameIndex.js";
+import { assetUrl } from "./assets/registry.js";
 import { CarmeloLogBox, CarmeloScratchStrip } from "./components/DialogueBox.jsx";
 import { NewsTicker, NpcCommentStrip } from "./components/NewsTicker.jsx";
 import { HUD } from "./components/HUD.jsx";
@@ -43,6 +53,8 @@ import { STORAGE_KEYS, getStored, setStored, removeStored } from "./utils/storag
 
 // ─── LAZY CHUNKS — ogni schermata scaricata on-demand ─────────────────────────
 const ScratchCardView  = lazy(() => import("./components/ScratchCardView.jsx").then(m => ({ default: m.ScratchCardView })));
+// DEV-only: galleria biglietti (?ticket=<cardId>) per rivedere l'impaginazione dei 17.
+const TicketGallery    = lazy(() => import("./components/TicketGallery.jsx").then(m => ({ default: m.TicketGallery })));
 const DoppioONullaView = lazy(() => import("./components/DoppioONullaView.jsx").then(m => ({ default: m.DoppioONullaView })));
 const MapView          = lazy(() => import("./components/MapView.jsx").then(m => ({ default: m.MapView })));
 const ShopView         = lazy(() => import("./components/ShopView.jsx").then(m => ({ default: m.ShopView })));
@@ -77,6 +89,11 @@ const hasRelic = (player, effectId) => player?.relics?.some(r => r.effect === ef
 //  MAIN GAME COMPONENT
 // ═══════════════════════════════════════════════════════════════
 export default function Grattini() {
+  // ─── DEV: ?ticket=<cardId> apre la galleria biglietti, saltando il gioco ───
+  const devTicket = import.meta.env.DEV
+    ? new URLSearchParams(window.location.search).get("ticket")
+    : null;
+
   // ─── GAME STATE ─────────────────────────────────────────────
   const [screen, setScreen] = useState("title");
   const [player, setPlayer] = useState(null);
@@ -368,7 +385,7 @@ export default function Grattini() {
   // ─── RENDER ─────────────────────────────────────────────────
   // Cursore globale: mano pixel-art con unghia del colore dello stato attivo
   const globalNailState = player?.nails?.[player?.activeNail ?? 0]?.state ?? "sana";
-  const globalNailCursor = makeNailCursor(screen === "gameOver" ? "scheletro" : globalNailState);
+  const globalNailCursor = nailCursor(screen === "gameOver" ? "scheletro" : globalNailState);
 
   // Neon dimming: glow effects fade when few nails alive
   const aliveCount = player?.nails?.filter(n => n.state !== "morta").length ?? 5;
@@ -376,8 +393,35 @@ export default function Grattini() {
 
   const bioPal = BIOME_PALETTE[currentBiome] || BIOME_PALETTE[0];
 
+  // ─── SFONDO DELLO STAGE 16:9 — scena per schermata ───────────
+  // Un unico background sullo stage (CSS multi-layer: gradiente scuro + immagine,
+  // entrambi dietro al contenuto → nessun problema di z-index).
+  const stageScene =
+      screen === "title"   ? assetUrl("scene-title")
+    : screen === "shop"    ? assetUrl("scene-shop")
+    : screen === "locanda" ? assetUrl("scene-locanda")
+    : screen === "combat"  ? assetUrl("scene-combat")
+    : screen === "cella"   ? assetUrl("scene-cella")
+    : screen === "gameOver"? assetUrl("scene-gameover")
+    : screen === "victory" ? assetUrl("scene-victory")
+    : (screen === "map" || screen === "event" || screen === "node")
+                           ? assetUrl(`scene-biome-${currentBiome}`)
+    : null;
+  const stageBg = stageScene
+    ? `linear-gradient(rgba(4,4,12,0.72), rgba(3,3,10,0.82)), url(${stageScene}) center / cover no-repeat`
+    : bioPal.bg;
+
   // iPhone/mobile: layout verticale a colonna singola invece di 3 colonne
   const { isMobile } = useIsMobile();
+
+  // DEV: galleria biglietti — dopo tutti gli hook, così l'ordine resta stabile.
+  if (devTicket) {
+    return (
+      <Suspense fallback={<LazyFallback />}>
+        <TicketGallery initialId={devTicket} />
+      </Suspense>
+    );
+  }
 
   return (
     /* position:fixed inset:0 — l'unico modo 100% affidabile su iOS Safari:
@@ -388,22 +432,23 @@ export default function Grattini() {
        S.container con height:100% risolve senza ambiguità. */
     <div style={{
       position:"fixed", inset:0,
-      background: bioPal.bg,
+      background: "#000",
       overflow:"hidden",
+      display:"flex", alignItems:"center", justifyContent:"center",
     }}>
-    {/* ── FRAME FLUIDO — riempie tutto il viewport, layout responsive ── */}
-    {/* paddingTop/Bottom con env() per Dynamic Island e home bar */}
+    {/* ── STAGE A PIENO SCHERMO — riempie tutto il viewport (niente letterbox) ── */}
     <div style={{...S.container, cursor: globalNailCursor,
-      width: "100%",
-      height: "100%",
+      width: "100vw",
+      height: "100dvh",
+      position:"relative", overflow:"hidden",
+      background: stageBg,
+      boxShadow:"0 0 0 1px #000, 0 0 40px rgba(0,0,0,0.8)",
       paddingTop: "env(safe-area-inset-top, 0px)",
       /* paddingBottom rimosso: gestito dal DESK così il background riempie
          fino al bordo fisico dello schermo (PWA standalone mode). */
       animation: screenShake ? "screenShake 0.3s ease-in-out" : "none",
       filter: neonDim < 1 ? `saturate(${neonDim}) brightness(${0.6 + neonDim * 0.4})` : "none",
-      transition: "filter 1.5s ease",
-      background: bioPal.bg,
-      overflow:"hidden",
+      transition: "filter 1.5s ease, background 0.8s ease",
       display:"flex", flexDirection:"column",
     }}>
       <style>{`
@@ -469,8 +514,9 @@ export default function Grattini() {
         ::-webkit-scrollbar-track { background: #000; }
         ::-webkit-scrollbar-thumb { background: ${C.dim}88; border-radius: 2px; }
         ::-webkit-scrollbar-thumb:hover { background: ${C.dim}; }
-        /* Forza il cursore unghia su tutto — sovrascrive pointer di sistema su button/link */
-        button, a, input, select, [role="button"], [tabindex] { cursor: inherit !important; }
+        /* Forza il cursore-dito su TUTTO — sovrascrive pointer/not-allowed inline
+           su qualsiasi elemento selezionabile (card shop, bottoni, nodi mappa...) */
+        * { cursor: ${globalNailCursor} !important; }
         /* ── MOBILE / iPhone: tap target Apple HIG (min 44px) ── */
         @media (max-width: 768px) {
           button { min-height: 44px; }
@@ -1047,7 +1093,7 @@ export default function Grattini() {
                         fontSize:"32px", position:"relative", zIndex:2,
                         textShadow:`0 0 16px ${c.accent}`,
                         filter: c.hasProgress ? "none" : "grayscale(0.4) brightness(0.85)",
-                      }}>{c.emoji}</div>
+                      }}><Asset id={`card-${c.id}`} emoji={c.emoji} size={40} /></div>
                       {/* Foil shimmer diagonale animato (solo se ha progresso) */}
                       {c.shimmer && (
                         <div style={{
@@ -1251,7 +1297,7 @@ export default function Grattini() {
 
       {/* ═══ INTRO SCRATCH (scratch 2 starting cards, pocket 1 prize) ═══ */}
       {screen === "introScratch" && player && (
-        <div style={{width:"100%", maxWidth:"900px", padding:"8px", display:"flex", flexDirection:"column", gap:"6px", height:"100%", minHeight:0, overflow:"hidden"}}>
+        <div style={{width:"100%", maxWidth:W.content, padding:"8px", display:"flex", flexDirection:"column", gap:"10px", height:"100%", minHeight:0, overflow:"hidden"}}>
 
           {/* NPC Dialogue Log */}
           <CarmeloLogBox
@@ -1276,7 +1322,7 @@ export default function Grattini() {
 
           {/* Cards to scratch */}
           {player.scratchCards.length > 0 && (
-            <div style={{display:"flex", flexDirection:"column", gap:"6px", flex:1, minHeight:0, overflowY:"auto"}}>
+            <div style={{display:"flex", flexDirection:"column", gap:"8px", flex:"0 1 auto", minHeight:0, overflowY:"auto"}}>
               {!scratchingCard && (<>
                 <div style={{color:C.dim, fontSize:"10px", letterSpacing:"2px", textAlign:"center"}}>
                   — BIGLIETTI DI NONNO CARMELO — rimasti {player.scratchCards.length}/3 —
@@ -1313,33 +1359,23 @@ export default function Grattini() {
                       width:"100%", marginTop:"4px",
                       border:`2px solid ${c ? borderColor : "#1a1a2e"}`,
                       background: c ? "#0a0a1a" : "#070710",
-                      padding:"16px 20px",
-                      flex:"1 1 120px", minHeight:"120px",
-                      display:"flex", alignItems:"center", gap:"24px",
+                      padding:"14px 18px",
+                      // Altezza FISSA, identica da vuoto e con l'anteprima dentro:
+                      // se cambiasse al passaggio del mouse, il riquadro sopra
+                      // (che è flex:1) si ridimensionerebbe e tutta la schermata
+                      // sobbalzerebbe a ogni hover su un biglietto.
+                      flex:"0 0 auto", height:"196px", boxSizing:"border-box",
+                      display:"flex", alignItems:"center", gap:"20px",
                       overflow:"hidden",
                       transition:"border-color 0.15s",
                       boxShadow: c ? `inset 0 0 40px ${borderColor}08` : "none",
                     }}>
                       {c ? (<>
-                        {/* Covered grid preview */}
+                        {/* Anteprima biglietto — arte PNG col titolo nel cartiglio
+                            e l'area grattabile, composta come in partita */}
                         <div style={{flexShrink:0}}>
-                          <div style={{
-                            display:"grid",
-                            gridTemplateColumns:`repeat(${cols}, 1fr)`,
-                            gap:"3px", marginBottom:"5px",
-                            width:"130px",
-                          }}>
-                            {Array(cols * rows).fill(0).map((_, i) => (
-                              <div key={i} style={{
-                                height:"20px",
-                                background:`linear-gradient(160deg, #c0c0cc 0%, #888898 60%, #606070 100%)`,
-                                border:`1px solid #aaa8`,
-                                borderRadius:"2px",
-                                boxShadow:"inset 0 2px 0 rgba(255,255,255,0.25), inset 0 -1px 0 rgba(0,0,0,0.3)",
-                              }}/>
-                            ))}
-                          </div>
-                          <div style={{color:borderColor, fontSize:"9px", textAlign:"center", letterSpacing:"1px"}}>
+                          <TicketThumb card={c} width={200} />
+                          <div style={{color:borderColor, fontSize:"9px", textAlign:"center", letterSpacing:"1px", marginTop:"5px"}}>
                             clicca per grattare
                           </div>
                         </div>
@@ -1898,8 +1934,10 @@ export default function Grattini() {
                 background: "#0a0508",
                 border: `1px dashed ${C.red}55`,
               }}>
-                <pre style={{...S.pre, display:"block", margin:"0 auto 10px", fontSize:"20px", color:C.dim}}>{`( ._.)
- ﾉ   )`}</pre>
+                <div style={{display:"block", margin:"0 auto 10px", opacity:0.85,
+                  filter:"grayscale(0.35) drop-shadow(0 0 8px #00000088)"}}>
+                  <Asset id="misc-nograttino" emoji="🎫" size={72} />
+                </div>
                 <div style={{
                   display: "inline-block",
                   background: C.red, color: "#000",
@@ -2059,8 +2097,9 @@ export default function Grattini() {
       {/* ═══ MAP ═══ */}
       {screen === "map" && player && map && (
         <div style={{
-          flex:1, minHeight:0, width:"100%", maxWidth:"1000px",
+          flex:1, minHeight:0, width:"100%", maxWidth:W.content,
           display:"flex", flexDirection:"column", overflow:"hidden",
+          position:"relative",
         }}>
           {/* Mappa — occupa tutto lo spazio disponibile */}
           <Suspense fallback={<LazyFallback />}>
@@ -2108,7 +2147,7 @@ export default function Grattini() {
                         WebkitTapHighlightColor:"transparent",
                       }}
                     >
-                      <span style={{fontSize:"13px"}}>{g.emoji}</span>
+                      <span style={{fontSize:"13px"}}><Asset id={`item-${g.id}`} emoji={g.emoji} size={15} /></span>
                       <span style={{fontSize:"9px"}}>{g.name}</span>
                       <span style={{
                         background: isEquipped ? C.cyan : "#222244",
@@ -2144,7 +2183,7 @@ export default function Grattini() {
                         WebkitTapHighlightColor:"transparent",
                       }}
                     >
-                      <span style={{fontSize:"13px"}}>{item.emoji}</span>
+                      <span style={{fontSize:"13px"}}><Asset id={`item-${itemId}`} emoji={item.emoji} size={15} /></span>
                       <span style={{fontSize:"9px", color:C.dim}}>{item.name}</span>
                     </button>
                   </Tooltip>
@@ -2157,7 +2196,7 @@ export default function Grattini() {
 
       {/* ═══ SHOP (Tabaccaio) ═══ */}
       {screen === "shop" && player && (
-        <div style={{maxWidth:"900px", width:"100%"}}>
+        <div style={{maxWidth:W.content, width:"100%"}}>
           <Suspense fallback={<LazyFallback />}>
           <ShopView
             player={player}
@@ -2176,7 +2215,7 @@ export default function Grattini() {
 
       {/* ═══ LOCANDA ═══ */}
       {screen === "locanda" && player && (
-        <div style={{maxWidth:"900px", width:"100%"}}>
+        <div style={{maxWidth:W.content, width:"100%"}}>
           <Suspense fallback={<LazyFallback />}>
           <LocandaView
             player={player}
@@ -2212,7 +2251,7 @@ export default function Grattini() {
 
       {/* ═══ COMBAT ═══ */}
       {screen === "combat" && player && combatEnemy && (
-        <div style={{flex:1, minHeight:0, width:"100%", maxWidth:"900px", display:"flex", flexDirection:"column", overflow:"hidden"}}>
+        <div style={{flex:1, minHeight:0, width:"100%", maxWidth:W.content, display:"flex", flexDirection:"column", overflow:"hidden"}}>
           <Suspense fallback={<LazyFallback />}>
           <CombatView
             enemy={combatEnemy}
@@ -2344,7 +2383,7 @@ export default function Grattini() {
 
         return (
           <div style={{maxWidth:"500px", width:"100%", textAlign:"center", fontFamily:FONT}}>
-            <div style={{...S.panel, borderColor:C.dim, background:"#080808", marginTop:"8px"}}>
+            <div style={{...S.panel, borderColor:C.dim, background:"linear-gradient(180deg, rgba(10,10,12,0.8), rgba(3,3,4,0.9))", backdropFilter:"blur(8px)", WebkitBackdropFilter:"blur(8px)", marginTop:"8px"}}>
 
               {/* Titolo */}
               <div style={{color:C.red, fontSize:"20px", fontWeight:"bold", letterSpacing:"3px", marginBottom:"4px", }}>
@@ -2354,19 +2393,22 @@ export default function Grattini() {
                 "Quindici anni di grattini illegali. Ora graffi i muri."
               </div>
 
-              {/* ASCII art cella */}
-              <pre style={{...S.pre, color:"#555", fontSize:"11px", marginBottom:"12px", lineHeight:"1.4", display:"inline-block"}}>
-{`┌──────────────────────┐
-│  ░░░░░░░░░░░░░░░░░░  │
-│  ░ [MURO DI PIETRA]░  │
-│  ░░░░░░░░░░░░░░░░░░  │
-│                      │
-│   ╭───╮  Tu sei qui  │
-│   │ 😰│              │
-│   ╰───╯              │
-│_____________________ │
-▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓`}
-              </pre>
+              {/* Scena cella — finestra sull'ambientazione prigione */}
+              <div style={{
+                margin:"0 auto 12px", maxWidth:"300px",
+                border:`2px solid #555`, borderRadius:"3px", overflow:"hidden",
+                boxShadow:"inset 0 0 20px #000, 0 0 12px #0008",
+                position:"relative",
+              }}>
+                <img src={assetUrl("scene-cella")} alt="Cella" style={{
+                  width:"100%", display:"block", filter:"brightness(0.82) contrast(1.05)",
+                }}/>
+                {/* scanline CRT */}
+                <div aria-hidden style={{
+                  position:"absolute", inset:0, pointerEvents:"none", opacity:0.4,
+                  backgroundImage:"repeating-linear-gradient(0deg, rgba(0,0,0,0.28) 0px, rgba(0,0,0,0.28) 1px, transparent 1px, transparent 3px)",
+                }}/>
+              </div>
 
               {/* Barra progresso muro */}
               <div style={{marginBottom:"12px"}}>
@@ -2459,8 +2501,8 @@ export default function Grattini() {
       {screen === "labirinto" && player && labirintoState && (() => {
         const ls = labirintoState;
         const [row, col] = ls.pos;
-        const CELL_PRIZE = 8;
-        const JACKPOT_PRIZE = 300;
+        const CELL_PRIZE = LABIRINTO_CELL_PRIZE;
+        const JACKPOT_PRIZE = LABIRINTO_JACKPOT;
 
         const handleMove = () => {
           if (ls.done) return;
@@ -2496,9 +2538,15 @@ export default function Grattini() {
           }
           const newRevealed = new Set(ls.revealed);
           newRevealed.add(`${row},${col}`);
-          const newPrize = ls.prize + CELL_PRIZE;
+          // Il premio si paga SOLO per celle nuove: se la traiettoria entra in un
+          // ciclo (due frecce che si rimbalzano) il giocatore poteva cliccare
+          // all'infinito a +€8 a click. Ora un ciclo non frutta nulla e il totale
+          // è comunque limitato a 16 celle.
+          const alreadySeen = ls.revealed.has(`${nr},${nc}`);
+          const newPrize = alreadySeen ? ls.prize : ls.prize + CELL_PRIZE;
           setLabirintoState({...ls, pos:[nr,nc], revealed:newRevealed, prize:newPrize});
-          addLog(`Avanzi! +€${CELL_PRIZE} → totale €${newPrize}`, C.green);
+          if (alreadySeen) addLog("🔄 Giri in tondo — questa cella l'hai già battuta. Nessun premio.", C.orange);
+          else addLog(`Avanzi! +€${CELL_PRIZE} → totale €${newPrize}`, C.green);
         };
 
         const handleIncassa = () => {
@@ -2564,9 +2612,8 @@ export default function Grattini() {
       {/* ═══ GRATTA & COMBINA ═══ */}
       {screen === "grattaCombina" && player && combinaState && (() => {
         const cs = combinaState;
-        const COMBO_PRIZE = 30;
-        const MEGA_MULT = 5;
-        const SYMS_LABELS = {"⭐":"Stella","🔔":"Campana","💎":"Diamante","🍋":"Limone","🎯":"Bersaglio"};
+        const COMBO_PRIZE = COMBINA_COMBO_PRIZE;
+        const MEGA_MULT = COMBINA_MEGA_MULT;
 
         const handleReveal = (grid, idx) => {
           if (cs.done) return;
@@ -2583,8 +2630,8 @@ export default function Grattini() {
           }
 
           // Check combo: se entrambi i lastRevealed sono uguali e non-null
-          const lastA = grid === "A" ? newState.lastRevealedA : newState.lastRevealedA;
-          const lastB = grid === "B" ? newState.lastRevealedB : newState.lastRevealedB;
+          const lastA = newState.lastRevealedA;
+          const lastB = newState.lastRevealedB;
           if (lastA && lastB && lastA === lastB) {
             const newCombos = newState.combos + 1;
             const newPrize = newState.prize + COMBO_PRIZE;
@@ -2674,8 +2721,8 @@ export default function Grattini() {
       {/* ═══ MAPPA DEL TESORO ═══ */}
       {screen === "mappaTesor0" && player && tesoroState && (() => {
         const ts = tesoroState;
-        const X_PRIZE = 150;
-        const JACKPOT_PRIZE = 400;
+        const X_PRIZE = TESORO_X_PRIZE;
+        const JACKPOT_PRIZE = TESORO_JACKPOT;
 
         const getManhattanDist = (idx) => {
           const r = Math.floor(idx/4), c = idx%4;
@@ -2779,13 +2826,13 @@ export default function Grattini() {
       {screen === "gameOver" && (
         <div style={{
           textAlign: "center", maxWidth: "560px", width: "100%",
-          background: "linear-gradient(180deg, #120000 0%, #05050b 100%)",
           border: `2px solid ${C.red}`,
           animation: "gameOverBorder 2s ease-in-out infinite",
           padding: "18px",
           position: "relative",
-          // CRT scanlines overlay via pseudo-gradient
-          backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.18) 2px, rgba(0,0,0,0.18) 4px), linear-gradient(180deg, #120000 0%, #05050b 100%)",
+          backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)",
+          // Vetro traslucido su scene-gameover + scanlines CRT
+          backgroundImage: "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.18) 2px, rgba(0,0,0,0.18) 4px), linear-gradient(180deg, rgba(24,0,0,0.74) 0%, rgba(5,5,11,0.84) 100%)",
         }}>
           {/* Corner brackets decorativi grandi */}
           {["tl","tr","bl","br"].map(pos => {
@@ -3178,7 +3225,7 @@ export default function Grattini() {
                 <div style={{position:"absolute", inset:0, borderRadius:"50%", background:`radial-gradient(circle,${accent}44 0%,${accent}16 50%,transparent 70%)`, animation:"itemGlowRing 2.2s ease-in-out infinite"}}/>
                 <div style={{position:"absolute", inset:"18%", borderRadius:"50%", border:`1px solid ${accent}44`, animation:"itemGlowRing 2.2s ease-in-out infinite 0.7s"}}/>
                 <div style={{fontSize:"50px", position:"relative", zIndex:1, filter:`drop-shadow(0 0 14px ${accent})`, animation:isDanger?"pulse 1.4s ease-in-out infinite":"none"}}>
-                  {em}
+                  <Asset id={itemFoundModal.assetId || assetIdByName(itemFoundModal.name)} emoji={em} size={64} />
                 </div>
               </div>
 
@@ -3272,7 +3319,7 @@ export default function Grattini() {
             <div style={{color:activeNailColor, fontSize:"11px", letterSpacing:"3px", marginBottom:"6px"}}>
               {nailEquipModal.fromZaino ? "✦ USA OGGETTO ✦" : "✦ HAI TROVATO ✦"}
             </div>
-            <div style={{fontSize:"42px", margin:"6px 0 8px"}}>{nailEquipModal.emoji}</div>
+            <div style={{fontSize:"42px", margin:"6px 0 8px"}}><Asset id={assetIdByName(nailEquipModal.name)} emoji={nailEquipModal.emoji} size={52} /></div>
             <div style={{color:C.bright, fontWeight:"bold", fontSize:"16px", marginBottom:"4px"}}>
               {nailEquipModal.name}
             </div>
@@ -3501,7 +3548,7 @@ export default function Grattini() {
                         onMouseEnter={e=>e.currentTarget.style.background=`${rc}22`}
                         onMouseLeave={e=>e.currentTarget.style.background=`${rc}11`}
                       >
-                        <div style={{fontSize:"22px", filter:`drop-shadow(0 0 5px ${rc}88)`}}>{item.emoji}</div>
+                        <div style={{fontSize:"22px", filter:`drop-shadow(0 0 5px ${rc}88)`}}><Asset id={`item-${itemId}`} emoji={item.emoji} size={26} /></div>
                         <div style={{color:C.bright, fontSize:"10px", fontWeight:"bold", whiteSpace:"nowrap", maxWidth:"68px", overflow:"hidden", textOverflow:"ellipsis"}}>{item.name}</div>
                         <div style={{color:rc, fontSize:"8px", letterSpacing:"1px"}}>{(item.rarity||"").toUpperCase()}</div>
                       </div>
@@ -3537,7 +3584,7 @@ export default function Grattini() {
                         onMouseEnter={e=>e.currentTarget.style.background=`${rc}28`}
                         onMouseLeave={e=>e.currentTarget.style.background=isEquipped?`${rc}22`:`${rc}0c`}
                       >
-                        <div style={{fontSize:"22px", filter:`drop-shadow(0 0 5px ${rc}88)`}}>{g.emoji}</div>
+                        <div style={{fontSize:"22px", filter:`drop-shadow(0 0 5px ${rc}88)`}}><Asset id={`item-${g.id}`} emoji={g.emoji} size={26} /></div>
                         <div style={{color:C.bright, fontSize:"10px", fontWeight:"bold", whiteSpace:"nowrap", maxWidth:"68px", overflow:"hidden", textOverflow:"ellipsis"}}>{g.name}</div>
                         <div style={{color:isEquipped?rc:C.dim, fontSize:"8px", letterSpacing:"1px"}}>
                           {isEquipped ? "✓ ATTIVO" : `${g.usesLeft} usi`}

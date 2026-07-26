@@ -1,10 +1,13 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import { ticketLayoutPlugin } from "./vite-plugin-ticket-layout.js";
 
 export default defineConfig({
-  plugins: [react()],
+  // ticketLayoutPlugin è apply:"serve" — vive solo nel dev server
+  plugins: [react(), ticketLayoutPlugin()],
   base: "./",  // path relativi — necessario per itch.io
-  server: { port: 5173 },
+  // PORT permette a piu' dev server (es. due sessioni) di convivere
+  server: { port: Number(process.env.PORT) || 5173 },
   build: {
     rollupOptions: {
       output: {

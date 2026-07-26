@@ -372,8 +372,12 @@ export function useScratchHandlers({
         }
 
         // Offer Doppio o Nulla randomly on wins (not intro, not streamer-live, prize >= €2, 30% chance, not for doppioOnulla cards)
-        if (returnScreen !== "introScratch" && returnScreen !== "streamerMap" && result.win && result.prize >= 2 && Math.random() < 0.3 && scratchingCard?.mechanic !== "doppioOnulla") {
-          setDoppioONulla({ prize: result.prize });
+        // Si rischia il premio EFFETTIVAMENTE accreditato (p.lastWonPrize, che include
+        // clip virale, bonus bioma, streak e cedola), non `result.prize` grezzo:
+        // altrimenti chi veniva pagato €200 ne rischiava solo €80.
+        const stakePrize = p.lastWonPrize || 0;
+        if (returnScreen !== "introScratch" && returnScreen !== "streamerMap" && result.win && stakePrize >= 2 && Math.random() < 0.3 && scratchingCard?.mechanic !== "doppioOnulla") {
+          setDoppioONulla({ prize: stakePrize });
           setScreen("doppioONulla");
           setReturnScreen(null);
           return p;

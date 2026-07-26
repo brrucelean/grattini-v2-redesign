@@ -48,6 +48,35 @@ export function _sum13WinnerNums(totalCells) {
   return shuffle([...p1, ...p2, ...fill]);
 }
 
+// True se NESSUN prefisso delle carte permette di fermarsi battendo il banco:
+// scorrendo le carte in ordine, o si sballa (>7.5) prima di superare il banco,
+// oppure non lo si supera mai. È la condizione che rende una carta davvero perdente.
+export function _isLosingSetteEMezzoHand(cells, bancoTotal) {
+  let sum = 0;
+  for (const c of cells) {
+    sum = Math.round((sum + c.value) * 10) / 10;
+    if (sum > 7.5) return true;        // sballato: non poteva incassare
+    if (sum > bancoTotal) return false; // poteva stare e vincere → non è perdente
+  }
+  return true; // arrivato in fondo senza mai battere il banco
+}
+
+// Mano perdente per Sette e Mezzo, garantita da _isLosingSetteEMezzoHand.
+export function _makeLosingSetteEMezzoCells(count, bancoTotal) {
+  const pool = ["5","6","7","A","2","3","4"];
+  for (let att = 0; att < 60; att++) {
+    const cells = Array.from({length: count}, () => _makePlayingCard(pick(pool)));
+    if (_isLosingSetteEMezzoHand(cells, bancoTotal)) return cells;
+  }
+  // Fallback deterministico: prima carta ≤ banco (quindi non si può stare),
+  // poi dei 7 che fanno sballare subito al secondo scoperto.
+  const firstRanks = CARD_RANKS.filter(r => CARD_VAL_MAP[r] <= bancoTotal && CARD_VAL_MAP[r] + 7 > 7.5);
+  const first = firstRanks.length > 0 ? pick(firstRanks) : "A";
+  const cells = [_makePlayingCard(first)];
+  while (cells.length < count) cells.push(_makePlayingCard("7"));
+  return cells;
+}
+
 export function generateCard(typeId, fortune=0, relicBonus=0, forceWin=false) {
   const type = CARD_TYPES.find(t => t.id === typeId) || CARD_TYPES[0];
   const totalCells = type.rows * type.cols;
@@ -107,9 +136,13 @@ export function generateCard(typeId, fortune=0, relicBonus=0, forceWin=false) {
         while (playerCells.length < playerCount) playerCells.push(_makePlayingCard("J"));
       }
     } else {
-      // Perdente: genera carte che sballano sicuramente (5/6/7 → somma sempre > 7.5 con 4 carte)
-      // Non usiamo J/Q/K/A perché potrebbero sommare ≤ banco e creare false vittorie con prize=0
-      playerCells = Array.from({length: playerCount}, () => _makePlayingCard(pick(["5","6","7"])));
+      // Perdente: NESSUN prefisso deve poter "stare" battendo il banco.
+      // Il vecchio pool 5/6/7 sballava solo sulla somma totale, ma la PRIMA carta
+      // (es. 7) supera già un banco basso: il giocatore poteva incassare in
+      // anticipo su una carta perdente (60% dei casi → RTP 221%).
+      // Ora si valida direttamente la proprietà: per ogni prefisso, o si è già
+      // sballato (>7.5) oppure non si è ancora superato il banco.
+      playerCells = _makeLosingSetteEMezzoCells(playerCount, bancoTotal);
     }
     const finalTotal = playerCells.reduce((s,c) => s+c.value, 0);
     prize = isWinner ? Math.max(type.cost*2, rollPrize()) : 0;
@@ -188,7 +221,11 @@ export function generateCard(typeId, fortune=0, relicBonus=0, forceWin=false) {
       for (let i = 0; i < totalCells; i++) symbols.push(available[i % available.length]);
       // Ripeti dedup finché nessun simbolo raggiunge matchNeeded
       // (le sostituzioni possono creare nuove combo accidentali)
-      let safe = false;
+      // Guardia matchNeeded >= 2: labirinto e mappaTesor0 hanno matchNeeded 0 e
+      // finivano in un loop degenere (`counts[s] >= 0` sempre vero finché il
+      // contatore non andava in negativo, con `symbols[-1] = ...` per giunta).
+      // Quelle carte hanno schermate dedicate e non usano queste celle.
+      let safe = type.matchNeeded < 2;
       let guard = 0;
       while (!safe && guard < 50) {
         safe = true;

@@ -7,7 +7,7 @@ import { AudioEngine, ParticleSystem } from "../audio.js";
 import { Haptics } from "../utils/haptics.js";
 
 // ─── SCRATCH CELL (canvas silver-layer drag-to-reveal) ──────
-export function ScratchCell({ cell, idx, onScratch, finished, isWinSymbol, isPartialMatch, ambidestri=false, bloodMode=false, isBloody=false, themeColor=null }) {
+export function ScratchCell({ cell, idx, onScratch, finished, isWinSymbol, isPartialMatch, ambidestri=false, bloodMode=false, isBloody=false, themeColor=null, blocked=false, onBlockedAttempt=null, fill=false }) {
   const canvasRef = useRef(null);
   const drawing = useRef(false);
   const revealed = useRef(cell.scratched);
@@ -89,6 +89,7 @@ export function ScratchCell({ cell, idx, onScratch, finished, isWinSymbol, isPar
   }, []);
 
   const doScratch = (e) => {
+    if (blocked) { onBlockedAttempt?.(); return; }
     if (finished || revealed.current || cell.scratched) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -144,7 +145,9 @@ export function ScratchCell({ cell, idx, onScratch, finished, isWinSymbol, isPar
 
   return (
     <div style={{
-      width:"100%", aspectRatio:"1.3", position:"relative",
+      // `fill` = la cella riempie la sua traccia di griglia (biglietto AI, dove il
+      // pannello di gioco ha una forma sua); altrimenti tiene l'aspetto 1.3 classico.
+      width:"100%", ...(fill ? {height:"100%"} : {aspectRatio:"1.3"}), position:"relative",
       border:`3px solid ${cell.scratched && isBloody ? "#ff2030" : (cell.scratched ? borderColor : unrevealedBorder)}`,
       borderRadius:"0", overflow:"hidden",
       background: cell.scratched ? bg : "#111",

@@ -1,4 +1,4 @@
-import { C, FONT } from "../data/theme.js";
+import { C, FONT, W } from "../data/theme.js";
 
 // ─── SHARED STYLES — CGA ARCADE PIXEL-ART ────────────────────
 export const S = {
@@ -21,7 +21,7 @@ export const S = {
     padding: "clamp(10px, 1.5vh, 18px) clamp(12px, 2vw, 28px)",
     margin: "4px clamp(8px, 2vw, 24px)",
     width: "calc(100% - clamp(16px, 4vw, 48px))",
-    maxWidth: "1100px",
+    maxWidth: W.content,
     boxShadow: `4px 4px 0 #000000, 0 0 20px ${C.cyan}14, inset 0 0 20px #00000066`,
   },
   // Bottone default — bordo 2px + pixel shadow
