@@ -22,4 +22,6 @@ yarn-error.log*
 .env.local
 
 # Claude Code local tooling (settings, session locks, launch config)
-.claude/
+.claude/*
+# ...tranne gli agenti, che fanno parte del progetto e viaggiano col repo
+!.claude/agents/
