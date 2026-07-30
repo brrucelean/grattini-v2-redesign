@@ -24,7 +24,7 @@ import { AudioEngine } from "./audio.js";
 import { clamp } from "./utils/random.js";
 import { Haptics } from "./utils/haptics.js";
 import { degradeNailObj, healNail, makeNailCursor, nailCursor } from "./utils/nail.js";
-import { generateCard } from "./utils/card.js";
+import { generateCard, generateIntroCards } from "./utils/card.js";
 import {
   generateMap,
   LABIRINTO_CELL_PRIZE, LABIRINTO_JACKPOT,
@@ -180,11 +180,7 @@ export default function Grattini() {
       items: [],
       grattatori: [], // { id, name, emoji, effect, usesLeft }
       equippedGrattatore: null,
-      scratchCards: [
-        {...generateCard("fortunaFlash"), owned: false},
-        {...generateCard("setteEMezzo"), owned: false},
-        {...generateCard("portaFortuna"), owned: false},
-      ],
+      scratchCards: generateIntroCards(3),
       fortune: 0,
       fortuneTurns: 0,
       smokesTotal: 0,

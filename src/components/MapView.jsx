@@ -14,7 +14,7 @@ import { useIsMobile } from "../hooks/useIsMobile.js";
 // Su desktop non c'è quel vincolo, quindi la riga si stringe fino a 62px per far
 // entrare l'intera run (11 righe) in una schermata senza scroll.
 const ROW_H_TOUCH = 88;
-const ROW_H_MIN_DESKTOP = 62;
+const ROW_H_MIN_DESKTOP = 72;
 const MAP_W_MOBILE = 780;    // larghezza max su telefono
 const MAP_W_DESKTOP = 1180;  // su Mac a schermo intero i nodi non restano ammassati al centro
 const DANGER_TYPES = new Set(["ladro","spacciatore","miniboss","poliziotto"]);
@@ -104,8 +104,34 @@ export function MapView({ map, currentRow, visitedNodes, onSelectNode, reachable
 
   // Nodi: dimensioni ottimizzate per iPhone 16 Pro touch target
   const maxNodesPerRow = map.rows.reduce((acc, r) => Math.max(acc, r.length), 1);
-  const NW = Math.min(isMobile ? 92 : 118, Math.max(64, Math.floor(W / Math.max(1, maxNodesPerRow)) - 10));
-  const NH = Math.round(NW * 0.72);
+  const NW = Math.min(isMobile ? 104 : 148, Math.max(64, Math.floor(W / Math.max(1, maxNodesPerRow)) - 10));
+  // L'altezza non può eccedere la riga, altrimenti i nodi si accavallano
+  // verticalmente (con NW 148 il nodo era alto 107px in righe da 62px).
+  // Si lascia anche uno stacco reale fra una riga e l'altra: a 12px di gap i
+  // nodi si toccavano e gli archi verticali sparivano sotto i riquadri.
+  const NH = Math.min(Math.round(NW * 0.72), ROW_H - 26);
+  // L'etichetta è in sovrimpressione sul bordo basso, non impilata sotto lo
+  // sprite: così il nodo resta compatto e l'emoji può prendersi tutta l'altezza.
+  const spriteSize = (isBoss) => Math.max(18, Math.round((NH - 6) * (isBoss ? 1 : 0.9)));
+
+  // Accorcia un arco fino al BORDO dei due nodi che collega.
+  // Va calcolata l'uscita dal rettangolo del nodo, non un accorciamento
+  // proporzionale sulla lunghezza: su una diagonale quest'ultimo lascia il capo
+  // alla quota giusta ma spostato in orizzontale, staccato dal riquadro.
+  const edgeExit = (dx, dy) => {
+    const sx = dx ? (NW / 2) / Math.abs(dx) : Infinity;
+    const sy = dy ? (NH / 2) / Math.abs(dy) : Infinity;
+    return Math.min(sx, sy); // il lato colpito per primo
+  };
+  const trimEdge = (a, b) => {
+    const dx = b.cx - a.cx, dy = b.cy - a.cy;
+    if (!dx && !dy) return [a, b];
+    const s = Math.min(edgeExit(dx, dy), 0.45); // mai oltre metà arco
+    return [
+      { cx: a.cx + dx * s, cy: a.cy + dy * s },
+      { cx: b.cx - dx * s, cy: b.cy - dy * s },
+    ];
+  };
 
   const nodePos = useMemo(() => {
     const pos = {};
@@ -415,11 +441,19 @@ export function MapView({ map, currentRow, visitedNodes, onSelectNode, reachable
                 <stop offset="0%"   stopColor={biomeColor} stopOpacity="0.06"/>
                 <stop offset="100%" stopColor={biomeColor} stopOpacity="0"/>
               </radialGradient>
-              <filter id="lineglow" x="-50%" y="-20%" width="200%" height="140%">
+              {/* Regione del filtro in userSpaceOnUse, non in percentuale.
+                  Le percentuali si riferiscono al bounding box dell'elemento: su
+                  un arco VERTICALE il bbox ha larghezza 0, quindi l'area del
+                  filtro risultava nulla e la linea spariva del tutto. Era il
+                  motivo per cui i collegamenti dritti (stessa colonna, tipo
+                  START → nodo centrale) non si vedevano mai. */}
+              <filter id="lineglow" filterUnits="userSpaceOnUse"
+                x={-24} y={-24} width={W + 48} height={totalH + 48}>
                 <feGaussianBlur stdDeviation="2" result="blur"/>
                 <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
               </filter>
-              <filter id="trailglow" x="-60%" y="-30%" width="220%" height="160%">
+              <filter id="trailglow" filterUnits="userSpaceOnUse"
+                x={-24} y={-24} width={W + 48} height={totalH + 48}>
                 <feGaussianBlur stdDeviation="3" result="blur"/>
                 <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
               </filter>
@@ -433,19 +467,28 @@ export function MapView({ map, currentRow, visitedNodes, onSelectNode, reachable
             style={{position:"absolute", top:0, left:0, width:W, height:totalH, pointerEvents:"none", overflow:"visible"}}
           >
             {edges.map(({ fromId, toId, isShortcut }) => {
-              const from = nodePos[fromId];
-              const to   = nodePos[toId];
-              if (!from || !to) return null;
+              const fromC = nodePos[fromId];
+              const toC   = nodePos[toId];
+              if (!fromC || !toC) return null;
+              // Gli archi partivano dal CENTRO dei nodi: su un collegamento
+              // verticale (stessa colonna) la linea restava quasi tutta sotto i
+              // due riquadri — con nodi alti 60px in righe da 72 ne avanzavano 12,
+              // che col tratteggio sparivano del tutto. Qui si accorcia l'arco
+              // fino al bordo dei nodi, così è sempre visibile per intero.
+              const [from, to] = trimEdge(fromC, toC);
               const fromVisited = visitedNodes.includes(fromId);
               const toReachable = reachableNodes.includes(toId);
               const isActive    = fromVisited && toReachable;
               const isPast      = fromVisited && visitedNodes.includes(toId);
 
+              // Arco non ancora percorribile: deve comunque LEGGERSI, altrimenti
+              // la struttura del percorso è invisibile e si vede solo il tratto
+              // attivo. Prima era opacità 0.10 con tratteggio "2 12", cioè nulla.
               if (!isActive && !isPast) return (
                 <line key={`${fromId}-${toId}`}
                   x1={from.cx} y1={from.cy} x2={to.cx} y2={to.cy}
-                  stroke="#aaaacc" strokeWidth="1" strokeOpacity="0.10"
-                  strokeDasharray="2 12" strokeLinecap="round"
+                  stroke="#8fa3c8" strokeWidth="1.5" strokeOpacity="0.34"
+                  strokeDasharray="3 6" strokeLinecap="round"
                 />
               );
 
@@ -640,26 +683,27 @@ export function MapView({ map, currentRow, visitedNodes, onSelectNode, reachable
                     display:"inline-flex", alignItems:"center", justifyContent:"center",
                   }}>
                     {!effectivelyHidden && !isSecret && hasAsset(`spr-${node.type}`)
-                      ? <Asset id={`spr-${node.type}`} emoji={icon} size={isBoss ? 34 : 26} />
+                      ? <Asset id={`spr-${node.type}`} emoji={icon} size={spriteSize(isBoss)} />
                       : icon}
                   </span>
 
-                  {/* Etichetta */}
+                  {/* Etichetta — in sovrimpressione sul bordo basso, su una velatura
+                      scura: lo sprite può così occupare tutta l'altezza del nodo. */}
                   <span style={{
+                    position:"absolute", left:0, right:0, bottom:0,
                     fontSize: FS.xs,
                     color: labelColor,
                     fontFamily:FONT, fontWeight:"bold",
-                    textAlign:"center", lineHeight:"1.15",
-                    width:`${NW - 6}px`,
-                    display:"-webkit-box",
-                    WebkitLineClamp:2,
-                    WebkitBoxOrient:"vertical",
+                    textAlign:"center", lineHeight:"1.3",
+                    padding:"1px 3px 2px",
+                    background:"linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.72) 45%, rgba(0,0,0,0.88) 100%)",
+                    whiteSpace:"nowrap",
                     overflow:"hidden",
-                    wordBreak:"break-word",
+                    textOverflow:"ellipsis",
                     WebkitTextSizeAdjust:"none",
                     textSizeAdjust:"none",
-                    textShadow: isActive && !visited ? `0 0 6px ${borderCol}` : "none",
-                    position:"relative", zIndex:1,
+                    textShadow: isActive && !visited ? `0 0 6px ${borderCol}, 0 1px 2px #000` : "0 1px 2px #000",
+                    zIndex:2,
                     letterSpacing:"0.3px",
                   }}>
                     {label.toUpperCase()}

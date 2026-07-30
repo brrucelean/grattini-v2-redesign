@@ -10,6 +10,7 @@ import { Btn } from "./Btn.jsx";
 import { ScratchCell } from "./ScratchCell.jsx";
 import { hasAsset, assetUrl } from "../assets/registry.js";
 import { ticketLayout, inset } from "../data/ticketLayout.js";
+import { TicketHeader } from "./TicketHeader.jsx";
 
 // ─── SCRATCH CARD COMPONENT (per-cell nail damage + early stop) ───
 export function ScratchCardView({ card, onDone, nailState, nailImplant=null, fortune, grattaMania, equippedGrattatore, onCellScratch, onNailDamage=null, onItemFound=null, showFirstWarning, ambidestri=false, onCardActivate=null, lastWonPrize=0, extraTiles=[], onExtraTileUsed=null, relicEffects=[], onAdviceShown=null, layoutOverride=null }) {
@@ -717,61 +718,9 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
   );
 
   // ── Header del biglietto (nome / costo / max) — overlay dentro il cartiglio ──
-  // Il rect viene da TICKET_LAYOUT: il testo si dimensiona sul contenitore
-  // (container query), così entra sia nei cartigli stretti sia nelle fasce larghe.
-  const headerRow = layout.header.dir === "row";
-  // Alone cromatico "da sala giochi": neon accento + sfrangiatura ciano/magenta.
-  const haloTitle = [
-    `0 0 6px ${accent}`, `0 0 14px ${accent}cc`, `0 0 26px ${accent}66`,
-    `-1.5px 0 6px ${C.cyan}88`, `1.5px 0 6px ${C.magenta}88`,
-    "0 2px 3px #000", "-1px -1px 0 #000", "1px 1px 0 #000",
-  ].join(", ");
-  const neonPill = (bg, label) => (
-    <span style={{
-      fontSize: "clamp(8px, min(3.4cqw, 30cqh), 13px)",
-      color: "#000", fontWeight: "bold", fontFamily: FONT,
-      background: bg, padding: "0.15em 0.6em", letterSpacing: "1px",
-      whiteSpace: "nowrap", lineHeight: 1.5,
-      border: `1px solid ${bg}`,
-      boxShadow: `0 0 8px ${bg}cc, 0 0 18px ${bg}55, 0 1px 2px #000`,
-    }}>{label}</span>
-  );
-
+  // Impaginazione condivisa con l'anteprima (TicketThumb): vedi TicketHeader.jsx
   const ticketHeaderOverlay = (
-    <div style={{
-      position: "absolute", inset: inset(layout.header), zIndex: 3,
-      containerType: "size",
-      display: "flex", pointerEvents: "none",
-      flexDirection: headerRow ? "row" : "column",
-      alignItems: "center",
-      justifyContent: headerRow ? "space-between" : "center",
-      gap: headerRow ? "2%" : "0.35em",
-    }}>
-      {/* Titolo — come un vero gratta e vinci, dentro al cartiglio dell'arte */}
-      <div style={{
-        color: "#fff", fontWeight: "bold",
-        fontSize: headerRow
-          ? "clamp(12px, min(6.5cqw, 62cqh), 30px)"
-          : "clamp(12px, min(9.5cqw, 46cqh), 30px)",
-        letterSpacing: "1.5px", lineHeight: 1.05,
-        WebkitTextStroke: `0.6px ${accent}`,
-        textShadow: haloTitle,
-        animation: "ticketNeon 3.2s ease-in-out infinite",
-        fontFamily: FONT, textAlign: "center",
-        maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-        textTransform: "uppercase",
-      }}>
-        {card.name}
-      </div>
-      {/* Badge costo / max — pill neon, mai sopra il titolo */}
-      <div style={{
-        display: "flex", gap: "0.5em", flexWrap: "nowrap",
-        justifyContent: "center", alignItems: "center",
-      }}>
-        {neonPill(C.gold, `COSTO €${card.cost}`)}
-        {neonPill(C.green, `MAX €${card.maxPrize}`)}
-      </div>
-    </div>
+    <TicketHeader card={card} accent={accent} layout={layout} />
   );
 
   return (

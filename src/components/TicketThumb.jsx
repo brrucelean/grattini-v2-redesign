@@ -1,7 +1,8 @@
-import { C, FONT } from "../data/theme.js";
+import { C } from "../data/theme.js";
 import { ticketLayout, inset } from "../data/ticketLayout.js";
 import { Asset } from "./Asset.jsx";
 import { hasAsset } from "../assets/registry.js";
+import { TicketHeader, TICKET_NEON_KEYFRAMES } from "./TicketHeader.jsx";
 
 // ─── TICKET THUMB ────────────────────────────────────────────
 // Anteprima statica di un biglietto, composta come in partita: l'arte PNG,
@@ -26,6 +27,15 @@ export function TicketThumb({ card, width = 190, style }) {
   const { cols, rows } = gridOf(card);
   const hasArt = hasAsset(`ticket-${card.id}`);
 
+  // Alcune carte (doppioOnulla, ruota) hanno insets NEGATIVI: in partita è voluto,
+  // il pannello da grattare deborda oltre il biglietto. In miniatura però le celle
+  // coprirebbero l'illustrazione, che è proprio la cosa da mostrare: qui il rect
+  // viene riportato dentro i bordi.
+  const playRect = Object.fromEntries(
+    Object.entries(layout.play).map(([k, v]) =>
+      [k, typeof v === "number" ? Math.max(v, 3) : v])
+  );
+
   const cells = (
     <div style={{
       width: "100%", height: "100%",
@@ -36,10 +46,11 @@ export function TicketThumb({ card, width = 190, style }) {
     }}>
       {Array(cols * rows).fill(0).map((_, i) => (
         <div key={i} style={{
-          background: "linear-gradient(160deg, #c8c8d4 0%, #8e8e9e 58%, #63636f 100%)",
-          border: "1px solid rgba(255,255,255,0.35)",
-          borderRadius: "2px",
-          boxShadow: "inset 0 2px 0 rgba(255,255,255,0.3), inset 0 -1px 0 rgba(0,0,0,0.35)",
+          // Stessa patina argento e stesso bordo-accento delle celle non grattate
+          // in partita (ScratchCell: unrevealedBorder = themeColor).
+          background: "linear-gradient(160deg, #e8e8e8 0%, #c0c0c0 70%, #9a9aa4 100%)",
+          border: `1px solid ${accent}`,
+          boxShadow: "inset 0 2px 0 rgba(255,255,255,0.35), inset 0 -1px 0 rgba(0,0,0,0.3)",
         }} />
       ))}
     </div>
@@ -61,27 +72,13 @@ export function TicketThumb({ card, width = 190, style }) {
         }} />
       )}
 
-      {/* Titolo dentro al cartiglio dell'arte */}
-      <div style={{
-        position: "absolute", inset: inset(layout.header), zIndex: 3,
-        containerType: "size",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        pointerEvents: "none",
-      }}>
-        <div style={{
-          color: "#fff", fontWeight: "bold", fontFamily: FONT,
-          fontSize: layout.header.dir === "row"
-            ? "clamp(6px, min(6.5cqw, 62cqh), 15px)"
-            : "clamp(6px, min(9.5cqw, 46cqh), 15px)",
-          letterSpacing: "0.5px", lineHeight: 1.05, textAlign: "center",
-          WebkitTextStroke: `0.4px ${accent}`,
-          textShadow: `0 0 5px ${accent}, 0 0 12px ${accent}99, 0 1px 2px #000`,
-        }}>{card.name}</div>
-      </div>
+      {/* Titolo: stesso componente del biglietto giocabile */}
+      <style>{TICKET_NEON_KEYFRAMES}</style>
+      <TicketHeader card={card} accent={accent} layout={layout} compact />
 
       {/* Area grattabile — stessa zona che in partita ospita le celle */}
       <div style={{
-        position: "absolute", inset: inset(layout.play), zIndex: 2,
+        position: "absolute", inset: inset(playRect), zIndex: 2,
         border: `1px solid ${accent}55`,
         boxShadow: `0 0 10px ${accent}44, inset 0 0 18px ${accent}22`,
         padding: "3%",

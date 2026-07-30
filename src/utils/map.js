@@ -4,19 +4,25 @@ import { roll, pick, shuffle, weightedPick } from "./random.js";
 
 // Generate map for a biome — layered graph with branching paths
 export function generateMap(biomeIdx = 0) {
-  // ── LAYER LAYOUT: 11 righe, più percorsi e variazione ──────────
+  // ── LAYER LAYOUT: 11 righe su una griglia a colonne fisse ──────
+  // Prima ogni riga aveva le sue X (0.08/0.27/0.47… vs 0.1/0.3/0.5…): i nodi
+  // non si allineavano mai in verticale e con 5 per riga la mappa risultava
+  // affollata. Ora ogni nodo cade su una delle 5 colonne qui sotto, quindi le
+  // righe si incolonnano, e il massimo per riga scende da 5 a 4 (38 → 29 nodi).
+  // Le righe restano 11: la lunghezza del bioma non cambia.
+  const L = 0.14, ML = 0.32, MID = 0.5, MR = 0.68, R = 0.86;
   const LAYER_XS = [
-    [0.5],                                         // row 0: start
-    [0.17, 0.5, 0.83],                            // row 1: 3-way split
-    [0.08, 0.3, 0.54, 0.76],                     // row 2: 4 nodi (3→4 espande)
-    [0.08, 0.27, 0.47, 0.67, 0.88],              // row 3: 5 nodi (4→5 espande, 3 scelte centro)
-    [0.1,  0.3,  0.5,  0.7,  0.9],              // row 4: 5 nodi (5→5)
-    [0.08, 0.27, 0.47, 0.67, 0.88],              // row 5: 5 nodi (5→5)
-    [0.1,  0.3,  0.5,  0.7,  0.9],              // row 6: 5 nodi (5→5)
-    [0.08, 0.3,  0.54, 0.76],                    // row 7: 4 nodi (5→4 inizia convergenza)
-    [0.22, 0.5,  0.78],                           // row 8: 3 nodi (4→3)
-    [0.35, 0.65],                                 // row 9: 2 nodi pre-boss
-    [0.5],                                         // row 10: boss
+    [MID],                  // row 0: start
+    [L, MID, R],            // row 1: 3-way split
+    [L, MID, R],            // row 2
+    [L, ML, MR, R],         // row 3: si allarga
+    [L, MID, R],            // row 4
+    [L, ML, MR, R],         // row 5
+    [L, MID, R],            // row 6
+    [L, ML, MR, R],         // row 7
+    [L, MID, R],            // row 8: inizia la convergenza
+    [ML, MR],               // row 9: 2 nodi pre-boss
+    [MID],                  // row 10: boss
   ];
 
   // Tipi per zona X: sinistra=pericolo, destra=sicuro, centro=bilanciato.

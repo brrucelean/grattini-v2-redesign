@@ -77,6 +77,32 @@ export function _makeLosingSetteEMezzoCells(count, bancoTotal) {
   return cells;
 }
 
+// ─── BIGLIETTI INIZIALI (Nonno Carmelo) ──────────────────────
+// I 3 grattini d'apertura sono pescati a caso tra tutti quelli giocabili
+// nell'overlay di grattata, non più fissi (fortunaFlash/setteEMezzo/portaFortuna).
+//
+// Due esclusioni, entrambe perché l'intro imposta `scratchingCard` direttamente
+// senza passare da handleSelectCard:
+//  • labirinto/combina/tesoro hanno schermate dedicate e ScratchCardView non le
+//    implementa: finirebbero nel ramo "match" generico con matchNeeded 0,
+//    cioè vincita immediata alla prima cella scoperta;
+//  • requiresGrattatore (jackpotMix) va grattata solo con un attrezzo, e a inizio
+//    partita non ne hai: il controllo che lo impone vive in handleSelectCard.
+const INTRO_EXCLUDED_MECHANICS = new Set(["labirinto", "combina", "tesoro"]);
+
+export function introCardPool() {
+  return CARD_TYPES.filter(t =>
+    !INTRO_EXCLUDED_MECHANICS.has(t.mechanic) && !t.requiresGrattatore
+  );
+}
+
+// N biglietti distinti, pescati a caso dal pool.
+export function generateIntroCards(count = 3, fortune = 0) {
+  return shuffle(introCardPool())
+    .slice(0, count)
+    .map(t => ({ ...generateCard(t.id, fortune), owned: false }));
+}
+
 export function generateCard(typeId, fortune=0, relicBonus=0, forceWin=false) {
   const type = CARD_TYPES.find(t => t.id === typeId) || CARD_TYPES[0];
   const totalCells = type.rows * type.cols;
