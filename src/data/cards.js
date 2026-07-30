@@ -34,14 +34,19 @@ export const CARD_SYMBOLS = {
 };
 
 export const CARD_TYPES = [
-  { id:"fortunaFlash",    name:"Il Poveraccio",       emoji:"🪙", cost:0.5, rows:2, cols:3, matchNeeded:2, maxPrize:3,
+  { id:"fortunaFlash",    name:"Il Poveraccio",       emoji:"🪙", cost:0.5, rows:2, cols:3, matchNeeded:2, maxPrize:2,
     malus:null, desc:"Cosa pensi di vincere con €0,50? Trova 2 simboli uguali.", tier:1, mechanic:"match",
     theme:{ border:"#44bb44", bg:"#0a130a" } },
   { id:"setteEMezzo",     name:"Sette e Mezzo",        emoji:"🃏", cost:1,   rows:2, cols:4, matchNeeded:3, maxPrize:5,
     malus:null, desc:"Batti il Banco senza sballare — figure valgono ½", tier:1, mechanic:"setteemezzo",
     theme:{ border:"#ccaa00", bg:"#131000" } },
-  { id:"portaFortuna",    name:"Porta Sfortuna",       emoji:"🐈‍⬛", cost:2,   rows:3, cols:3, matchNeeded:3, maxPrize:11,
-    malus:null, desc:"Trova 3 simboli — c'è un JOLLY ✨ nascosto (se ti va bene, che raramente va)", tier:2, mechanic:"jolly",
+  // matchNeeded 4, non 3: con 3 su una griglia 3×3 e il JOLLY che vale come
+  // qualsiasi simbolo, una coppia esiste sempre → coppia + jolly = 3 = vincita,
+  // e la carta pagava il 100% delle volte (RTP 237%). A 4 serve un tris + jolly:
+  // paga nel 30% dei casi, RTP 98%. Stessa meccanica di turistaPerSempre, che
+  // infatti era già in bersaglio proprio perché ha matchNeeded 4.
+  { id:"portaFortuna",    name:"Porta Sfortuna",       emoji:"🐈‍⬛", cost:2,   rows:3, cols:3, matchNeeded:4, maxPrize:11,
+    malus:null, desc:"Trova 4 simboli — c'è un JOLLY ✨ nascosto (se ti va bene, che raramente va)", tier:2, mechanic:"jolly",
     theme:{ border:"#00bb55", bg:"#0a1510" } },
   { id:"fintoMilionario", name:"Il Finto Milionario",  emoji:"💵", cost:5,   rows:3, cols:3, matchNeeded:3, maxPrize:35,
     malus:{ type:"payExtra", amount:5, desc:"Se perdi, paghi altri €5!" }, desc:"Trova 3 simboli uguali", tier:2, mechanic:"match",
@@ -104,7 +109,11 @@ export const CARD_TYPES = [
 // ma raggiungere/mantenere F5 richiede eventi rari + reliquie + cedola — è una "lucky window"
 // temporanea, non lo stato normale.
 export const CARD_BALANCE = {
-  fortunaFlash:    { winChance: 0.32, evTarget:  0.00, prizeMin: 1,   prizeMax: 3,    tier: 1 },
+  // prizeMax 2, non 3: su una carta da €0,50 il premio minimo generabile (€1) è
+  // già il doppio del costo, e con premio medio €2 l'RTP era 128% — farming
+  // lento ma illimitato sulla carta più economica. Con 1-2 la media scende a
+  // €1,50 → RTP 96%, senza toccare la winChance (il 32% di hit rate è voluto).
+  fortunaFlash:    { winChance: 0.32, evTarget:  0.00, prizeMin: 1,   prizeMax: 2,    tier: 1 },
   setteEMezzo:     { winChance: 0.34, evTarget:  0.00, prizeMin: 2,   prizeMax: 4,    tier: 1 },
   portaFortuna:    { winChance: 0.30, evTarget: -0.03, prizeMin: 4,   prizeMax: 9,    tier: 2 },
   fintoMilionario: { winChance: 0.26, evTarget: -0.05, prizeMin: 10,  prizeMax: 28,   tier: 2 },

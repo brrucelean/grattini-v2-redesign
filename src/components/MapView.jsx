@@ -14,7 +14,11 @@ import { useIsMobile } from "../hooks/useIsMobile.js";
 // Su desktop non c'è quel vincolo, quindi la riga si stringe fino a 62px per far
 // entrare l'intera run (11 righe) in una schermata senza scroll.
 const ROW_H_TOUCH = 88;
-const ROW_H_MIN_DESKTOP = 72;
+const ROW_H_MIN_DESKTOP = 64;
+// Ingombro di HUD, intestazione bioma e legenda attorno all'area scrollabile.
+// Misurato sul DOM: 220px. Era stimato 250 — 30px buttati che impedivano
+// all'ultima riga di entrare a schermo intero.
+const MAP_CHROME_H = 230;
 const MAP_W_MOBILE = 780;    // larghezza max su telefono
 const MAP_W_DESKTOP = 1180;  // su Mac a schermo intero i nodi non restano ammassati al centro
 const DANGER_TYPES = new Set(["ladro","spacciatore","miniboss","poliziotto"]);
@@ -37,7 +41,7 @@ export function MapView({ map, currentRow, visitedNodes, onSelectNode, reachable
   const ROW_H = useMemo(() => {
     if (isMobile) return ROW_H_TOUCH;
     const rows = map.rows.length || 1;
-    const avail = Math.max(320, vh - 250);
+    const avail = Math.max(320, vh - MAP_CHROME_H);
     return Math.round(Math.min(ROW_H_TOUCH, Math.max(ROW_H_MIN_DESKTOP, avail / rows)));
   }, [isMobile, vh, map.rows.length]);
 

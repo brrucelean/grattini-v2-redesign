@@ -40,7 +40,6 @@ if (import.meta.env?.DEV && typeof window !== "undefined") {
 // Generate a scratch card instance
 // Helper: two pairs of numbers that sum to 13, plus low-value fillers
 export function _sum13WinnerNums(totalCells) {
-  const pairs = [[4,9],[5,8],[6,7],[3,10],[2,11]].filter(p => p[1] <= 9);
   const validPairs = [[4,9],[5,8],[6,7]];
   const p1 = pick(validPairs);
   const p2 = pick(validPairs.filter(p => p[0] !== p1[0]));
@@ -195,7 +194,6 @@ export function generateCard(typeId, fortune=0, relicBonus=0, forceWin=false) {
       // sballato (>7.5) oppure non si è ancora superato il banco.
       playerCells = _makeLosingSetteEMezzoCells(playerCount, bancoTotal);
     }
-    const finalTotal = playerCells.reduce((s,c) => s+c.value, 0);
     prize = isWinner ? Math.max(type.cost*2, rollPrize()) : 0;
     cells = playerCells.map(c => ({...c, scratched:false}));
     return { ...type, isWinner, prize, cells, symbols:cells.map(c=>c.symbol), scratchCount:0, bancoCards, bancoTotal };

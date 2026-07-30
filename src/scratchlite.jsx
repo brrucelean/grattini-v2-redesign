@@ -33,7 +33,6 @@ import {
 } from "./utils/map.js";
 
 import { S } from "./utils/styles.js";
-// uiZoom reserved for future use
 import { Tooltip } from "./components/Tooltip.jsx";
 import { Btn } from "./components/Btn.jsx";
 import { Asset } from "./components/Asset.jsx";
