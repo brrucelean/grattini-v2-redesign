@@ -96,11 +96,36 @@ export function introCardPool() {
   );
 }
 
-// N biglietti distinti, pescati a caso dal pool.
+// Pesi per tier del pescaggio iniziale.
+// A pool uniforme il premio intascabile medio era €70, e con €70 il primo
+// tabaccaio ti apre già 16 carte su 17 e tutti i grattatori: non resta niente
+// da desiderare. A questi pesi la media scende a €29 (12 carte su 17: devi
+// scegliere) e le partenze sopra €200 passano dal 10,6% al 2,9%.
+//   • tier 4 escluso — Tredici e Maledetto sono le carte-obiettivo, e sono loro
+//     a produrre la coda da €1400: regalarne una al minuto zero brucia sia la
+//     scoperta sia l'economia;
+//   • tier 3 raro — è il "oh, è uscita la Bocca del Drago" che rende
+//     interessante il pescaggio casuale, ma come eccezione, non come normalità.
+export const INTRO_TIER_WEIGHTS = { 1: 4, 2: 3, 3: 1, 4: 0 };
+
+const introTierWeight = (t) =>
+  INTRO_TIER_WEIGHTS[CARD_BALANCE[t.id]?.tier ?? t.tier] ?? 0;
+
+// N biglietti distinti, pescati dal pool con i pesi per tier.
 export function generateIntroCards(count = 3, fortune = 0) {
-  return shuffle(introCardPool())
-    .slice(0, count)
-    .map(t => ({ ...generateCard(t.id, fortune), owned: false }));
+  const remaining = introCardPool().filter(t => introTierWeight(t) > 0);
+  const picked = [];
+  while (picked.length < count && remaining.length > 0) {
+    const total = remaining.reduce((s, t) => s + introTierWeight(t), 0);
+    let r = rng() * total;
+    let idx = remaining.length - 1;
+    for (let i = 0; i < remaining.length; i++) {
+      r -= introTierWeight(remaining[i]);
+      if (r <= 0) { idx = i; break; }
+    }
+    picked.push(remaining.splice(idx, 1)[0]); // estratto: niente doppioni
+  }
+  return picked.map(t => ({ ...generateCard(t.id, fortune), owned: false }));
 }
 
 export function generateCard(typeId, fortune=0, relicBonus=0, forceWin=false) {
