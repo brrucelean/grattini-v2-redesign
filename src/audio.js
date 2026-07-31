@@ -14,6 +14,24 @@ export const AudioEngine = (() => {
     return ctx;
   };
 
+  // Pool di buffer di rumore per lo scratch — generato una sola volta invece di
+  // riempire ~3500 campioni con Math.random() ad ogni singolo mousemove/touchmove
+  // (misurato: 205 GainNode + 12 AudioBuffer creati in 4s di scratch continuo).
+  let scratchBufferPool = null;
+  const getScratchBuffer = () => {
+    const ac = getCtx();
+    if (!scratchBufferPool || scratchBufferPool.length === 0 || scratchBufferPool[0].sampleRate !== ac.sampleRate) {
+      const bufSize = Math.floor(ac.sampleRate * 0.08);
+      scratchBufferPool = Array.from({ length: 6 }, () => {
+        const buf = ac.createBuffer(1, bufSize, ac.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < bufSize; i++) data[i] = (Math.random()*2-1) * 0.25;
+        return buf;
+      });
+    }
+    return scratchBufferPool[Math.floor(Math.random() * scratchBufferPool.length)];
+  };
+
   // Tutti i suoni passano per questo nodo — cambiare gain = volume immediato
   const getMaster = () => {
     const ac = getCtx();
@@ -73,12 +91,8 @@ export const AudioEngine = (() => {
       if (masterVolume === 0) return;
       try {
         const ac = getCtx();
-        const bufSize = Math.floor(ac.sampleRate * 0.08);
-        const buf = ac.createBuffer(1, bufSize, ac.sampleRate);
-        const data = buf.getChannelData(0);
-        for (let i = 0; i < bufSize; i++) data[i] = (Math.random()*2-1) * 0.25;
         const src = ac.createBufferSource();
-        src.buffer = buf;
+        src.buffer = getScratchBuffer();
         const filt = ac.createBiquadFilter();
         filt.type = "bandpass"; filt.frequency.value = 2500 + Math.random()*2000; filt.Q.value = 0.5;
         const gain = ac.createGain(); gain.gain.value = 0.4;
@@ -367,6 +381,7 @@ export const ParticleSystem = (() => {
   };
 
   const BLOOD_COLORS = ["#ff0000","#cc0000","#8b0000","#ff2222","#dd0011","#aa0000","#ff4444"];
+  const MAX_PARTICLES = 300; // cap — con scratch molto rapido su più celle l'array cresceva senza limite
   return {
     spawn(x, y, count = 10, bloodMode = false) {
       init();
@@ -388,6 +403,11 @@ export const ParticleSystem = (() => {
           h: rect ? Math.random() * 3 + 1 : 0,
           r: rect ? 0 : Math.random() * 2 + 1,
         });
+      }
+      // Le più vecchie sono anche le più sbiadite (alpha più basso) — rimuoverle
+      // per prime è il taglio meno visibile.
+      if (particles.length > MAX_PARTICLES) {
+        particles.splice(0, particles.length - MAX_PARTICLES);
       }
       if (!animId) animId = requestAnimationFrame(tick);
     },

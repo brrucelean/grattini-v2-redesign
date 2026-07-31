@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, memo } from "react";
 import { C } from "../data/theme.js";
 import { BIOME_PALETTE } from "../data/biomes.js";
 import { AudioEngine } from "../audio.js";
@@ -37,7 +37,7 @@ function StatusChip({ color, children, danger = false, active = false, onClick, 
   );
 }
 
-export function HUD({ player, onOpenInventory, inventoryOpen = false, moneyBling = 0, currentBiome = 0 }) {
+function HUDImpl({ player, onOpenInventory, inventoryOpen = false, moneyBling = 0, currentBiome = 0 }) {
   const bioPal = BIOME_PALETTE[currentBiome] || BIOME_PALETTE[0];
   const aliveNails = player.nails.filter(n => n.state !== "morta").length;
   const [vol, setVol] = useState(AudioEngine.getVolume());
@@ -353,3 +353,5 @@ export function HUD({ player, onOpenInventory, inventoryOpen = false, moneyBling
     </div>
   );
 }
+
+export const HUD = memo(HUDImpl);

@@ -43,9 +43,7 @@ import { assetUrl } from "./assets/registry.js";
 import { CarmeloLogBox, CarmeloScratchStrip } from "./components/DialogueBox.jsx";
 import { NewsTicker, NpcCommentStrip } from "./components/NewsTicker.jsx";
 import { HUD } from "./components/HUD.jsx";
-import { LogPanel, LogSidebar } from "./components/LogPanel.jsx";
 import { NailSidebar } from "./components/NailSidebar.jsx";
-import { InventorySidebar } from "./components/InventorySidebar.jsx";
 // ScratchCell usato solo dentro ScratchCardView — non serve importarlo qui
 import { CARD_VARIANTS } from "./utils/combat.js";
 import { STORAGE_KEYS, getStored, setStored, removeStored } from "./utils/storage.js";
@@ -80,6 +78,9 @@ function LazyFallback() {
 
 // ─── UTILITY FUNCTIONS ───────────────────────────────────────
 const hasRelic = (player, effectId) => player?.relics?.some(r => r.effect === effectId);
+// Riferimento stabile per il fallback "nessun grattatore" — `player.grattatori || []`
+// creava un nuovo array (nuova identità) ad ogni render, vanificando il memo su NailSidebar.
+const EMPTY_GRATTATORI = [];
 
 
 
@@ -299,6 +300,9 @@ export default function Grattini() {
     handleSaveSmoke,
     useItem,
   } = useItemHandlers({ player, updatePlayer, addLog });
+  // Riferimento stabile per HUD (memoizzato) — un'arrow function inline nel JSX
+  // sarebbe una nuova identità ad ogni render, vanificando il memo.
+  const toggleInventoryPanel = useCallback(() => setShowInventoryPanel(v => !v), [setShowInventoryPanel]);
 
   // ─── HOOK: useShopHandlers ───
   const { handleBuyCard, handleBuyItem, handleBuyGrattatore, handleSlotResult, handleShopScratch } = useShopHandlers({
@@ -342,24 +346,26 @@ export default function Grattini() {
   useSpacebarShortcut({ screen, startGame, handlePreScratch, enterNode, preScratchCount, player, setScreen });
 
   // ─── GRATTATORE EQUIP/UNEQUIP ─────────────────────────────
-  const equipGrattatore = (idx) => {
+  // useCallback: riferimento stabile finché `player` non cambia davvero, altrimenti
+  // il memo su NailSidebar (che riceve questa funzione come prop) non serve a nulla.
+  const equipGrattatore = useCallback((idx) => {
     updatePlayer(p => {
       const g = p.grattatori[idx];
       return {...p, equippedGrattatore: {...g, inventoryIdx: idx}};
     });
     addLog(`Grattatore equipaggiato: ${player.grattatori[idx]?.name}`, C.cyan);
-  };
+  }, [player, updatePlayer, addLog]);
 
   const unequipGrattatore = () => {
     updatePlayer(p => ({...p, equippedGrattatore: null}));
   };
 
   // ─── NAIL SELECT ──────────────────────────────────────────
-  const handleSelectNail = (i) => {
+  const handleSelectNail = useCallback((i) => {
     if (scratchingCard) return; // locked during scratch
     updatePlayer(p => ({...p, activeNail: i}));
     addLog(`Unghia ${i+1} selezionata come attiva.`, C.cyan);
-  };
+  }, [scratchingCard, updatePlayer, addLog]);
 
   // ─── GET REACHABLE NODES ───────────────────────────────────
   const getReachableNodes = () => {
@@ -820,7 +826,7 @@ export default function Grattini() {
       {/* ── HUD PERSISTENTE (tutte le screen tranne title e tutorial) ── */}
       {player && !["title","tutorialNails"].includes(screen) && (
         <div style={{width:"100%", flexShrink:0, paddingTop:"6px"}}>
-          <HUD player={player} onOpenInventory={() => setShowInventoryPanel(v => !v)} inventoryOpen={showInventoryPanel} moneyBling={moneyBling} currentBiome={currentBiome} />
+          <HUD player={player} onOpenInventory={toggleInventoryPanel} inventoryOpen={showInventoryPanel} moneyBling={moneyBling} currentBiome={currentBiome} />
         </div>
       )}
 
@@ -845,7 +851,7 @@ export default function Grattini() {
           padding:"8px 6px",
           transition:"border-color 0.6s, background 0.6s",
         }}>
-          <NailSidebar nails={player.nails} activeNail={player.activeNail} onSelectNail={handleSelectNail} locked={!!scratchingCard} grattatori={player.grattatori||[]} equippedGrattatore={player.equippedGrattatore} onEquipGrattatore={equipGrattatore} horizontal={isMobile} />
+          <NailSidebar nails={player.nails} activeNail={player.activeNail} onSelectNail={handleSelectNail} locked={!!scratchingCard} grattatori={player.grattatori || EMPTY_GRATTATORI} equippedGrattatore={player.equippedGrattatore} onEquipGrattatore={equipGrattatore} horizontal={isMobile} />
         </div>
       )}
 

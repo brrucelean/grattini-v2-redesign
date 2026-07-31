@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, memo } from "react";
 import { C, FONT } from "../data/theme.js";
 import { NAIL_INFO, NAIL_ORDER } from "../data/nails.js";
 import { GRATTATORE_DEFS, ALL_IMPLANTS_META, CHIRURGO_IMPLANT_IDS } from "../data/items.js";
@@ -14,7 +14,7 @@ const CHIRURGO_SLOTS = {
   oro:      { max: 5, color: "#ffd700", label: "ORO" },
 };
 
-export function NailSidebar({ nails, activeNail, onSelectNail, locked=false, grattatori=[], equippedGrattatore=null, onEquipGrattatore=null, horizontal=false }) {
+function NailSidebarImpl({ nails, activeNail, onSelectNail, locked=false, grattatori=[], equippedGrattatore=null, onEquipGrattatore=null, horizontal=false }) {
   // Alive tiers in order worst→best (excluding morta)
   const TIER_ORDER = ["marcia","sanguinante","graffiata","sana","kawaii"];
   const TIER_COLORS = { marcia:C.red, sanguinante:C.orange, graffiata:C.gold, sana:C.green, kawaii:C.pink };
@@ -345,3 +345,5 @@ export function NailSidebar({ nails, activeNail, onSelectNail, locked=false, gra
     </div>
   );
 }
+
+export const NailSidebar = memo(NailSidebarImpl);

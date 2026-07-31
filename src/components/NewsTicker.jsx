@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, memo } from "react";
 import { C, FONT } from "../data/theme.js";
 import { TICKER_COLORS, TICKER_LABELS, getNewsPool } from "../data/art.js";
 
-export function NewsTicker({ currentBiome = 0 }) {
+function NewsTickerImpl({ currentBiome = 0 }) {
   // Pool notizie = globali + quelle del bioma corrente (ricomputate al cambio bioma)
   const pool = useMemo(() => getNewsPool(currentBiome), [currentBiome]);
   const [idx, setIdx] = useState(() => Math.floor(Math.random() * pool.length));
@@ -98,3 +98,5 @@ export function NpcCommentStrip({ comment, commentKey }) {
     </div>
   );
 }
+
+export const NewsTicker = memo(NewsTickerImpl);
