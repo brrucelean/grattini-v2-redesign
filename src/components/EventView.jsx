@@ -19,13 +19,13 @@ const NPC_CAT = {
   mendicante: { label:"MERCANTE",   icon:"🧿",  color:"#aa88ff", danger:0 },
   chirurgo:   { label:"CHIRURGO",   icon:"💉",  color:"#00cccc", danger:1 },
   macellaio:  { label:"CHIRURGO",   icon:"🔪",  color:"#ff6600", danger:2 },
-  anziana:    { label:"GUARITRICE", icon:"✨",  color:"#cc99ff", danger:0 },
+  anziana:    { label:"GUARITRICE", icon:"✨",  color:"#ff9ec4", danger:0 },
   sacerdote:  { label:"SACERDOTE",  icon:"⛪",  color:"#ffdd66", danger:0 },
-  stregone:   { label:"STREGONE",   icon:"🧙",  color:"#9966ff", danger:1 },
+  stregone:   { label:"STREGONE",   icon:"🧙",  color:"#4aa8ff", danger:1 },
   maestroTe:  { label:"MAESTRO",    icon:"🍵",  color:"#66dd88", danger:0 },
   streamer:   { label:"STREAMER",   icon:"📱",  color:"#ff44aa", danger:0 },
   guantaio:   { label:"ARTIGIANO",  icon:"🧤",  color:"#88ccff", danger:0 },
-  evento:     { label:"EVENTO",     icon:"✦",   color:"#cc99ff", danger:0 },
+  evento:     { label:"EVENTO",     icon:"✦",   color:"#ff9ec4", danger:0 },
   zaino:      { label:"OGGETTO",    icon:"🎒",  color:"#888899", danger:0 },
 };
 
@@ -45,7 +45,7 @@ function actionMeta(action, label) {
   if (a.includes("buy") || a.includes("Buy")
     || a.includes("compra") || a.includes("pagaMulta")
     || a.includes("te") || l.includes("€"))    return { icon:"💰",  badge:"ACQUISTO",    col:"#ffcc00" };
-  if (a.includes("accept") || a.includes("porgi") || a.includes("tocca")) return { icon:"🎲", badge:"RISCHIO", col:"#cc99ff" };
+  if (a.includes("accept") || a.includes("porgi") || a.includes("tocca")) return { icon:"🎲", badge:"RISCHIO", col:"#ff9ec4" };
   if (a.includes("swap") || a.includes("Swap")) return { icon:"🔄", badge:"SCAMBIA",     col:"#88ccff" };
   if (a.includes("vendi") || a.includes("Vendi")) return { icon:"💸", badge:"VENDI",      col:"#66dd88" };
   if (a.includes("silentBypass"))              return { icon:"🎸",  badge:"SPECIALE",    col:"#ff44aa" };

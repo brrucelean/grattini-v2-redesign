@@ -88,7 +88,7 @@ export const IMPLANT_VISUALS = {
   neonato:   { emoji:"👶", color:"#ffc0cb", glow:"0 0 8px #ffc0cb88", bg:"linear-gradient(145deg,#2a1016 0%,#55202c 50%,#2a1016 100%)" },
   marcione:  { emoji:"🧟", color:"#6b8e23", glow:"0 0 8px #6b8e2388, inset 0 0 8px #44551144", bg:"linear-gradient(145deg,#111808 0%,#223010 50%,#111808 100%)" },
   velenosa:  { emoji:"☠️", color:"#88ff44", glow:"0 0 10px #88ff4488, inset 0 0 8px #449922", bg:"linear-gradient(145deg,#0a1f08 0%,#15401a 50%,#0a1f08 100%)" },
-  parassita: { emoji:"🪱", color:"#bb77ff", glow:"0 0 10px #bb77ff88, inset 0 0 8px #7744cc55", bg:"linear-gradient(145deg,#1a0a22 0%,#33144a 50%,#1a0a22 100%)" },
+  parassita: { emoji:"🪱", color:"#ff6fae", glow:"0 0 10px #ff6fae88, inset 0 0 8px #cc447755", bg:"linear-gradient(145deg,#220a16 0%,#4a1430 50%,#220a16 100%)" },
 };
 
 // Emoji default per stato "base" (quando non c'è impianto)

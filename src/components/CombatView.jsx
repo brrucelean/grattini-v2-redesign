@@ -8,6 +8,7 @@ import { roll, pick } from "../utils/random.js";
 import { makeNailCursor, nailCursor } from "../utils/nail.js";
 import { generateCombatHand, generateCombatCard, CARD_VARIANTS } from "../utils/combat.js";
 import { SPR_BIG } from "../data/art.js";
+import { BOSS_SPRITE } from "../data/biomes.js";
 import { AudioEngine, ParticleSystem } from "../audio.js";
 import { hasRelic } from "../utils/hasRelic.js";
 import { Btn } from "./Btn.jsx";
@@ -21,10 +22,13 @@ const CAT_SHORT = { COMBATTIMENTO: "ATTACCO", DIFESA: "DIFESA", DENARO: "DENARO"
 // Sprite ASCII del nemico (schermo "mostro" sopra le barre — come da bozza)
 function enemySpriteKey(enemy) {
   const n = enemy?.name;
-  if (n === "Il Drago d'Oro") return "drago";
   if (n === "Ladro" || n === "Ladro Nascosto") return "ladro";
   if (n === "Poliziotto") return "poliziotto";
   if (n === "Spacciatore") return "spacciatore";
+  // Ogni boss il suo sprite; se l'arte dedicata non c'è ancora si ricade
+  // sul generico invece di mostrare un'immagine mancante.
+  const bossKey = BOSS_SPRITE[n];
+  if (bossKey) return hasAsset(`spr-${bossKey}`) ? bossKey : "boss";
   if (enemy?.isBoss) return "boss";
   return "miniboss";
 }

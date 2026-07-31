@@ -3,7 +3,7 @@ import { C, FONT, FS } from "../data/theme.js";
 import { NODE_ICONS, NODE_TOOLTIPS } from "../data/map.js";
 import { Asset } from "./Asset.jsx";
 import { hasAsset } from "../assets/registry.js";
-import { BIOMES, BIOME_MODIFIERS } from "../data/biomes.js";
+import { BIOMES, BIOME_MODIFIERS, BOSS_SPRITE } from "../data/biomes.js";
 import { Tooltip } from "./Tooltip.jsx";
 import { AudioEngine } from "../audio.js";
 import { Haptics } from "../utils/haptics.js";
@@ -14,11 +14,11 @@ import { useIsMobile } from "../hooks/useIsMobile.js";
 // Su desktop non c'è quel vincolo, quindi la riga si stringe fino a 62px per far
 // entrare l'intera run (11 righe) in una schermata senza scroll.
 const ROW_H_TOUCH = 88;
-const ROW_H_MIN_DESKTOP = 64;
+const ROW_H_MIN_DESKTOP = 58;
 // Ingombro di HUD, intestazione bioma e legenda attorno all'area scrollabile.
 // Misurato sul DOM: 220px. Era stimato 250 — 30px buttati che impedivano
 // all'ultima riga di entrare a schermo intero.
-const MAP_CHROME_H = 230;
+const MAP_CHROME_H = 240;
 const MAP_W_MOBILE = 780;    // larghezza max su telefono
 const MAP_W_DESKTOP = 1180;  // su Mac a schermo intero i nodi non restano ammassati al centro
 const DANGER_TYPES = new Set(["ladro","spacciatore","miniboss","poliziotto"]);
@@ -28,7 +28,7 @@ const LEGEND = [
   { col:"#ff4444", label:"PERICOLO" },
   { col:"#ffdd00", label:"NEUTRO"   },
   { col:"#44dd88", label:"SICURO"   },
-  { col:"#cc99ff", label:"SEGRETO"  },
+  { col:"#ff9ec4", label:"SEGRETO"  },
   { col:"#ff6600", label:"ELITE"    },
 ];
 
@@ -108,12 +108,12 @@ export function MapView({ map, currentRow, visitedNodes, onSelectNode, reachable
 
   // Nodi: dimensioni ottimizzate per iPhone 16 Pro touch target
   const maxNodesPerRow = map.rows.reduce((acc, r) => Math.max(acc, r.length), 1);
-  const NW = Math.min(isMobile ? 104 : 148, Math.max(64, Math.floor(W / Math.max(1, maxNodesPerRow)) - 10));
+  const NW = Math.min(isMobile ? 104 : 110, Math.max(64, Math.floor(W / Math.max(1, maxNodesPerRow)) - 10));
   // L'altezza non può eccedere la riga, altrimenti i nodi si accavallano
   // verticalmente (con NW 148 il nodo era alto 107px in righe da 62px).
   // Si lascia anche uno stacco reale fra una riga e l'altra: a 12px di gap i
   // nodi si toccavano e gli archi verticali sparivano sotto i riquadri.
-  const NH = Math.min(Math.round(NW * 0.72), ROW_H - 26);
+  const NH = Math.min(Math.round(NW * 0.86), ROW_H - 18);
   // L'etichetta è in sovrimpressione sul bordo basso, non impilata sotto lo
   // sprite: così il nodo resta compatto e l'emoji può prendersi tutta l'altezza.
   const spriteSize = (isBoss) => Math.max(18, Math.round((NH - 6) * (isBoss ? 1 : 0.9)));
@@ -555,7 +555,7 @@ export function MapView({ map, currentRow, visitedNodes, onSelectNode, reachable
             const borderCol = visited             ? "#2a2016"
               : isBoss                            ? "#ff2244"
               : isElite                           ? C.orange
-              : isActive && secretUnlocked        ? "#cc99ff"
+              : isActive && secretUnlocked        ? "#ff9ec4"
               : isActive && dangerNode            ? "#ff4444"
               : isActive && safeNode              ? "#44dd88"
               : isActive                          ? C.gold
@@ -578,7 +578,7 @@ export function MapView({ map, currentRow, visitedNodes, onSelectNode, reachable
                   : isElite
                     ? `0 0 16px ${C.orange}dd,3px 3px 0 #000`
                     : secretUnlocked
-                      ? `0 0 16px #cc99ffdd,3px 3px 0 #000`
+                      ? `0 0 16px #ff9ec4dd,3px 3px 0 #000`
                       : dangerNode
                         ? `0 0 14px #ff4444dd,3px 3px 0 #000`
                         : safeNode
@@ -686,9 +686,17 @@ export function MapView({ map, currentRow, visitedNodes, onSelectNode, reachable
                     position:"relative", zIndex:1,
                     display:"inline-flex", alignItems:"center", justifyContent:"center",
                   }}>
-                    {!effectivelyHidden && !isSecret && hasAsset(`spr-${node.type}`)
-                      ? <Asset id={`spr-${node.type}`} emoji={icon} size={spriteSize(isBoss)} />
-                      : icon}
+                    {(() => {
+                      if (effectivelyHidden || isSecret) return icon;
+                      // Il nodo boss usava `spr-boss` in tutti i biomi: sulla mappa
+                      // i quattro boss erano lo stesso disegno. Ora si risolve dal
+                      // nome, con ricaduta sul generico se l'arte manca ancora.
+                      const bossKey = node.type === "boss" ? BOSS_SPRITE[node.bossName] : null;
+                      const key = bossKey && hasAsset(`spr-${bossKey}`) ? bossKey : node.type;
+                      return hasAsset(`spr-${key}`)
+                        ? <Asset id={`spr-${key}`} emoji={icon} size={spriteSize(isBoss)} />
+                        : icon;
+                    })()}
                   </span>
 
                   {/* Etichetta — in sovrimpressione sul bordo basso, su una velatura

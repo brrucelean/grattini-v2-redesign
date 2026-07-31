@@ -2683,8 +2683,8 @@ export default function Grattini() {
 
         return (
           <div style={{maxWidth:"500px", width:"100%", textAlign:"center"}}>
-            <div style={{...S.panel, borderColor:"#aa00ff", background:"#0d001a"}}>
-              <div style={{...S.h2, color:"#aa00ff"}}>🃏 GRATTA & COMBINA</div>
+            <div style={{...S.panel, borderColor:"#ff2e93", background:"#1a0014"}}>
+              <div style={{...S.h2, color:"#ff2e93"}}>🃏 GRATTA & COMBINA</div>
               <div style={{color:C.dim, fontSize:"11px", marginBottom:"8px"}}>
                 Gratta una cella per volta. Stessa cella su entrambe le griglie = COMBO (+€{COMBO_PRIZE}). 3 COMBO = MEGA COMBO x{MEGA_MULT}!
               </div>
@@ -2693,11 +2693,11 @@ export default function Grattini() {
               </div>
               <div style={{display:"flex", gap:"16px", justifyContent:"center", marginBottom:"12px", flexWrap:"wrap"}}>
                 <div>
-                  <div style={{color:"#aa00ff", fontSize:"11px", marginBottom:"4px"}}>GRIGLIA A</div>
+                  <div style={{color:"#ff2e93", fontSize:"11px", marginBottom:"4px"}}>GRIGLIA A</div>
                   {renderGrid("A")}
                 </div>
                 <div>
-                  <div style={{color:"#aa00ff", fontSize:"11px", marginBottom:"4px"}}>GRIGLIA B</div>
+                  <div style={{color:"#ff2e93", fontSize:"11px", marginBottom:"4px"}}>GRIGLIA B</div>
                   {renderGrid("B")}
                 </div>
               </div>
@@ -3178,7 +3178,7 @@ export default function Grattini() {
           : sub.includes("chirurgo")  ? "#00cccc"
           : sub.includes("macellaio") ? "#ff6600"
           : sub.includes("collezion") ? "#ffcc00"
-          : sub.includes("evento")    ? "#cc99ff"
+          : sub.includes("evento")    ? "#ff9ec4"
           : C.gold;
         const descLines = (itemFoundModal.desc || "").split("\n");
         return (

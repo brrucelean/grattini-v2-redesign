@@ -10,7 +10,11 @@ export const C = {
   red:     "#ff2222",   // rosso CGA intenso — pericolo/sangue
   gold:    "#ffdd00",   // oro caldo saturo — bonus/money
   cyan:    "#00eeff",   // cyan CGA puro — UI/link
-  magenta: "#ff00ff",   // magenta CGA — effetti speciali
+  // Era #ff00ff (magenta CGA puro, tinta 300° = viola pieno): stonava con la
+  // dominante ciano/oro della UI ed era la macchia viola dell'HUD. Spostato a
+  // 340°, cioè rosa-rosso: stesso ruolo semantico (effetti speciali, reliquie,
+  // zaino, scorciatoie) ma fuori dalla banda dei viola.
+  magenta: "#ff2e88",   // rosa acceso — effetti speciali
   orange:  "#ff6600",   // arancio saturo — warning/elite
   blue:    "#4488ff",   // blu elettrico — neutro positivo
   pink:    "#ff44bb",   // rosa saturo — Kawaii / speciale

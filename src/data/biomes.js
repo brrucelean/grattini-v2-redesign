@@ -8,6 +8,22 @@ export const BIOMES = [
   { id: 3, name: "🇨🇳 Quartiere Cinese", boss: "Il Drago d'Oro", color: "#ff3333", desc: "你好! Lanterne rosse, incenso e grattini con ideogrammi. Qui le regole sono diverse." },
 ];
 
+// ─── SPRITE DEI BOSS ─────────────────────────────────────────
+// Ogni boss ha la sua chiave sprite. Prima solo il Drago d'Oro aveva un'arte
+// dedicata: Broker, Romanaccio e Napoletano ricadevano tutti sullo stesso
+// `spr-boss`, quindi i tre boss erano visivamente identici.
+// Finché l'arte dedicata non esiste il registry non trova `spr-<chiave>` e si
+// torna a `spr-boss`: basta aggiungere src/assets/img/spr-<chiave>.webp e lo
+// sprite si accende da solo, senza toccare codice.
+// `spr-boss` non è un generico: è già il ritratto del Broker (completo, sigaro),
+// quindi resta assegnato a lui invece di sprecare un'arte nuova.
+export const BOSS_SPRITE = {
+  "Il Broker":      "boss",
+  "Il Romanaccio":  "romanaccio",
+  "Il Napoletano":  "napoletano",
+  "Il Drago d'Oro": "drago",
+};
+
 // ─── BIOME MODIFIERS — effetto globale per bioma ─────────────
 // Applicati all'entrata del bioma. Cambiano il feel senza richiedere nuovo
 // gameplay code: uno è economia (shop discount), uno è meta (fortuna start),

@@ -171,7 +171,7 @@ export function HUD({ player, onOpenInventory, inventoryOpen = false, moneyBling
                 );
               })}
             </span>
-            <span style={{color:viteColor, fontSize:"10px", fontWeight:"bold"}}>{aliveNails}/5</span>
+            <span style={{color:viteColor, fontSize:"13px", fontWeight:"bold"}}>{aliveNails}/5</span>
           </span>
           {/* Volume icona (no slider) */}
           <span
@@ -214,7 +214,7 @@ export function HUD({ player, onOpenInventory, inventoryOpen = false, moneyBling
   );
   return (
     <div style={{...S.panel, display:"flex", justifyContent:"space-between", alignItems:"center",
-      flexWrap:"wrap", gap:"6px", padding:"8px 12px", background: bioPal.hudBg, border: `2px solid ${bioPal.border}66`,
+      flexWrap:"wrap", gap:"8px", padding:"10px 14px", background: bioPal.hudBg, border: `2px solid ${bioPal.border}66`,
       maxWidth:"calc(100% - 16px)", width:"calc(100% - 16px)", margin:"4px 8px",
       boxSizing:"border-box", overflow:"hidden", minWidth:0,
       position:"relative",
@@ -247,23 +247,23 @@ export function HUD({ player, onOpenInventory, inventoryOpen = false, moneyBling
             display:"inline-flex", alignItems:"center", gap:"4px",
             background:`linear-gradient(180deg, ${C.gold}22, ${C.gold}08)`,
             border:`2px solid ${C.gold}cc`,
-            color:C.gold, fontWeight:"bold",
-            padding:"2px 8px",
+            color:C.gold, fontWeight:"bold", fontSize:"18px",
+            padding:"4px 12px",
             letterSpacing:"1px",
             boxShadow:`0 0 8px ${C.gold}55, inset 0 0 6px ${C.gold}14`,
             textShadow:`0 0 6px ${C.gold}88`,
             cursor:"default",
             animation: moneyBling > 0 ? "moneyBling 0.6s ease-out" : "none",
-          }}><Asset id="hud-soldi" emoji="💰" size={15} style={{marginRight:"1px"}} /> €{fmtMoney(player.money)}</span>
+          }}><Asset id="hud-soldi" emoji="💰" size={22} style={{marginRight:"1px"}} /> €{fmtMoney(player.money)}</span>
         </Tooltip>
         <Tooltip text={`🎫 grattini tuoi — comprati al tabaccaio`}>
           <span style={{
             display:"inline-flex", alignItems:"center", gap:"3px",
-            color:C.cyan, cursor:"default",
+            color:C.cyan, cursor:"default", fontSize:"16px",
             border:`2px solid ${C.cyan}88`,
-            padding:"2px 7px",
+            padding:"4px 10px",
             boxShadow:`inset 0 0 6px ${C.cyan}18`,
-          }}><Asset id="hud-grattino" emoji="🎫" size={15} style={{marginRight:"1px"}} /> <b>{ownedCards}</b></span>
+          }}><Asset id="hud-grattino" emoji="🎫" size={22} style={{marginRight:"1px"}} /> <b>{ownedCards}</b></span>
         </Tooltip>
       </div>
       {/* ── STATUS CHIPS ── */}
@@ -281,13 +281,13 @@ export function HUD({ player, onOpenInventory, inventoryOpen = false, moneyBling
             boxShadow: aliveNails <= 1 ? `0 0 6px ${C.red}66, inset 0 0 4px ${C.red}22` : "none",
             animation: aliveNails <= 1 ? "pulse 1s infinite" : "none",
           }}>
-            <span style={{color:C.dim, fontSize:"9px", letterSpacing:"1px"}}>VITE</span>
+            <span style={{color:C.dim, fontSize:"11px", letterSpacing:"1px"}}>VITE</span>
             <span style={{display:"inline-flex", gap:"2px"}}>
               {[0,1,2,3,4].map(i => {
                 const filled = i < aliveNails;
                 return (
                   <span key={i} style={{
-                    display:"inline-block", width:"8px", height:"12px",
+                    display:"inline-block", width:"10px", height:"16px",
                     background: filled ? viteColor : "#111",
                     border: `2px solid ${filled ? viteColor+"ee" : "#333344"}`,
                     boxShadow: filled ? `0 0 6px ${viteColor}99, 0 0 12px ${viteColor}44` : "none",
@@ -295,7 +295,7 @@ export function HUD({ player, onOpenInventory, inventoryOpen = false, moneyBling
                 );
               })}
             </span>
-            <span style={{color:viteColor, fontSize:"10px", fontWeight:"bold"}}>{aliveNails}/5</span>
+            <span style={{color:viteColor, fontSize:"13px", fontWeight:"bold"}}>{aliveNails}/5</span>
           </span>
         </Tooltip>
         <Tooltip text={`🔊 volume musicale — alzalo e GODITI l'8-bit bro`}>
@@ -316,17 +316,36 @@ export function HUD({ player, onOpenInventory, inventoryOpen = false, moneyBling
         </Tooltip>
         {onOpenInventory && (() => {
           const tot = (player?.items?.length||0) + (player?.grattatori?.length||0);
-          const chipCol = inventoryOpen ? C.magenta : (tot > 0 ? C.magenta : C.dim);
+          // Lo zaino è l'unico comando cliccabile della barra: prima era uno
+          // StatusChip da 11px identico a quelli informativi e sbiadito a 0.7
+          // di opacità quando vuoto, quindi non si notava. Ora è un pulsante
+          // pieno, con etichetta e pastiglia del conteggio.
+          const col = tot > 0 || inventoryOpen ? C.gold : C.dim;
           return (
             <Tooltip text={inventoryOpen ? "" : "cosa hai nello zaino? forse niente, forse oro"}>
-              <StatusChip
-                color={chipCol}
-                active={inventoryOpen}
+              <span
                 onClick={onOpenInventory}
-                style={{opacity: inventoryOpen || tot > 0 ? 1 : 0.7}}
+                style={{
+                  display:"inline-flex", alignItems:"center", gap:"6px",
+                  padding:"4px 12px", cursor:"pointer", userSelect:"none",
+                  border:`2px solid ${col}`, color:col, fontWeight:"bold",
+                  background: inventoryOpen
+                    ? `linear-gradient(180deg, ${col}38, ${col}12)`
+                    : `linear-gradient(180deg, ${col}18, transparent)`,
+                  boxShadow: `0 0 10px ${col}55, inset 0 0 8px ${col}14`,
+                  transition:"box-shadow 0.15s, background 0.15s",
+                }}
+                onMouseEnter={e => { e.currentTarget.style.boxShadow = `0 0 18px ${col}, inset 0 0 10px ${col}22`; }}
+                onMouseLeave={e => { e.currentTarget.style.boxShadow = `0 0 10px ${col}55, inset 0 0 8px ${col}14`; }}
               >
-                <Asset id="hud-zaino" emoji="🎒" size={15} style={{marginRight:"1px"}} /> <b>{tot}</b>
-              </StatusChip>
+                <Asset id="hud-zaino" emoji="🎒" size={26} />
+                {!compact && <span style={{fontSize:"10px", letterSpacing:"1.5px"}}>ZAINO</span>}
+                <span style={{
+                  minWidth:"20px", textAlign:"center", fontSize:"14px",
+                  background: col, color:"#000", padding:"0 5px",
+                  boxShadow:`0 0 6px ${col}aa`,
+                }}>{tot}</span>
+              </span>
             </Tooltip>
           );
         })()}
