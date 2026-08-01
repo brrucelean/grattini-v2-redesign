@@ -8,7 +8,7 @@ import { GRATTATORE_DEFS } from "../data/items.js";
 import { Tooltip } from "./Tooltip.jsx";
 import { NewsTicker } from "./NewsTicker.jsx";
 import { Asset } from "./Asset.jsx";
-import { ANIM } from "../styles/animations.js";
+import { ANIM, LOOP } from "../styles/animations.js";
 import { NailPipRow } from "./NailMeter.jsx";
 
 // ─── StatusChip: pill riutilizzabile per status effects dell'HUD ───
@@ -17,7 +17,7 @@ import { NailPipRow } from "./NailMeter.jsx";
 //  - normal: chip standard
 //  - danger: border più marcato + pulse animation
 //  - active: più glow + textShadow (per effetti attivi tipo cappello)
-function StatusChip({ color, children, danger = false, active = false, onClick, pulse = false, pulseSpeed = "1s", style = {} }) {
+function StatusChip({ color, children, danger = false, active = false, onClick, pulse = false, pulseSpeed = LOOP.active, style = {} }) {
   return (
     <span onClick={onClick} style={{
       display:"inline-flex", alignItems:"center", gap:"3px",
@@ -75,7 +75,7 @@ function HUDImpl({ player, onOpenInventory, inventoryOpen = false, moneyBling = 
       )}
       {player.clipViraleActive && (
         <Tooltip text="🎬 CLIP VIRALE ATTIVA! Prossima vincita x2!">
-          <StatusChip color={C.gold} active pulse pulseSpeed="1s"><Asset id="hud-clip" emoji="🎬" size={13} /> x2</StatusChip>
+          <StatusChip color={C.gold} active pulse pulseSpeed={LOOP.active}><Asset id="hud-clip" emoji="🎬" size={13} /> x2</StatusChip>
         </Tooltip>
       )}
       {player.equippedGrattatore && (
@@ -90,7 +90,7 @@ function HUDImpl({ player, onOpenInventory, inventoryOpen = false, moneyBling = 
       )}
       {player.tumore && (
         <Tooltip text="💀 TUMORE AI POLMONI — -5 Fortuna permanente.">
-          <StatusChip color={C.red} danger pulse pulseSpeed="1.5s"><Asset id="hud-tumore" emoji="💀" size={13} /> −5F</StatusChip>
+          <StatusChip color={C.red} danger pulse pulseSpeed={LOOP.active}><Asset id="hud-tumore" emoji="💀" size={13} /> −5F</StatusChip>
         </Tooltip>
       )}
       {player.skills?.includes("ambidestri") && (
@@ -98,7 +98,7 @@ function HUDImpl({ player, onOpenInventory, inventoryOpen = false, moneyBling = 
       )}
       {player.grattaMania && (
         <Tooltip text="⚡ GRATTAMANIA — Premi x2 MA ogni grattata fa danni!">
-          <StatusChip color={C.red} danger pulse pulseSpeed="0.6s"><Asset id="hud-grattamania" emoji="⚡" size={13} />☠</StatusChip>
+          <StatusChip color={C.red} danger pulse pulseSpeed={LOOP.urgent}><Asset id="hud-grattamania" emoji="⚡" size={13} />☠</StatusChip>
         </Tooltip>
       )}
       {player.relics?.length > 0 && player.relics.map((r, i) => (

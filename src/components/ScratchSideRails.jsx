@@ -58,7 +58,7 @@ export function RunStatsRail({ biome, palette, player, gameStats }) {
 
       {/* Bioma corrente — l'ambiente in cui stai grattando */}
       <div style={{ padding: "8px 8px 10px", borderBottom: `1px solid ${palette.border}22` }}>
-        <div style={{ color: C.dim, fontSize: "8px", letterSpacing: "2px", marginBottom: "3px" }}>
+        <div style={{ color: C.dim, fontSize: "10px", letterSpacing: "2px", marginBottom: "3px" }}>
           ░ ZONA ░
         </div>
         <div style={{
@@ -67,7 +67,7 @@ export function RunStatsRail({ biome, palette, player, gameStats }) {
         }}>
           {biome?.name || "—"}
         </div>
-        <div style={{ color: C.dim, fontSize: "9px", lineHeight: 1.5, fontStyle: "italic" }}>
+        <div style={{ color: C.dim, fontSize: "10px", lineHeight: 1.5, fontStyle: "italic" }}>
           {biome?.desc || ""}
         </div>
       </div>

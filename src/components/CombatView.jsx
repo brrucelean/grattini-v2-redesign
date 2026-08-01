@@ -995,7 +995,7 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
         boxShadow: `inset 0 0 14px rgba(0,0,0,0.5)` }}>
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
           <span style={{ fontSize: "10px", color: C.gold, letterSpacing: "1.5px", fontWeight: "bold" }}>UNGHIE</span>
-          <NailDisplay nails={player.nails} activeNail={-1} compact />
+          <NailDisplay nails={player.nails} activeNail={-1} />
         </div>
         <div style={{ position: "relative", fontSize: "15px", fontWeight: "bold", color: C.gold, letterSpacing: "0.5px" }}>
           💰 €{loot}

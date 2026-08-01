@@ -218,7 +218,7 @@ export function NailScratchBar({ nail, active = false, size = "md", showCount = 
         );
       })}
       {showCount && (
-        <span style={{ color: C.dim, fontSize: "8px", marginLeft: "2px", opacity: 0.75 }}>
+        <span style={{ color: C.dim, fontSize: "10px", marginLeft: "2px", opacity: 0.75 }}>
           {r.scratchLeft}/3
         </span>
       )}
@@ -247,7 +247,7 @@ export function NailSlotBar({ nail, chirurgo, active = false, size = "md" }) {
           }} />
         );
       })}
-      <span style={{ color: chirurgo.color + "cc", fontSize: "8px", marginLeft: "2px", letterSpacing: "0.5px" }}>
+      <span style={{ color: chirurgo.color + "cc", fontSize: "10px", marginLeft: "2px", letterSpacing: "0.5px" }}>
         {used}/{chirurgo.max}
       </span>
     </span>
