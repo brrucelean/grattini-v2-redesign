@@ -76,7 +76,11 @@ export function Tooltip({ text, children, color }) {
     // onClickCapture e non onClick: alcuni children fermano la propagazione nel
     // loro handler, in fase di cattura il tooltip si apre comunque.
     return (
-      <span ref={wrapRef} style={{display:"block", cursor:"inherit"}} onClickCapture={toggle}>
+      // flexShrink:0 — se il figlio è una tessera a larghezza fissa dentro una
+      // riga flex scorrevole (es. il tabaccaio), questo span è il vero elemento
+      // flex: senza flexShrink:0 qui, l'algoritmo flex lo comprime lui al posto
+      // del figlio, e la riga smette di aver bisogno di scorrere fino in fondo.
+      <span ref={wrapRef} style={{display:"block", flexShrink:0, cursor:"inherit"}} onClickCapture={toggle}>
         {children}
         {tooltipEl}
       </span>
@@ -86,7 +90,7 @@ export function Tooltip({ text, children, color }) {
   // ── MOUSE: hover come prima, ma il riquadro si ANCORA alla prima posizione
   //    utile invece di inseguire il cursore ad ogni mousemove ──
   return (
-    <span ref={wrapRef} style={{display:"block", cursor:"inherit"}}
+    <span ref={wrapRef} style={{display:"block", flexShrink:0, cursor:"inherit"}}
       onMouseMove={e => {
         e.stopPropagation();
         if (pos) return; // già ancorato: niente inseguimento
