@@ -16,6 +16,7 @@ import { useNodeHandlers } from "./hooks/useNodeHandlers.js";
 import { useEventHandlers } from "./hooks/useEventHandlers.js";
 import { useSpacebarShortcut } from "./hooks/useSpacebarShortcut.js";
 import { useIsMobile } from "./hooks/useIsMobile.js";
+import { useReducedMotion } from "./hooks/useReducedMotion.js";
 import { NODE_ICONS } from "./data/map.js";
 import { ITEM_DEFS, RELIC_DEFS, GRATTATORE_DEFS } from "./data/items.js";
 import { BIOMES, CEDOLE, BIOME_PALETTE } from "./data/biomes.js";
@@ -45,6 +46,7 @@ import { CarmeloLogBox, CarmeloScratchStrip } from "./components/DialogueBox.jsx
 import { NewsTicker, NpcCommentStrip } from "./components/NewsTicker.jsx";
 import { HUD } from "./components/HUD.jsx";
 import { NailSidebar } from "./components/NailSidebar.jsx";
+import { RunStatsRail, ScratchLogRail } from "./components/ScratchSideRails.jsx";
 // ScratchCell usato solo dentro ScratchCardView — non serve importarlo qui
 import { CARD_VARIANTS } from "./utils/combat.js";
 import { STORAGE_KEYS, getStored, setStored, removeStored } from "./utils/storage.js";
@@ -414,7 +416,11 @@ export default function Grattini() {
     : bioPal.bg;
 
   // iPhone/mobile: layout verticale a colonna singola invece di 3 colonne
-  const { isMobile } = useIsMobile();
+  const { isMobile, vw } = useIsMobile();
+  const reducedMotion = useReducedMotion();
+  // Desktop largo: c'è spazio per le fiancate attorno al grattino (vedi overlay scratch).
+  // Sotto i 1100px la carta resta da sola e centrata, come prima.
+  const wideDesk = !isMobile && vw >= 1100;
 
   // DEV: galleria biglietti — dopo tutti gli hook, così l'ordine resta stabile.
   if (devTicket) {
@@ -627,8 +633,20 @@ export default function Grattini() {
             backgroundImage:"repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.07) 3px, rgba(0,0,0,0.07) 4px)",
             backgroundAttachment:"local",
           }}>
+            {/* ── BANCO — su desktop largo la carta resta della sua dimensione
+                 (asset a proporzioni fisse) e lo spazio laterale viene occupato
+                 dal dossier della run e dal log dei colpi. Il tetto è W.content,
+                 così su monitor enormi il banco non si sfilaccia. ── */}
+            <div style={{
+              width:"100%", maxWidth: W.content, margin:"0 auto",
+              display:"flex", alignItems:"flex-start", justifyContent:"center",
+              gap: wideDesk ? "14px" : "0",
+            }}>
+            {wideDesk && (
+              <RunStatsRail biome={BIOMES[currentBiome]} palette={bioPal} player={player} gameStats={gameStats} />
+            )}
             {/* animation wrapper */}
-            <div style={{animation:"scratchCardSlideIn 0.28s ease-out both", width:"100%", display:"flex", justifyContent:"center"}}>
+            <div style={{animation:"scratchCardSlideIn 0.28s ease-out both", flex:"1 1 auto", minWidth:0, display:"flex", justifyContent:"center", alignItems:"flex-start"}}>
               <Suspense fallback={<LazyFallback />}>
               <ScratchCardView
                 card={scratchingCard}
@@ -670,6 +688,10 @@ export default function Grattini() {
                 }}
               />
               </Suspense>
+            </div>
+            {wideDesk && log.length > 0 && (
+              <ScratchLogRail log={log} palette={bioPal} />
+            )}
             </div>
           </div>
 
@@ -2903,8 +2925,10 @@ export default function Grattini() {
       {screen === "victory" && player && (
         <div style={{textAlign:"center", maxWidth:"520px", width:"100%", position:"relative"}}>
 
-          {/* ── CONFETTI gold — visibili solo dopo il reveal ── */}
-          {victoryRevealed && (() => {
+          {/* ── CONFETTI gold — visibili solo dopo il reveal ──
+               Con prefers-reduced-motion non li montiamo affatto: sono 18 elementi
+               che cadono ruotando, il caso peggiore per chi è sensibile al movimento. */}
+          {victoryRevealed && !reducedMotion && (() => {
             const rng = (s) => { const x = Math.sin(s * 9301 + 49297) * 233280; return x - Math.floor(x); };
             const confetti = ["🌟","✨","💫","⭐","🏆","💰","🎊","🎉"];
             return Array.from({length:18}, (_,i) => (

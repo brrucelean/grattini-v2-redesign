@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { C, FONT } from "../data/theme.js";
+import { C, FONT, W } from "../data/theme.js";
 import { S } from "../utils/styles.js";
 import { CornerBrackets } from "./Vintage.jsx";
 import { ANIM } from "../styles/animations.js";
@@ -98,7 +98,10 @@ export function DoppioONullaView({ prize, onDecline, onResult }) {
       background: "#05050b",
       border: `2px solid ${accent}66`,
       boxShadow: `0 0 28px ${accent}33, inset 0 0 32px ${accent}0a`,
-      maxWidth: "480px", margin: "10px auto",
+      // Era 480px fisso: su desktop il minigioco restava una colonna da telefono.
+      // Tetto W.readable (è un pannello di testo + una sola zona da grattare),
+      // stretto a 640px perché oltre il riquadro si svuota attorno alla patina.
+      maxWidth: `min(${W.readable}, 640px)`, width: "100%", margin: "10px auto",
       textAlign: "center",
       paddingTop: "18px", paddingBottom: "14px",
     }}>
@@ -203,7 +206,10 @@ export function DoppioONullaView({ prize, onDecline, onResult }) {
       {/* ═══ SCRATCH ZONE ═══ */}
       <div style={{
         position: "relative",
-        width: "200px", height: "140px",
+        // Il canvas resta 200x140 di backing store (raggio del pennello e soglia
+        // di reveal sono in coordinate canvas → difficoltà invariata): scala solo
+        // la resa, così su desktop la patina non è un francobollo.
+        width: "min(300px, 72%)", aspectRatio: "200 / 140",
         margin: "0 auto 12px auto",
         border: `2px solid ${accent}`,
         overflow: "hidden",
@@ -282,7 +288,7 @@ export function DoppioONullaView({ prize, onDecline, onResult }) {
       {/* ═══ PROGRESS BAR ═══ */}
       {!revealed && scratchProgress > 0 && (
         <div style={{
-          width: "200px", margin: "0 auto 10px",
+          width: "min(300px, 72%)", margin: "0 auto 10px",
           background: "#0a0a14",
           border: `1px solid ${accent}44`,
           height: "8px",

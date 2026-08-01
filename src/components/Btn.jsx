@@ -13,7 +13,10 @@ export function Btn({ children, onClick, variant="normal", disabled=false, style
   // styles/animations.js — uno pseudo-stato non è esprimibile inline.
   // Il click suona: AudioEngine.click() esisteva già ma non era collegato a
   // nulla, quindi l'intera UI era muta al tocco.
-  return <button className="btn-ui" style={merged}
+  // `disabled` nativo: senza di esso il bottone restava raggiungibile da
+  // tastiera (focus + Invio) pur non avendo più l'onClick. Lo stile visivo
+  // resta quello di S.btnDisabled, già applicato sopra.
+  return <button className="btn-ui" style={merged} disabled={disabled}
     onClick={disabled ? undefined : (e) => { AudioEngine.click(); onClick?.(e); }}
     onMouseEnter={e => { if(!disabled) {
       e.currentTarget.style.boxShadow = `0 0 16px ${glowColor}66, 0 0 32px ${glowColor}33`;

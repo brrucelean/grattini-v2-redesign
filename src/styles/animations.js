@@ -233,8 +233,46 @@ export const EFFECTS_CSS = `
 
 .map-snap-scroll { scroll-snap-type: y mandatory; }
 
+/* ══ MOVIMENTO RIDOTTO ═══════════════════════════════════════════════
+   Prima copriva solo 4 selettori decorativi (.holo/.card3d/.holo-title):
+   restavano fuori lo scuotimento schermo, il pulse ripetuto su decine di
+   elementi, i coriandoli e il ticker delle notizie — cioè tutto quello che
+   dà davvero fastidio a chi è sensibile al movimento.
+   Le animazioni qui sono quasi tutte inline (style={{animation:...}}), quindi
+   un selettore mirato non basterebbe: azzeriamo durate/delay su tutto, così
+   ogni animazione salta di colpo al suo stato finale e le transizioni
+   diventano cambi di stato istantanei (versione "statica" del gioco).
+   I casi che il CSS non può coprire sono gestiti in JS:
+   coriandoli e ParticleSystem (canvas) non vengono proprio creati, e il
+   NewsTicker/NpcCommentStrip rendono il testo fermo invece di farlo scorrere
+   (con la sola regola CSS finirebbero fuori schermo). */
 @media (prefers-reduced-motion: reduce) {
   .holo::before, .holo::after, .card3d, .holo-title { animation: none !important; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+  /* Ridefinite come no-op: anche con durata 0.01ms il primo frame di queste
+     lascerebbe l'elemento spostato/trasparente per un istante. */
+  @keyframes screenShake { 0%, 100% { transform: none; } }
+  @keyframes pulse { 0%, 100% { opacity: 1; } }
+  @keyframes telePulse { 0%, 100% { transform: none; filter: none; } }
+  @keyframes blink { 0%, 100% { opacity: 1; } }
+  @keyframes comboPulse { 0%, 100% { transform: translateX(-50%); } }
+  @keyframes confettiDrop { 0%, 100% { opacity: 0; transform: none; } }
+  /* I numeri di danno restano LEGGIBILI e fermi: li toglie comunque il
+     timer a 1.1s in CombatView, quindi non serve farli volare via. */
+  @keyframes combatFloat { 0%, 100% { transform: translate(-50%, -14px); opacity: 1; } }
+  @keyframes titleGlitter { 0%, 100% { opacity: 0; transform: none; } }
+  /* Feedback combattimento/grattata (fase 2): stessa logica no-op. */
+  @keyframes screenShakeLight { 0%, 100% { transform: none; } }
+  @keyframes perfectHitFlash { 0%, 100% { transform: scale(1); filter: brightness(1); } }
+  @keyframes perfectRing { 0%, 100% { opacity: 0; transform: scale(0.75); } }
+  @keyframes cellBurst { 0%, 100% { opacity: 0; transform: translate(-50%,-50%) scale(0.3) rotate(0deg); } }
 }
 `;
 

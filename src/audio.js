@@ -1,3 +1,5 @@
+import { prefersReducedMotion } from "./utils/motion.js";
+
 // ─── AUDIO ENGINE ────────────────────────────────────────────
 export const AudioEngine = (() => {
   let ctx = null;
@@ -384,6 +386,9 @@ export const ParticleSystem = (() => {
   const MAX_PARTICLES = 300; // cap — con scratch molto rapido su più celle l'array cresceva senza limite
   return {
     spawn(x, y, count = 10, bloodMode = false) {
+      // prefers-reduced-motion: niente coriandoli/glitter. È un layer puramente
+      // decorativo su canvas, quindi il CSS non può spegnerlo: va fermato qui.
+      if (prefersReducedMotion()) return;
       init();
       const palette = bloodMode ? BLOOD_COLORS : COLORS;
       for (let i = 0; i < count; i++) {

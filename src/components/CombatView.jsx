@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { C, FONT } from "../data/theme.js";
+import { C, FONT, W } from "../data/theme.js";
 import {
   COMBAT_CARD_H, CAT_EMOJI_MAP, CAT_BG,
   ENEMY_STATS, DEFAULT_ENEMY_STATS, EFFECT_DAMAGE,
@@ -854,6 +854,10 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
   return (
     <div style={{
       position: "relative", flex: 1, minHeight: 0, width: "100%",
+      // Il cabinet si porta dietro il proprio tetto W.content invece di dipendere
+      // da chi lo monta: così il combattimento usa la larghezza desktop anche se
+      // in futuro viene montato altrove (tutorial, galleria, test).
+      maxWidth: W.content, marginLeft: "auto", marginRight: "auto",
       display: "flex", flexDirection: "column", gap: "8px",
       fontFamily: FONT, color: C.text, padding: "14px 16px", overflow: "hidden",
       /* Cabinet ottone-oro — cornice CRT che racchiude tutto il duello */
@@ -1014,7 +1018,10 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
           <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "16px", textAlign: "center" }}>
             <div style={{ fontSize: "40px" }}>{enemy.isBoss ? "👑" : "🗡️"}</div>
             <div style={{ color: C.red, fontSize: "20px", fontWeight: "bold" }}>{enemyLabel} ti sfida!</div>
-            <div style={{ color: C.dim, fontSize: "13px", maxWidth: "360px", lineHeight: 1.6 }}>
+            {/* Regole del duello: erano incolonnate a 360px anche su un monitor
+                1440px. Il tetto è W.readable, ulteriormente stretto a 640px perché
+                a 900px di monospace 13px la riga supererebbe i 110 caratteri. */}
+            <div style={{ color: C.dim, fontSize: "13px", maxWidth: `min(${W.readable}, 640px)`, lineHeight: 1.6 }}>
               Ogni turno gratti <strong style={{ color: C.text }}>3 delle 9 carte</strong>:
               <br /><span style={{ color: C.red }}>🗡️ ATTACCO</span> (danno) · <span style={{ color: C.blue }}>🛡 DIFESA</span> (parata) · <span style={{ color: C.gold }}>💰 DENARO</span> (bottino).
               <br />Ferma il cursore nel <strong style={{ color: C.green }}>VERDE</strong> per colpire/parare al meglio. Porta i suoi <strong style={{ color: C.red }}>HP a 0</strong> prima che le tue unghie finiscano.
