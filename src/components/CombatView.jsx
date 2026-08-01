@@ -1021,10 +1021,16 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
             {/* Regole del duello: erano incolonnate a 360px anche su un monitor
                 1440px. Il tetto è W.readable, ulteriormente stretto a 640px perché
                 a 900px di monospace 13px la riga supererebbe i 110 caratteri. */}
+            {/* Gerarchia tonale (Fase 1 dell'audit): 5 colori a piena saturazione
+                nello stesso paragrafo (rosso/blu/oro/verde/arancio) non hanno un
+                punto d'ingresso naturale per l'occhio. La legenda ATTACCO/DIFESA/
+                DENARO e i richiami VERDE/HP sono informativi, non urgenti: vanno
+                sulle varianti Mid. L'unico elemento che descrive un pericolo attivo
+                — l'avviso FURIA — resta a piena saturazione. */}
             <div style={{ color: C.dim, fontSize: "13px", maxWidth: `min(${W.readable}, 640px)`, lineHeight: 1.6 }}>
               Ogni turno gratti <strong style={{ color: C.text }}>3 delle 9 carte</strong>:
-              <br /><span style={{ color: C.red }}>🗡️ ATTACCO</span> (danno) · <span style={{ color: C.blue }}>🛡 DIFESA</span> (parata) · <span style={{ color: C.gold }}>💰 DENARO</span> (bottino).
-              <br />Ferma il cursore nel <strong style={{ color: C.green }}>VERDE</strong> per colpire/parare al meglio. Porta i suoi <strong style={{ color: C.red }}>HP a 0</strong> prima che le tue unghie finiscano.
+              <br /><span style={{ color: C.redMid }}>🗡️ ATTACCO</span> (danno) · <span style={{ color: C.blueMid }}>🛡 DIFESA</span> (parata) · <span style={{ color: C.goldMid }}>💰 DENARO</span> (bottino).
+              <br />Ferma il cursore nel <strong style={{ color: C.greenMid }}>VERDE</strong> per colpire/parare al meglio. Porta i suoi <strong style={{ color: C.redMid }}>HP a 0</strong> prima che le tue unghie finiscano.
               <br /><span style={{ color: C.orange }}>⚠ Dal turno {FURY_TURN} va in 🔥 FURIA: niente cure, più danno. Chiudi in fretta!</span>
             </div>
             <Btn variant="danger" onClick={startCombat} style={{ fontSize: "16px", padding: "12px 32px" }}>⚔️ COMBATTI!</Btn>
