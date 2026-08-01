@@ -15,6 +15,7 @@ import { useNodeHandlers } from "./hooks/useNodeHandlers.js";
 import { useEventHandlers } from "./hooks/useEventHandlers.js";
 import { useSpacebarShortcut } from "./hooks/useSpacebarShortcut.js";
 import { useIsMobile } from "./hooks/useIsMobile.js";
+import { useReducedMotion } from "./hooks/useReducedMotion.js";
 import { NODE_ICONS } from "./data/map.js";
 import { ITEM_DEFS, RELIC_DEFS, GRATTATORE_DEFS } from "./data/items.js";
 import { BIOMES, CEDOLE, BIOME_PALETTE } from "./data/biomes.js";
@@ -44,6 +45,7 @@ import { CarmeloLogBox, CarmeloScratchStrip } from "./components/DialogueBox.jsx
 import { NewsTicker, NpcCommentStrip } from "./components/NewsTicker.jsx";
 import { HUD } from "./components/HUD.jsx";
 import { NailSidebar } from "./components/NailSidebar.jsx";
+import { RunStatsRail, ScratchLogRail } from "./components/ScratchSideRails.jsx";
 // ScratchCell usato solo dentro ScratchCardView — non serve importarlo qui
 import { CARD_VARIANTS } from "./utils/combat.js";
 import { STORAGE_KEYS, getStored, setStored, removeStored } from "./utils/storage.js";
@@ -413,7 +415,11 @@ export default function Grattini() {
     : bioPal.bg;
 
   // iPhone/mobile: layout verticale a colonna singola invece di 3 colonne
-  const { isMobile } = useIsMobile();
+  const { isMobile, vw } = useIsMobile();
+  const reducedMotion = useReducedMotion();
+  // Desktop largo: c'è spazio per le fiancate attorno al grattino (vedi overlay scratch).
+  // Sotto i 1100px la carta resta da sola e centrata, come prima.
+  const wideDesk = !isMobile && vw >= 1100;
 
   // DEV: galleria biglietti — dopo tutti gli hook, così l'ordine resta stabile.
   if (devTicket) {
@@ -614,8 +620,41 @@ export default function Grattini() {
           70%  { opacity:0.18; }
           100% { transform: translateY(-78vh) translateX(36px) scale(2.1); opacity:0; }
         }
+        /* ══ MOVIMENTO RIDOTTO ═══════════════════════════════════════════════
+           Prima copriva solo 4 selettori decorativi (.holo/.card3d/.holo-title):
+           restavano fuori lo scuotimento schermo, il pulse ripetuto su decine di
+           elementi, i coriandoli e il ticker delle notizie — cioè tutto quello che
+           dà davvero fastidio a chi è sensibile al movimento.
+           Le animazioni qui sono quasi tutte inline (style={{animation:...}}), quindi
+           un selettore mirato non basterebbe: azzeriamo durate/delay su tutto, così
+           ogni animazione salta di colpo al suo stato finale e le transizioni
+           diventano cambi di stato istantanei (versione "statica" del gioco).
+           I casi che il CSS non può coprire sono gestiti in JS:
+           coriandoli e ParticleSystem (canvas) non vengono proprio creati, e il
+           NewsTicker/NpcCommentStrip rendono il testo fermo invece di farlo scorrere
+           (con la sola regola CSS finirebbero fuori schermo). */
         @media (prefers-reduced-motion: reduce) {
           .holo::before, .holo::after, .card3d, .holo-title { animation: none !important; }
+          *, *::before, *::after {
+            animation-duration: 0.01ms !important;
+            animation-delay: 0ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+            transition-delay: 0ms !important;
+            scroll-behavior: auto !important;
+          }
+          /* Ridefinite come no-op: anche con durata 0.01ms il primo frame di queste
+             lascerebbe l'elemento spostato/trasparente per un istante. */
+          @keyframes screenShake { 0%, 100% { transform: none; } }
+          @keyframes pulse { 0%, 100% { opacity: 1; } }
+          @keyframes telePulse { 0%, 100% { transform: none; filter: none; } }
+          @keyframes blink { 0%, 100% { opacity: 1; } }
+          @keyframes comboPulse { 0%, 100% { transform: translateX(-50%); } }
+          @keyframes confettiDrop { 0%, 100% { opacity: 0; transform: none; } }
+          /* I numeri di danno restano LEGGIBILI e fermi: li toglie comunque il
+             timer a 1.1s in CombatView, quindi non serve farli volare via. */
+          @keyframes combatFloat { 0%, 100% { transform: translate(-50%, -14px); opacity: 1; } }
+          @keyframes titleGlitter { 0%, 100% { opacity: 0; transform: none; } }
         }
       `}</style>
 
@@ -770,8 +809,20 @@ export default function Grattini() {
             backgroundImage:"repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.07) 3px, rgba(0,0,0,0.07) 4px)",
             backgroundAttachment:"local",
           }}>
+            {/* ── BANCO — su desktop largo la carta resta della sua dimensione
+                 (asset a proporzioni fisse) e lo spazio laterale viene occupato
+                 dal dossier della run e dal log dei colpi. Il tetto è W.content,
+                 così su monitor enormi il banco non si sfilaccia. ── */}
+            <div style={{
+              width:"100%", maxWidth: W.content, margin:"0 auto",
+              display:"flex", alignItems:"flex-start", justifyContent:"center",
+              gap: wideDesk ? "14px" : "0",
+            }}>
+            {wideDesk && (
+              <RunStatsRail biome={BIOMES[currentBiome]} palette={bioPal} player={player} gameStats={gameStats} />
+            )}
             {/* animation wrapper */}
-            <div style={{animation:"scratchCardSlideIn 0.28s ease-out both", width:"100%", display:"flex", justifyContent:"center"}}>
+            <div style={{animation:"scratchCardSlideIn 0.28s ease-out both", flex:"1 1 auto", minWidth:0, display:"flex", justifyContent:"center", alignItems:"flex-start"}}>
               <Suspense fallback={<LazyFallback />}>
               <ScratchCardView
                 card={scratchingCard}
@@ -813,6 +864,10 @@ export default function Grattini() {
                 }}
               />
               </Suspense>
+            </div>
+            {wideDesk && log.length > 0 && (
+              <ScratchLogRail log={log} palette={bioPal} />
+            )}
             </div>
           </div>
 
@@ -3046,8 +3101,10 @@ export default function Grattini() {
       {screen === "victory" && player && (
         <div style={{textAlign:"center", maxWidth:"520px", width:"100%", position:"relative"}}>
 
-          {/* ── CONFETTI gold — visibili solo dopo il reveal ── */}
-          {victoryRevealed && (() => {
+          {/* ── CONFETTI gold — visibili solo dopo il reveal ──
+               Con prefers-reduced-motion non li montiamo affatto: sono 18 elementi
+               che cadono ruotando, il caso peggiore per chi è sensibile al movimento. */}
+          {victoryRevealed && !reducedMotion && (() => {
             const rng = (s) => { const x = Math.sin(s * 9301 + 49297) * 233280; return x - Math.floor(x); };
             const confetti = ["🌟","✨","💫","⭐","🏆","💰","🎊","🎉"];
             return Array.from({length:18}, (_,i) => (
