@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { C, FONT, W } from "../data/theme.js";
 import { S } from "../utils/styles.js";
+import { Btn } from "./Btn.jsx";
 import { CornerBrackets } from "./Vintage.jsx";
 import { ANIM } from "../styles/animations.js";
 
@@ -333,9 +334,9 @@ export function DoppioONullaView({ prize, onDecline, onResult }) {
           alignItems: "center", flexWrap: "wrap",
           borderTop: `1px solid ${accent}33`, paddingTop: "12px", marginTop: "4px",
         }}>
-          <button
+          <Btn
             style={{
-              ...S.btn, color: C.green, borderColor: C.green,
+              color: C.green, borderColor: C.green,
               background: `${C.green}10`,
               boxShadow: `0 0 10px ${C.green}33`,
               letterSpacing: "1px", fontWeight: "bold",
@@ -343,7 +344,7 @@ export function DoppioONullaView({ prize, onDecline, onResult }) {
             onClick={onDecline}
           >
             ✋ INTASCA €{prize}
-          </button>
+          </Btn>
           <div style={{
             color: C.dim, fontSize: "10px",
             letterSpacing: "1px", fontStyle: "italic",

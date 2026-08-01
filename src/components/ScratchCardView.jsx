@@ -1355,7 +1355,7 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
             && scratched < totalCells
             && runningSum > (card.bancoTotal||0) && runningSum <= 7.5 ? (
             <button
-              onClick={() => handleFinish(true)}
+              onClick={() => { AudioEngine.click(); handleFinish(true); }}
               style={{
                 background: C.green,
                 color: "#000",

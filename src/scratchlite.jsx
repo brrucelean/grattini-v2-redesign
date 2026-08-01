@@ -530,11 +530,11 @@ export default function Grattini() {
             Questa unghia è fuori gioco.<br/>
             Il gioco continua con le unghie rimaste.
           </div>
-          <button onClick={() => setNailDeathFlash(false)} style={{
+          <Btn onClick={() => setNailDeathFlash(false)} style={{
             fontFamily:FONT, background:"#111", color:"#888", border:"1px solid #444",
-            padding:"10px 28px", cursor:"pointer", borderRadius:"0", fontSize:"14px",
+            padding:"10px 28px", borderRadius:"0", fontSize:"14px",
             marginTop:"8px", letterSpacing:"1px",
-          }}>Avanti →</button>
+          }}>Avanti →</Btn>
         </div>
       )}
 
@@ -896,14 +896,14 @@ export default function Grattini() {
                 <div style={{color:C.dim, fontSize:"10px", marginTop:"2px"}}>
                   ✚ {cd.pro} &nbsp;|&nbsp; ✖ {cd.contro}
                 </div>
-                <button onClick={() => {
+                <Btn onClick={() => {
                   removeStored(STORAGE_KEYS.cedola);
                   setActiveCedola(null);
                 }} style={{
                   background:"none", border:`1px solid ${C.red}`, color:C.red,
-                  fontSize:"10px", cursor:"pointer", marginTop:"6px", padding:"2px 8px",
+                  fontSize:"10px", marginTop:"6px", padding:"2px 8px",
                   fontFamily:FONT,
-                }}>✖ rimuovi cedola</button>
+                }}>✖ rimuovi cedola</Btn>
               </div>
             ) : null;
           })()}
@@ -2016,7 +2016,7 @@ export default function Grattini() {
                 const isEquipped = player.equippedGrattatore?.inventoryIdx === idx;
                 return (
                   <Tooltip key={"g"+idx} text={def ? `${def.desc} · ${g.usesLeft} uso/i` : g.name}>
-                    <button
+                    <Btn
                       onClick={() => equipGrattatore(idx)}
                       style={{
                         flexShrink:0,
@@ -2026,7 +2026,6 @@ export default function Grattini() {
                         color: isEquipped ? C.cyan : C.dim,
                         padding:"3px 7px",
                         fontSize:"10px", fontFamily:FONT,
-                        cursor:"pointer",
                         boxShadow: isEquipped ? `0 0 8px ${C.cyan}55` : "none",
                         letterSpacing:"0.5px",
                         WebkitTapHighlightColor:"transparent",
@@ -2040,7 +2039,7 @@ export default function Grattini() {
                         fontSize:"10px", padding:"0 3px",
                         fontWeight:"bold",
                       }}>{g.usesLeft}</span>
-                    </button>
+                    </Btn>
                   </Tooltip>
                 );
               })}
@@ -2053,7 +2052,7 @@ export default function Grattini() {
                 const item = ITEM_DEFS[itemId];
                 return item ? (
                   <Tooltip key={idx} text={item.desc}>
-                    <button
+                    <Btn
                       onClick={() => useItem(idx)}
                       style={{
                         flexShrink:0,
@@ -2063,14 +2062,13 @@ export default function Grattini() {
                         color: C.green,
                         padding:"3px 7px",
                         fontSize:"10px", fontFamily:FONT,
-                        cursor:"pointer",
                         letterSpacing:"0.5px",
                         WebkitTapHighlightColor:"transparent",
                       }}
                     >
                       <span style={{fontSize:"13px"}}><Asset id={`item-${itemId}`} emoji={item.emoji} size={15} /></span>
                       <span style={{fontSize:"10px", color:C.dim}}>{item.name}</span>
-                    </button>
+                    </Btn>
                   </Tooltip>
                 ) : null;
               })}
@@ -3677,7 +3675,7 @@ export default function Grattini() {
                         {known ? def.desc : "Scoprila durante una run per sbloccarne i poteri."}
                       </div>
                       {known ? (
-                        <button onClick={() => {
+                        <Btn onClick={() => {
                           setEnabledRelics(prev => {
                             const next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id];
                             setStored(STORAGE_KEYS.relicsEnabled, next);
@@ -3688,14 +3686,16 @@ export default function Grattini() {
                           background: active ? accent : "transparent",
                           border:`1px solid ${active ? accent : accent+"55"}`,
                           color: active ? "#000" : accent,
-                          fontSize:"10px", cursor:"pointer", padding:"5px 8px",
+                          fontSize:"10px", padding:"5px 8px",
                           fontFamily:FONT, fontWeight:"bold", letterSpacing:"1.5px",
                           textShadow: active ? "0 0 4px #fff8" : "none",
                           boxShadow: active ? `0 0 8px ${accent}66` : "none",
+                          // transition estesa oltre box/text-shadow di Btn: qui cambia
+                          // anche background/border/color al toggle, non solo il glow.
                           transition:"all 0.15s",
                         }}>
                           {active ? "✓ ATTIVA" : "▸ ATTIVA"}
-                        </button>
+                        </Btn>
                       ) : (
                         <div style={{
                           borderTop:`1px solid #1a1a28`, paddingTop:"5px",
