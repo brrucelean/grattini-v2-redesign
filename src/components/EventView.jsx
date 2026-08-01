@@ -35,7 +35,7 @@ function actionMeta(action, label) {
   const l = label  || "";
   if (a === "fight" || a.includes("defy"))     return { icon:"⚔️",  badge:"COMBATTI",   col:"#ff3355" };
   if (a.includes("bribe"))                     return { icon:"🕊️",  badge:"CALMA",       col:"#66dd88" };
-  if (a.includes("flee") || a.includes("fintotondo")) return { icon:"🏃",  badge:"SCAPPA",     col:"#ff8800" };
+  if (a.includes("flee") || a.includes("fintotonto")) return { icon:"🏃",  badge:"SCAPPA",     col:"#ff8800" };
   if (a === "leave")                           return { icon:"🚪",  badge:"ESCI",        col:"#555566" };
   if (a.includes("Nail") || a.includes("nail")) return { icon:"🦴",  badge:"UNGHIA",      col:"#ff8800" };
   if (a.includes("baratto"))                   return { icon:"🤝",  badge:"BARATTO",     col:"#ffaa00" };
@@ -269,7 +269,7 @@ export function EventView({ node, player, onChoice }) {
           tooltip: "Paghi, si calma e ti lascia andare." },
         { label: "⚔ Sfidalo apertamente", action: "fight",
           tooltip: "Rischioso: è la legge, ma oggi hai poca scelta." },
-        { label: "🏃 Prova a scappare (30%)", action: "fintotondo" },
+        { label: "🏃 Prova a scappare (30%)", action: "fintotonto" },
       ],
     } : {
       title: "🚔 Poliziotto della Lotteria",
@@ -292,7 +292,7 @@ export function EventView({ node, player, onChoice }) {
         { label: "🕵️ Fai la spia sullo spacciatore (+€30, addio sconti)", action: "snitchSpacciatore",
           condition: !player.snitchedOn, disabledNote: "già denunciato",
           tooltip: "Guadagni €30 + passi senza multa. Ma lo spacciatore ti vedrà come un ratto." },
-        { label: "🏃 Prova a scappare (20%)", action: "fintotondo" },
+        { label: "🏃 Prova a scappare (20%)", action: "fintotonto" },
         { label: "😤 Rifiuta e sfidalo apertamente", action: "defyPoliziotto",
           tooltip: "Niente multa, niente scuse. Vediamo come reagisce." },
         { label: "😰 Non ho i soldi... (manganellata)", action: "manganellata",
