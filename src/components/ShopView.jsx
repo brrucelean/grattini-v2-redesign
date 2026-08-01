@@ -8,6 +8,7 @@ import { S } from "../utils/styles.js";
 import { Btn } from "./Btn.jsx";
 import { Tooltip } from "./Tooltip.jsx";
 import { Asset } from "./Asset.jsx";
+import { VintageBadge } from "./Vintage.jsx";
 import { ANIM } from "../styles/animations.js";
 
 const SLOT_SYMBOLS = ["🍋","🍒","🔔","💎","7️⃣","⭐"];
@@ -236,7 +237,7 @@ function SectionHeader({ icon, label, count, accent = C.gold, subtitle, scrollHi
   );
 }
 
-export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeave, onScratch, onSlotResult, currentRow=0, currentBiome=0 }) {
+export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeave, onScratch, onSlotResult, currentRow=0, currentBiome=0, wideDesk=false }) {
   const punchline = useRef(TABACCAIO_LINES[Math.floor(rng() * TABACCAIO_LINES.length)]);
   const [vw, setVw] = useState(window.innerWidth);
   useEffect(() => {
@@ -367,7 +368,10 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
     <div style={{
       ...S.panel,
       margin: mobile ? "0" : "10px auto",
-      maxWidth: W.content,
+      // Su desktop largo lo zaino sta fisso a fianco (vedi ShopZainoRail sotto
+      // e la composizione in scratchlite.jsx): il banco si restringe un po'
+      // per fargli posto, invece di occupare da solo tutto W.content.
+      maxWidth: wideDesk ? "820px" : W.content,
       /* Vetro traslucido: lascia intravedere scene-shop dietro, senza perdere leggibilità */
       background: "linear-gradient(180deg, rgba(10,9,18,0.82) 0%, rgba(4,3,8,0.9) 100%)",
       backdropFilter: "blur(10px) saturate(1.3)",
@@ -772,6 +776,126 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
         {player.scratchCards.length === 0 && <div style={{flex:1}}/>}
         <Btn onClick={onLeave}>Esci →</Btn>
       </div>
+    </div>
+  );
+}
+
+// ─── ZAINO SEMPRE APERTO — fiancata desktop del tabaccaio ────
+// Prima l'unico modo per equipaggiare/usare qualcosa mentre si è dal
+// tabaccaio era aprire il pannello zaino a schermo intero (che copre anche
+// il banco). Su desktop largo questa fiancata sta fissa a fianco: grattatori
+// e consumabili sono selezionabili/usabili senza mai coprire il negozio.
+function ZainoChip({ emoji, assetId, name, badge, badgeColor, active, onClick, tooltip }) {
+  return (
+    <Tooltip text={tooltip} color={C.cyan}>
+      <Btn
+        onClick={onClick}
+        style={{
+          display: "flex", alignItems: "center", gap: "5px",
+          width: "100%", justifyContent: "flex-start",
+          background: active ? `${C.cyan}22` : "#0a0a18",
+          border: `1px solid ${active ? C.cyan : "#333355"}`,
+          color: active ? C.cyan : C.dim,
+          padding: "4px 6px", fontSize: "10px", fontFamily: FONT,
+          boxShadow: active ? `0 0 8px ${C.cyan}55` : "none",
+          letterSpacing: "0.3px",
+        }}
+      >
+        <span style={{ fontSize: "14px", flexShrink: 0, lineHeight: 1 }}>
+          <Asset id={assetId} emoji={emoji} size={16} />
+        </span>
+        <span style={{
+          flex: 1, minWidth: 0, textAlign: "left",
+          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+        }}>
+          {name}
+        </span>
+        {badge != null && (
+          <span style={{
+            flexShrink: 0, fontWeight: "bold", fontSize: "9px", padding: "0 4px",
+            background: active ? C.cyan : (badgeColor || "#222244"),
+            color: active ? "#000" : C.dim,
+          }}>
+            {badge}
+          </span>
+        )}
+      </Btn>
+    </Tooltip>
+  );
+}
+
+export function ShopZainoRail({ player, onEquipGrattatore, onUseItem }) {
+  const hasGrattatori = player.grattatori?.length > 0;
+  const hasItems = player.items?.length > 0;
+  return (
+    <div style={{
+      width: "230px", flexShrink: 0,
+      alignSelf: "flex-start", position: "sticky", top: "10px",
+      display: "flex", flexDirection: "column", gap: "2px",
+      fontFamily: FONT,
+      background: "linear-gradient(180deg, rgba(10,9,18,0.82) 0%, rgba(4,3,8,0.9) 100%)",
+      backdropFilter: "blur(10px) saturate(1.3)",
+      WebkitBackdropFilter: "blur(10px) saturate(1.3)",
+      border: `2px solid ${C.gold}44`,
+      boxShadow: `inset 0 0 26px rgba(0,0,0,0.6)`,
+      maxHeight: "calc(100dvh - 40px)", overflowY: "auto",
+    }}>
+      <div style={{ textAlign: "center", padding: "8px 6px 6px", borderBottom: `1px solid ${C.gold}33` }}>
+        <VintageBadge color={C.gold} size="md">🎒 ZAINO</VintageBadge>
+      </div>
+
+      {!hasGrattatori && !hasItems && (
+        <div style={{ color: C.dim, fontSize: "11px", fontStyle: "italic", textAlign: "center", padding: "14px 10px" }}>
+          Zaino vuoto — compra qualcosa dal banco.
+        </div>
+      )}
+
+      {hasGrattatori && (
+        <div style={{ padding: "8px 8px 4px" }}>
+          <div style={{ color: C.dim, fontSize: "10px", letterSpacing: "2px", marginBottom: "5px" }}>
+            ░ GRATTATORI ░
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+            {player.grattatori.map((g, idx) => {
+              const def = GRATTATORE_DEFS[g.id];
+              const isEquipped = player.equippedGrattatore?.inventoryIdx === idx;
+              return (
+                <ZainoChip
+                  key={idx}
+                  emoji={g.emoji} assetId={`item-${g.id}`} name={g.name}
+                  badge={isEquipped ? "✓" : g.usesLeft}
+                  active={isEquipped}
+                  onClick={() => onEquipGrattatore?.(idx)}
+                  tooltip={`${g.desc || def?.desc || ""} · ${g.usesLeft} uso/i`}
+                />
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {hasItems && (
+        <div style={{ padding: "8px 8px 10px" }}>
+          <div style={{ color: C.dim, fontSize: "10px", letterSpacing: "2px", marginBottom: "5px" }}>
+            ░ CONSUMABILI ░
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+            {player.items.map((itemId, idx) => {
+              const item = ITEM_DEFS[itemId];
+              if (!item) return null;
+              return (
+                <ZainoChip
+                  key={idx}
+                  emoji={item.emoji} assetId={`item-${itemId}`} name={item.name}
+                  active={false}
+                  onClick={() => onUseItem?.(idx)}
+                  tooltip={item.desc}
+                />
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

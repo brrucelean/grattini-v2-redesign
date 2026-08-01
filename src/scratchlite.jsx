@@ -58,6 +58,7 @@ const TicketGallery    = lazy(() => import("./components/TicketGallery.jsx").the
 const DoppioONullaView = lazy(() => import("./components/DoppioONullaView.jsx").then(m => ({ default: m.DoppioONullaView })));
 const MapView          = lazy(() => import("./components/MapView.jsx").then(m => ({ default: m.MapView })));
 const ShopView         = lazy(() => import("./components/ShopView.jsx").then(m => ({ default: m.ShopView })));
+const ShopZainoRail    = lazy(() => import("./components/ShopView.jsx").then(m => ({ default: m.ShopZainoRail })));
 const LocandaView      = lazy(() => import("./components/LocandaView.jsx").then(m => ({ default: m.LocandaView })));
 const EventView        = lazy(() => import("./components/EventView.jsx").then(m => ({ default: m.EventView })));
 const CombatView       = lazy(() => import("./components/CombatView.jsx").then(m => ({ default: m.CombatView })));
@@ -2088,12 +2089,17 @@ export default function Grattini() {
 
       {/* ═══ SHOP (Tabaccaio) ═══ */}
       {screen === "shop" && player && (
-        <div style={{maxWidth:W.content, width:"100%"}}>
+        <div style={{
+          maxWidth: W.content, width:"100%",
+          display:"flex", justifyContent:"center",
+          gap: wideDesk ? "14px" : "0",
+        }}>
           <Suspense fallback={<LazyFallback />}>
           <ShopView
             player={player}
             currentRow={currentRow}
             currentBiome={currentBiome}
+            wideDesk={wideDesk}
             onBuyCard={handleBuyCard}
             onBuyItem={handleBuyItem}
             onBuyGrattatore={handleBuyGrattatore}
@@ -2101,6 +2107,9 @@ export default function Grattini() {
             onScratch={handleShopScratch}
             onSlotResult={handleSlotResult}
           />
+          {wideDesk && (
+            <ShopZainoRail player={player} onEquipGrattatore={handleRailEquipGrattatore} onUseItem={useItem} />
+          )}
           </Suspense>
         </div>
       )}
