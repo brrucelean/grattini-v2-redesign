@@ -1,6 +1,10 @@
 import { C, FONT } from "../data/theme.js";
+import { GRATTATORE_DEFS } from "../data/items.js";
 import { VintageBadge } from "./Vintage.jsx";
 import { LogSidebar } from "./LogPanel.jsx";
+import { Tooltip } from "./Tooltip.jsx";
+import { Asset } from "./Asset.jsx";
+import { Btn } from "./Btn.jsx";
 
 // ─── FIANCATE DEL BANCO — solo desktop largo ─────────────────
 // Il grattino NON si allarga (romperebbe le proporzioni degli asset): lo spazio
@@ -46,7 +50,7 @@ function StatRow({ icon, label, value, color }) {
 }
 
 // ── SINISTRA: dossier della run + ambiente del bioma corrente ──
-export function RunStatsRail({ biome, palette, player, gameStats }) {
+export function RunStatsRail({ biome, palette, player, gameStats, onEquipGrattatore }) {
   return (
     <div style={railBox(palette)}>
       <div style={{
@@ -80,6 +84,58 @@ export function RunStatsRail({ biome, palette, player, gameStats }) {
         <StatRow icon="❌" label="PERSE" value={gameStats.scratchLosses || 0} color={C.red} />
         <StatRow icon="🏆" label="MIGLIOR €" value={`€${gameStats.bestPrize || 0}`} color={C.gold} />
         <StatRow icon="🗺️" label="NODI" value={gameStats.nodesVisited || 0} color={C.cyan} />
+
+        {/* Grattatori in zaino — selezionabili anche mentre si gratta, così
+            non serve chiudere il grattino per cambiare attrezzo. Un click
+            sul grattatore già attivo lo toglie (stesso toggle dello zaino
+            a schermo intero). */}
+        {player.grattatori?.length > 0 && (
+          <div style={{ marginTop: "10px", paddingTop: "8px", borderTop: `1px solid ${palette.border}22` }}>
+            <div style={{ color: C.dim, fontSize: "10px", letterSpacing: "2px", marginBottom: "5px" }}>
+              ░ GRATTATORI ░
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+              {player.grattatori.map((g, idx) => {
+                const def = GRATTATORE_DEFS[g.id];
+                const isEquipped = player.equippedGrattatore?.inventoryIdx === idx;
+                return (
+                  <Tooltip key={idx} text={`${g.desc || def?.desc || ""} · ${g.usesLeft} uso/i`} color={C.cyan}>
+                    <Btn
+                      onClick={() => onEquipGrattatore?.(idx)}
+                      style={{
+                        display: "flex", alignItems: "center", gap: "5px",
+                        width: "100%", justifyContent: "flex-start",
+                        background: isEquipped ? `${C.cyan}22` : "#0a0a18",
+                        border: `1px solid ${isEquipped ? C.cyan : "#333355"}`,
+                        color: isEquipped ? C.cyan : C.dim,
+                        padding: "4px 6px", fontSize: "10px", fontFamily: FONT,
+                        boxShadow: isEquipped ? `0 0 8px ${C.cyan}55` : "none",
+                        letterSpacing: "0.3px",
+                      }}
+                    >
+                      <span style={{ fontSize: "14px", flexShrink: 0, lineHeight: 1 }}>
+                        <Asset id={`item-${g.id}`} emoji={g.emoji} size={16} />
+                      </span>
+                      <span style={{
+                        flex: 1, minWidth: 0, textAlign: "left",
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                      }}>
+                        {g.name}
+                      </span>
+                      <span style={{
+                        flexShrink: 0, fontWeight: "bold", fontSize: "9px", padding: "0 4px",
+                        background: isEquipped ? C.cyan : "#222244",
+                        color: isEquipped ? "#000" : C.dim,
+                      }}>
+                        {isEquipped ? "✓" : g.usesLeft}
+                      </span>
+                    </Btn>
+                  </Tooltip>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

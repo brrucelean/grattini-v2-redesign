@@ -363,6 +363,14 @@ export default function Grattini() {
     updatePlayer(p => ({...p, equippedGrattatore: null}));
   };
 
+  // Toggle equip/unequip per la fiancata del banco (RunStatsRail): un click
+  // sul grattatore già attivo lo toglie, altrimenti lo equipaggia — stesso
+  // comportamento dello zaino a schermo intero, in versione compatta.
+  const handleRailEquipGrattatore = (idx) => {
+    if (player.equippedGrattatore?.inventoryIdx === idx) unequipGrattatore();
+    else equipGrattatore(idx);
+  };
+
   // ─── NAIL SELECT ──────────────────────────────────────────
   const handleSelectNail = useCallback((i) => {
     if (scratchingCard) return; // locked during scratch
@@ -648,7 +656,7 @@ export default function Grattini() {
               gap: wideDesk ? "14px" : "0",
             }}>
             {wideDesk && (
-              <RunStatsRail biome={BIOMES[currentBiome]} palette={bioPal} player={player} gameStats={gameStats} />
+              <RunStatsRail biome={BIOMES[currentBiome]} palette={bioPal} player={player} gameStats={gameStats} onEquipGrattatore={handleRailEquipGrattatore} />
             )}
             {/* animation wrapper */}
             <div style={{animation:"scratchCardSlideIn 0.28s ease-out both", flex:"1 1 auto", minWidth:0, display:"flex", justifyContent:"center", alignItems:"flex-start"}}>
