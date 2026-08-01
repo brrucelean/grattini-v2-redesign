@@ -25,7 +25,7 @@ import { ASCII_TITLE } from "./data/art.js";
 import { AudioEngine } from "./audio.js";
 import { clamp } from "./utils/random.js";
 import { Haptics } from "./utils/haptics.js";
-import { degradeNailObj, healNail, makeNailCursor, nailCursor } from "./utils/nail.js";
+import { degradeNailObj, healNail, makeNailCursor, nailCursor, grattatoreCursor } from "./utils/nail.js";
 import { generateCard, generateIntroCards } from "./utils/card.js";
 import {
   generateMap,
@@ -387,9 +387,14 @@ export default function Grattini() {
   };
 
   // ─── RENDER ─────────────────────────────────────────────────
-  // Cursore globale: mano pixel-art con unghia del colore dello stato attivo
+  // Cursore globale: mano pixel-art con unghia del colore dello stato attivo.
+  // Mentre si gratta (scratchingCard attiva) con un grattatore equipaggiato,
+  // il puntatore diventa l'attrezzo stesso — "lo vedi in mano" al posto del dito.
   const globalNailState = player?.nails?.[player?.activeNail ?? 0]?.state ?? "sana";
-  const globalNailCursor = nailCursor(screen === "gameOver" ? "scheletro" : globalNailState);
+  const baseNailCursor = nailCursor(screen === "gameOver" ? "scheletro" : globalNailState);
+  const globalNailCursor = scratchingCard && player?.equippedGrattatore
+    ? grattatoreCursor(player.equippedGrattatore.id, baseNailCursor)
+    : baseNailCursor;
 
   // Neon dimming: glow effects fade when few nails alive
   const aliveCount = player?.nails?.filter(n => n.state !== "morta").length ?? 5;

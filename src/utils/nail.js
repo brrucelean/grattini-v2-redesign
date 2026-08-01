@@ -332,3 +332,13 @@ export function nailCursor(nailState = "sana") {
   const url = assetUrl(`cursor-${key}`);
   return url ? `url("${url}") 28 2, pointer` : makeNailCursor(nailState);
 }
+
+// ─── CURSORE = GRATTATORE EQUIPAGGIATO ───────────────────────
+// Mentre si gratta con un grattatore in mano (bullone, moneta, ecc.), il
+// puntatore mostra l'attrezzo al posto del dito — hotspot al centro (56×56,
+// stessa taglia dei cursor-<stato>). Se manca lo sprite dedicato (oggetto
+// nuovo senza cursor-item-<id>), niente sostituzione: resta il dito.
+export function grattatoreCursor(itemId, fallback) {
+  const url = itemId ? assetUrl(`cursor-item-${itemId}`) : null;
+  return url ? `url("${url}") 28 28, pointer` : fallback;
+}
