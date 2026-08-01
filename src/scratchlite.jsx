@@ -720,7 +720,7 @@ export default function Grattini() {
       {/* ── HUD PERSISTENTE (tutte le screen tranne title e tutorial) ── */}
       {player && !["title","tutorialNails"].includes(screen) && (
         <div style={{width:"100%", flexShrink:0, paddingTop:"6px"}}>
-          <HUD player={player} onOpenInventory={toggleInventoryPanel} inventoryOpen={showInventoryPanel} moneyBling={moneyBling} currentBiome={currentBiome} />
+          <HUD player={player} onOpenInventory={toggleInventoryPanel} inventoryOpen={showInventoryPanel} moneyBling={moneyBling} currentBiome={currentBiome} hideInventoryButton={screen === "shop" && wideDesk} />
         </div>
       )}
 

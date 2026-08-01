@@ -39,7 +39,7 @@ function StatusChip({ color, children, danger = false, active = false, onClick, 
   );
 }
 
-function HUDImpl({ player, onOpenInventory, inventoryOpen = false, moneyBling = 0, currentBiome = 0 }) {
+function HUDImpl({ player, onOpenInventory, inventoryOpen = false, moneyBling = 0, currentBiome = 0, hideInventoryButton = false }) {
   const bioPal = BIOME_PALETTE[currentBiome] || BIOME_PALETTE[0];
   const aliveNails = player.nails.filter(n => n.state !== "morta").length;
   const [vol, setVol] = useState(AudioEngine.getVolume());
@@ -170,8 +170,9 @@ function HUDImpl({ player, onOpenInventory, inventoryOpen = false, moneyBling = 
             style={{cursor:"pointer", fontSize:"16px", userSelect:"none", flexShrink:0}}
             onClick={() => { const v = muted ? 0.7 : 0; setVol(v); AudioEngine.setVolume(v); }}
           >{muted ? "🔇" : "🔊"}</span>
-          {/* Inventario */}
-          {onOpenInventory && (
+          {/* Inventario — nascosto quando la fiancata ZAINO è già a vista
+              (tabaccaio, desktop largo): stesso comando due volte è rumore. */}
+          {onOpenInventory && !hideInventoryButton && (
             <span
               onClick={onOpenInventory}
               style={{
@@ -297,7 +298,7 @@ function HUDImpl({ player, onOpenInventory, inventoryOpen = false, moneyBling = 
             />
           </span>
         </Tooltip>
-        {onOpenInventory && (() => {
+        {onOpenInventory && !hideInventoryButton && (() => {
           const tot = (player?.items?.length||0) + (player?.grattatori?.length||0);
           // Lo zaino è l'unico comando cliccabile della barra: prima era uno
           // StatusChip da 11px identico a quelli informativi e sbiadito a 0.7
