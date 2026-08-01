@@ -396,11 +396,12 @@ export default function Grattini() {
 
   // ─── RENDER ─────────────────────────────────────────────────
   // Cursore globale: mano pixel-art con unghia del colore dello stato attivo.
-  // Mentre si gratta (scratchingCard attiva) con un grattatore equipaggiato,
-  // il puntatore diventa l'attrezzo stesso — "lo vedi in mano" al posto del dito.
+  // Appena un grattatore è equipaggiato, il puntatore diventa l'attrezzo stesso
+  // — "lo vedi in mano" al posto del dito — subito, non solo mentre si gratta
+  // un grattino: equipaggiare è già "prendere in mano" l'attrezzo.
   const globalNailState = player?.nails?.[player?.activeNail ?? 0]?.state ?? "sana";
   const baseNailCursor = nailCursor(screen === "gameOver" ? "scheletro" : globalNailState);
-  const globalNailCursor = scratchingCard && player?.equippedGrattatore
+  const globalNailCursor = player?.equippedGrattatore
     ? grattatoreCursor(player.equippedGrattatore.id, baseNailCursor)
     : baseNailCursor;
 
