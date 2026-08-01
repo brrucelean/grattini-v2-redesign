@@ -15,6 +15,7 @@ import { Btn } from "./Btn.jsx";
 import { NailDisplay } from "./NailDisplay.jsx";
 import { Asset } from "./Asset.jsx";
 import { hasAsset } from "../assets/registry.js";
+import { ANIM } from "../styles/animations.js";
 
 // Nomi categoria abbreviati — COMBATTIMENTO è troppo lungo per le card strette
 const CAT_SHORT = { COMBATTIMENTO: "ATTACCO", DIFESA: "DIFESA", DENARO: "DENARO" };
@@ -75,7 +76,7 @@ export function CombatCardScratch({ cell, onRevealed, catColors, disabled, nailS
     // Hint "GRATTA" in basso
     ctx.globalAlpha = 0.42;
     ctx.fillStyle = "#3a2000";
-    ctx.font = "bold 9px monospace";
+    ctx.font = "bold 10px monospace";
     ctx.textAlign = "center";
     ctx.fillText("G R A T T A", canvas.width / 2, canvas.height - 7);
     ctx.globalAlpha = 1;
@@ -881,7 +882,7 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
           ) : (
             <pre style={{
               margin: 0, textAlign: "center", color: "#ff6a6a", fontFamily: FONT,
-              fontSize: "7px", lineHeight: "1.05", whiteSpace: "pre",
+              fontSize: "10px", lineHeight: "1.05", whiteSpace: "pre",
               textShadow: `0 0 6px ${C.red}aa`,
               animation: enemyHitFlash ? "none" : "neonText 2.4s infinite",
             }}>
@@ -1010,7 +1011,7 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
                 border: `2px solid ${C.red}`, background: "#1a0005",
                 color: C.red, fontWeight: "bold", letterSpacing: "0.5px",
                 boxShadow: `0 0 14px ${C.red}88, inset 0 0 10px ${C.red}22`,
-                animation: "pulse 0.8s infinite",
+                animation: ANIM.pulseUrgent,
               }}>
                 ✝ UNGHIA MORTA — seleziona un'unghia sana dalla colonna UNGHIE per grattare
               </div>

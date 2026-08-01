@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { C, FONT } from "../data/theme.js";
+import { C, FONT, T } from "../data/theme.js";
 import { SYMBOLS } from "../data/cards.js";
 import { NAIL_INFO } from "../data/nails.js";
 import { makeNailCursor } from "../utils/nail.js";
@@ -157,7 +157,7 @@ export function ScratchCell({ cell, idx, onScratch, finished, isWinSymbol, isPar
           ? "inset 0 0 14px #ff000088, 0 0 10px #ff000055, 3px 3px 0 #000"
           : "3px 3px 0 #000000",
       animation: winAnim ? "winFlash 0.9s ease-out forwards" : "none",
-      transition: "box-shadow 0.15s",
+      transition: `box-shadow ${T.instant}`,
     }}>
       {/* Symbol — visible only after reveal */}
       {cell.scratched && (

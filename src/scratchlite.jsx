@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, lazy, Suspense } from "react";
-import { C, FONT, MAX_ITEMS, W } from "./data/theme.js";
+import { C, FONT, MAX_ITEMS, W, R } from "./data/theme.js";
+import { KEYFRAMES, EFFECTS_CSS, ANIM } from "./styles/animations.js";
 import { NAIL_INFO } from "./data/nails.js";
 import { ACHIEVEMENTS } from "./data/achievements.js";
 import { useLog } from "./hooks/useLog.js";
@@ -453,67 +454,13 @@ export default function Grattini() {
       display:"flex", flexDirection:"column",
     }}>
       <style>{`
-        @keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0; } }
-        @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
-        @keyframes glow { 0%,100% { text-shadow: 0 0 5px ${C.gold}; } 50% { text-shadow: 0 0 20px ${C.gold}, 0 0 40px ${C.gold}44; } }
-        @keyframes fadeOut { 0% { opacity:1; } 70% { opacity:0.8; } 100% { opacity:0; } }
-        @keyframes neonPulse { 0%,100% { box-shadow: 0 0 5px ${C.cyan}22, 0 0 10px ${C.cyan}11; } 50% { box-shadow: 0 0 12px ${C.cyan}44, 0 0 24px ${C.cyan}22; } }
-        @keyframes slotGlow { 0%,100% { box-shadow: 0 0 8px ${C.gold}33, 0 0 16px ${C.gold}18; } 50% { box-shadow: 0 0 16px ${C.gold}55, 0 0 32px ${C.gold}28; } }
-        @keyframes winFlash { 0% { box-shadow: 0 0 0px ${C.green}00; } 50% { box-shadow: 0 0 30px ${C.green}88, 0 0 60px ${C.green}44; } 100% { box-shadow: 0 0 12px ${C.green}33; } }
-        @keyframes neonText { 0%,100% { text-shadow: 0 0 4px currentColor; } 50% { text-shadow: 0 0 12px currentColor, 0 0 24px currentColor; } }
-        @keyframes moneyBling { 0% { text-shadow: none; box-shadow: 0 0 6px ${C.gold}44; } 25% { text-shadow: 0 0 14px ${C.gold}, 0 0 28px ${C.gold}99; box-shadow: 0 0 22px ${C.gold}88, inset 0 0 10px ${C.gold}33; } 60% { text-shadow: 0 0 8px ${C.gold}; box-shadow: 0 0 12px ${C.gold}55; } 100% { text-shadow: none; box-shadow: 0 0 6px ${C.gold}44; } }
-        @keyframes stampIn { 0% { transform: rotate(-12deg) scale(3); opacity:0; } 50% { transform: rotate(-12deg) scale(0.9); opacity:1; } 70% { transform: rotate(-12deg) scale(1.1); } 100% { transform: rotate(-12deg) scale(1.2); opacity:1; } }
-        @keyframes screenShake { 0% { transform: translate(0,0); } 10% { transform: translate(-4px,2px); } 20% { transform: translate(4px,-2px); } 30% { transform: translate(-3px,-3px); } 40% { transform: translate(3px,3px); } 50% { transform: translate(-2px,1px); } 60% { transform: translate(2px,-1px); } 70% { transform: translate(-1px,2px); } 80% { transform: translate(1px,-1px); } 90% { transform: translate(-1px,0); } 100% { transform: translate(0,0); } }
-        @keyframes glitA { 0% { opacity:0; transform:translate(0,0) scale(0.3); } 40% { opacity:1; transform:translate(9px,-14px) scale(1.2); } 70% { opacity:0.6; transform:translate(16px,-8px) scale(0.8); } 100% { opacity:0; transform:translate(6px,-22px) scale(0.3); } }
-        @keyframes glitB { 0% { opacity:0; transform:translate(0,0) scale(0.3); } 40% { opacity:1; transform:translate(-11px,10px) scale(1.3); } 70% { opacity:0.5; transform:translate(-18px,4px) scale(0.9); } 100% { opacity:0; transform:translate(-8px,18px) scale(0.3); } }
-        @keyframes glitC { 0% { opacity:0; transform:translate(0,0) scale(0.4); } 35% { opacity:1; transform:translate(7px,12px) scale(1.1); } 65% { opacity:0.7; transform:translate(-4px,20px) scale(0.7); } 100% { opacity:0; transform:translate(2px,26px) scale(0.3); } }
-        @keyframes glitD { 0% { opacity:0; transform:translate(0,0) scale(0.3); } 45% { opacity:1; transform:translate(-8px,-16px) scale(1.4); } 75% { opacity:0.4; transform:translate(-14px,-6px) scale(0.8); } 100% { opacity:0; transform:translate(-4px,-24px) scale(0.3); } }
-        @keyframes glitE { 0% { opacity:0; transform:translate(0,0) scale(0.35); } 50% { opacity:1; transform:translate(14px,6px) scale(1.2); } 80% { opacity:0.5; transform:translate(20px,-4px) scale(0.7); } 100% { opacity:0; transform:translate(10px,-14px) scale(0.3); } }
-        @keyframes glitF { 0% { opacity:0; transform:translate(0,0) scale(0.4); } 40% { opacity:0.9; transform:translate(-6px,14px) scale(1.1); } 60% { opacity:1; transform:translate(-12px,8px) scale(1.3); } 100% { opacity:0; transform:translate(-20px,-6px) scale(0.3); } }
-        @keyframes floatUp { 0% { transform:translateY(0) scale(1); opacity:0.7; } 100% { transform:translateY(-18px) scale(0.5); opacity:0; } }
-        @keyframes coinFly { 0% { transform:translate(0,0) rotate(0deg); opacity:1; } 100% { transform:translate(var(--dx,0), var(--dy,-60px)) rotate(var(--rot,0deg)); opacity:0; } }
-        @keyframes combatFloat { 0% { transform:translate(-50%, 0) scale(0.6); opacity:0; } 18% { transform:translate(-50%, -6px) scale(1.15); opacity:1; } 100% { transform:translate(-50%, -46px) scale(1); opacity:0; } }
-        @keyframes telePulse { 0%,100% { transform:scale(1); filter:brightness(1); } 50% { transform:scale(1.08); filter:brightness(1.35); } }
-        @keyframes achievementSlide { 0% { transform:translateX(120%); opacity:0; } 100% { transform:translateX(0); opacity:1; } }
-        @keyframes nodePop { 0% { transform:scale(0.85); } 60% { transform:scale(1.05); } 100% { transform:scale(1); } }
-        @keyframes lineFlow { 0% { stroke-dashoffset:20; } 100% { stroke-dashoffset:0; } }
-        @keyframes newsTicker { 0% { transform: translateX(0); } 100% { transform: translateX(calc(-100% - 100vw)); } }
-        @keyframes dialogueCursor { 0%,49% { opacity:1; } 50%,100% { opacity:0; } }
-        @keyframes inventorySlideIn { 0% { transform:translateX(100%); opacity:0; } 100% { transform:translateX(0); opacity:1; } }
-        @keyframes dialogueIn { 0% { opacity:0; transform:translateY(8px); } 100% { opacity:1; transform:translateY(0); } }
-        @keyframes titleBlink { 0%,100% { text-shadow: 0 0 10px ${C.gold}88, 0 0 30px ${C.gold}44; opacity:1; } 48% { text-shadow: 0 0 10px ${C.gold}88, 0 0 30px ${C.gold}44; opacity:1; } 50% { text-shadow: 0 0 40px ${C.gold}, 0 0 80px ${C.gold}aa, 0 0 120px ${C.gold}55; opacity:0.7; } 52% { text-shadow: 0 0 10px ${C.gold}88, 0 0 30px ${C.gold}44; opacity:1; } }
-        @keyframes titleGlitter { 0% { opacity:0; transform:scale(0.4) translateY(0); } 25% { opacity:1; transform:scale(1.3) translateY(-3px); } 60% { opacity:0.5; transform:scale(0.9) translateY(-7px); } 100% { opacity:0; transform:scale(0.3) translateY(-14px); } }
-        @keyframes bossGlow { 0%,100% { box-shadow:0 0 14px #ff2244aa,0 0 28px #ff224466,0 0 2px #fff; } 50% { box-shadow:0 0 28px #ff2244ff,0 0 56px #ff224499,0 0 4px #fff; } }
-        @keyframes comboPulse { 0% { transform:translateX(-50%) scale(1); box-shadow:0 0 30px #ffaa0088,0 0 60px #ffaa0044; } 100% { transform:translateX(-50%) scale(1.06); box-shadow:0 0 50px #ffaa00cc,0 0 100px #ffaa0066; } }
-        @keyframes variantReveal { 0% { transform: scale(0.7) rotate(-8deg); filter: brightness(3) saturate(2); } 40% { transform: scale(1.15) rotate(2deg); filter: brightness(2) saturate(1.8); } 70% { transform: scale(0.96) rotate(-1deg); } 100% { transform: scale(1) rotate(0); filter: brightness(1) saturate(1); } }
-        @keyframes variantShimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
-        @keyframes variantPulse { 0%,100% { filter: brightness(1) saturate(1); } 50% { filter: brightness(1.35) saturate(1.4); } }
-        @keyframes variantSparkle { 0% { opacity: 0; transform: scale(0.3) rotate(0); } 40% { opacity: 1; transform: scale(1.2) rotate(120deg); } 100% { opacity: 0; transform: scale(0.4) rotate(240deg); } }
-        @keyframes oroGlint { 0%,100% { box-shadow: 0 0 36px #ffd700ff, 0 0 64px #ffaa00aa, inset 0 0 36px #ffaa0099; } 50% { box-shadow: 0 0 52px #ffee44ff, 0 0 96px #ffcc00dd, inset 0 0 48px #ffcc00cc; } }
-        @keyframes foilShine { 0% { background-position: -150% 0; } 100% { background-position: 250% 0; } }
-        @keyframes foilHue { 0%,100% { filter: hue-rotate(0deg) saturate(1); } 50% { filter: hue-rotate(18deg) saturate(1.3); } }
-        @keyframes asciiFlicker { 0%,100% { text-shadow: 0 0 14px currentColor, 0 0 40px currentColor55; } 47% { text-shadow: 0 0 14px currentColor, 0 0 40px currentColor55; } 48% { text-shadow: 0 0 2px currentColor, 0 0 6px currentColor44; } 52% { text-shadow: 0 0 2px currentColor, 0 0 6px currentColor44; } 53% { text-shadow: 0 0 14px currentColor, 0 0 40px currentColor55; } }
-        @keyframes itemFoundIn { 0% { transform:scale(0.8); opacity:0; } 55% { transform:scale(1.04); } 100% { transform:scale(1); opacity:1; } }
-        @keyframes itemGlowRing { 0%,100% { opacity:0.55; transform:scale(0.94); } 50% { opacity:1; transform:scale(1.08); } }
-        @keyframes screenIn { 0% { opacity:0; transform:translateY(5px); } 100% { opacity:1; transform:translateY(0); } }
-        @keyframes popIn { 0% { opacity:0; transform:scale(0.86); } 60% { transform:scale(1.05); } 100% { opacity:1; transform:scale(1); } }
-        @keyframes crtFlicker { 0%,93%,100% { opacity:1; } 94% { opacity:0.91; } 96% { opacity:0.97; } 98% { opacity:0.93; } }
-        @keyframes goldSheen { 0% { background-position:-200% 0; } 100% { background-position:200% 0; } }
-        @keyframes slideUp { 0% { opacity:0; transform:translateY(10px); } 100% { opacity:1; transform:translateY(0); } }
-        @keyframes biomePulse { 0%,100% { opacity:0.55; } 50% { opacity:1; } }
-        @keyframes borderGlow { 0%,100% { box-shadow:0 0 4px currentColor33; } 50% { box-shadow:0 0 12px currentColor66, 0 0 24px currentColor22; } }
-        @keyframes nailCrit { 0% { transform:scale(1); } 20% { transform:scale(1.18); filter:brightness(1.6); } 50% { transform:scale(0.94); } 100% { transform:scale(1); filter:brightness(1); } }
-        @keyframes chipIn { 0% { opacity:0; transform:translateX(-6px) scale(0.9); } 100% { opacity:1; transform:translateX(0) scale(1); } }
-        /* .foil-ascii::after rimosso — il shimmer diagonale con mix-blend-mode:screen
-           creava un "contorno brillante" deformato sulle lettere box-drawing del titolo.
-           Il class resta no-op per back-compat; il titolo ora si affida solo al gold
-           base + text-shadow + asciiFlicker. */
-        .foil-ascii { position: relative; display: inline-block; animation: crtFlicker 14s ease-in-out infinite; }
+        ${KEYFRAMES}
+        ${EFFECTS_CSS}
         html, body { margin: 0; padding: 0; overflow: hidden; background: #000; }
         * { box-sizing: border-box; }
         ::-webkit-scrollbar { width: 4px; height: 0px; }
         ::-webkit-scrollbar-track { background: #000; }
-        ::-webkit-scrollbar-thumb { background: ${C.dim}88; border-radius: 2px; }
+        ::-webkit-scrollbar-thumb { background: ${C.dim}88; border-radius: ${R.sm}; }
         ::-webkit-scrollbar-thumb:hover { background: ${C.dim}; }
         /* Forza il cursore-dito su TUTTO — sovrascrive pointer/not-allowed inline
            su qualsiasi elemento selezionabile (card shop, bottoni, nodi mappa...) */
@@ -526,96 +473,6 @@ export default function Grattini() {
           input[type="range"]::-webkit-slider-thumb { width: 22px; height: 22px; }
           /* niente hover-stick su touch: i :hover restano attaccati dopo il tap */
           * { -webkit-touch-callout: none; }
-        }
-        /* ── SCREEN TRANSITION ── */
-        @keyframes screenFadeIn { 0% { opacity:0; transform:scale(0.97); } 100% { opacity:1; transform:scale(1); } }
-        /* ── MAP SNAP SCROLL ── */
-        .map-snap-scroll { scroll-snap-type: y mandatory; }
-        @keyframes screenFlash  { 0% { opacity:1; } 40% { opacity:1; } 100% { opacity:0; } }
-        /* ── GAME OVER EPIC ── */
-        @keyframes gameOverFlicker {
-          0%,100% { opacity:1; text-shadow: 0 0 16px #ff0022cc, 0 0 40px #ff002288; }
-          8%  { opacity:0.7; text-shadow: 0 0 4px #ff002244; }
-          10% { opacity:1; text-shadow: 0 0 24px #ff0022ff, 0 0 60px #ff002299; }
-          55% { opacity:1; text-shadow: 0 0 16px #ff0022cc, 0 0 40px #ff002288; }
-          56% { opacity:0.5; }
-          57% { opacity:1; text-shadow: 0 0 40px #ff0022ff; }
-        }
-        @keyframes gameOverBorder {
-          0%,100% { box-shadow: 0 0 28px #ff002277, inset 0 0 32px #ff002214; }
-          50%      { box-shadow: 0 0 60px #ff0022bb, inset 0 0 60px #ff002230; }
-        }
-        @keyframes gameOverSkull { 0% { transform:translateY(0) scale(1); } 10% { transform:translateY(-6px) scale(1.08); } 25% { transform:translateY(2px) scale(0.96); } 100% { transform:translateY(0) scale(1); } }
-        /* ── VICTORY EPIC ── */
-        @keyframes victoryGoldPulse { 0%,100% { text-shadow: 0 0 12px #ffd700bb, 0 0 40px #ffd70066; } 50% { text-shadow: 0 0 30px #ffd700ff, 0 0 80px #ffd700aa, 0 0 120px #ffcc0055; } }
-        @keyframes confettiDrop { 0% { transform:translateY(-20px) rotate(0deg); opacity:1; } 100% { transform:translateY(120px) rotate(720deg); opacity:0; } }
-        @keyframes statTileIn { 0% { transform:scale(0.7) translateY(10px); opacity:0; } 100% { transform:scale(1) translateY(0); opacity:1; } }
-        @keyframes scratchCardSlideIn { 0% { opacity:0; transform:translateY(18px) scale(0.97); } 100% { opacity:1; transform:translateY(0) scale(1); } }
-        @keyframes scratchTopBarIn { 0% { opacity:0; transform:translateY(-10px); } 100% { opacity:1; transform:translateY(0); } }
-
-        /* ══ V2 HOLO LAYER — foil olografico, glassmorphism, tilt 3D ══════════
-           .holo        → overlay arcobaleno iridescente + sweep di luce diagonale
-           .holo-strong → variante più intensa (title screen, card leggendarie)
-           .glass       → pannello traslucido con blur (vince sugli inline style)
-           .card3d      → respiro prospettico 3D continuo, delay sfalsati        */
-        @keyframes holoSweep { 0% { background-position: 0% 0%; } 100% { background-position: 300% 300%; } }
-        @keyframes holoGlide { 0% { background-position: -150% 0; } 100% { background-position: 250% 0; } }
-        @keyframes holoBreath {
-          0%,100% { transform: perspective(700px) rotateX(1.4deg) rotateY(-2.2deg) translateY(0); }
-          50%      { transform: perspective(700px) rotateX(-1.4deg) rotateY(2.2deg) translateY(-3px); }
-        }
-        @keyframes holoTitleHue {
-          0%,100% { filter: hue-rotate(-12deg) saturate(1.1); }
-          50%      { filter: hue-rotate(28deg) saturate(1.5) brightness(1.1); }
-        }
-        .holo { position: relative; isolation: isolate; }
-        .holo::before {
-          content:""; position:absolute; inset:0; z-index:4; pointer-events:none;
-          background: linear-gradient(115deg,
-            rgba(255,0,80,0.30) 0%, rgba(255,160,0,0.24) 14%, rgba(255,240,0,0.20) 28%,
-            rgba(0,255,140,0.20) 42%, rgba(0,220,255,0.28) 56%, rgba(80,80,255,0.26) 70%,
-            rgba(220,0,255,0.28) 84%, rgba(255,0,80,0.30) 100%);
-          background-size: 320% 320%;
-          mix-blend-mode: screen;
-          opacity: 0.26;
-          animation: holoSweep 6s linear infinite;
-        }
-        .holo::after {
-          content:""; position:absolute; inset:0; z-index:5; pointer-events:none;
-          background: linear-gradient(100deg, transparent 36%, rgba(255,255,255,0.30) 47%, rgba(255,255,255,0.06) 53%, transparent 64%);
-          background-size: 260% 100%;
-          mix-blend-mode: screen;
-          animation: holoGlide 3.4s linear infinite;
-        }
-        .holo-strong::before { opacity: 0.45; }
-        .holo-strong::after  { animation-duration: 2.6s; }
-        .glass {
-          background: rgba(8,10,24,0.55) !important;
-          backdrop-filter: blur(16px) saturate(1.6);
-          -webkit-backdrop-filter: blur(16px) saturate(1.6);
-        }
-        .card3d { transform-style: preserve-3d; animation: holoBreath 7s ease-in-out infinite; will-change: transform; }
-        .card3d:nth-child(2) { animation-delay: -1.8s; }
-        .card3d:nth-child(3) { animation-delay: -3.5s; }
-        .card3d:nth-child(4) { animation-delay: -5.2s; }
-        .holo-title { animation: holoTitleHue 9s ease-in-out infinite; }
-        /* ── V2.1 TABACCHERIA NOTTURNA ── */
-        @keyframes neonFlickerT {
-          0%,100% { opacity:1; }
-          3%  { opacity:0.55; } 4%  { opacity:1; }
-          7%  { opacity:0.8; }  8%  { opacity:1; }
-          42% { opacity:1; }    43% { opacity:0.5; }
-          44% { opacity:1; }    71% { opacity:1; }
-          72% { opacity:0.75; } 73% { opacity:1; }
-        }
-        @keyframes smokeRise {
-          0%   { transform: translateY(0) translateX(0) scale(1); opacity:0; }
-          12%  { opacity:0.45; }
-          70%  { opacity:0.18; }
-          100% { transform: translateY(-78vh) translateX(36px) scale(2.1); opacity:0; }
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .holo::before, .holo::after, .card3d, .holo-title { animation: none !important; }
         }
       `}</style>
 
@@ -653,7 +510,7 @@ export default function Grattini() {
         }}>
           <div style={{
             fontSize:"90px", lineHeight:"1",
-            animation:"pulse 0.4s infinite",
+            animation:ANIM.pulseUrgent,
           }}>✝</div>
           <div style={{color:C.red, fontFamily:FONT, fontSize:"22px", letterSpacing:"4px", fontWeight:"bold"}}>
             UNGHIA PERSA
@@ -695,7 +552,7 @@ export default function Grattini() {
           }}>
             {/* Card info */}
             <div style={{flex:1, minWidth:0}}>
-              <div style={{color:C.dim, fontSize:"8px", letterSpacing:"3px", fontFamily:FONT, marginBottom:"2px"}}>
+              <div style={{color:C.dim, fontSize:"10px", letterSpacing:"3px", fontFamily:FONT, marginBottom:"2px"}}>
                 ░ GRATTA E VINCI ░
               </div>
               <div style={{
@@ -956,7 +813,7 @@ export default function Grattini() {
                   textShadow:"0 0 12px #2e7cffcc", fontFamily:FONT, fontWeight:"bold",
                 }}>TABACCHI</div>
                 <div style={{
-                  color:"#ff5577", fontSize:"8px", letterSpacing:"3px",
+                  color:"#ff5577", fontSize:"10px", letterSpacing:"3px",
                   textShadow:"0 0 8px #ff5577aa", marginTop:"4px", fontFamily:FONT,
                 }}>SALA GRATTINI · APERTO H24</div>
               </div>
@@ -979,7 +836,7 @@ export default function Grattini() {
               background:`linear-gradient(90deg, transparent, ${C.gold}99, transparent)`,
               boxShadow:`0 0 8px ${C.gold}55`,
             }}/>
-            <div style={{color:C.dim, fontSize:"clamp(9px, 1.2vw, 12px)", letterSpacing:"4px",
+            <div style={{color:C.dim, fontSize:"clamp(10px, 1.2vw, 12px)", letterSpacing:"4px",
               textShadow:`0 0 8px ${C.gold}44`,
             }}>
               ░ V2 · HOLO EDITION ░
@@ -994,7 +851,7 @@ export default function Grattini() {
           }}>
             ░░░ INIZIA LA RUN ░░░
           </Btn>
-          <div style={{color:C.dim, fontSize:"clamp(9px, 0.9vw, 11px)", marginTop:"20px", letterSpacing:"1px", lineHeight:"1.9", opacity:0.7}}>
+          <div style={{color:C.dim, fontSize:"clamp(10px, 0.9vw, 11px)", marginTop:"20px", letterSpacing:"1px", lineHeight:"1.9", opacity:0.7}}>
             5 unghie · 3 biomi · 1 destino<br/>
             Gratta con saggezza. Le unghie non ricrescono.
           </div>
@@ -1009,7 +866,7 @@ export default function Grattini() {
                 <div style={{color:C.text, fontSize:"12px", marginTop:"4px"}}>
                   {cd.icon} {cd.name}
                 </div>
-                <div style={{color:C.dim, fontSize:"9px", marginTop:"2px"}}>
+                <div style={{color:C.dim, fontSize:"10px", marginTop:"2px"}}>
                   ✚ {cd.pro} &nbsp;|&nbsp; ✖ {cd.contro}
                 </div>
                 <button onClick={() => {
@@ -1017,7 +874,7 @@ export default function Grattini() {
                   setActiveCedola(null);
                 }} style={{
                   background:"none", border:`1px solid ${C.red}`, color:C.red,
-                  fontSize:"9px", cursor:"pointer", marginTop:"6px", padding:"2px 8px",
+                  fontSize:"10px", cursor:"pointer", marginTop:"6px", padding:"2px 8px",
                   fontFamily:FONT,
                 }}>✖ rimuovi cedola</button>
               </div>
@@ -1129,7 +986,7 @@ export default function Grattini() {
                         <>
                           <div style={{
                             display:"flex", justifyContent:"space-between",
-                            fontSize:"9px", color:`${c.accent}bb`, letterSpacing:"1px",
+                            fontSize:"10px", color:`${c.accent}bb`, letterSpacing:"1px",
                             marginBottom:"4px",
                           }}>
                             <span>SBLOCCATI</span>
@@ -1146,7 +1003,7 @@ export default function Grattini() {
                         </>
                       ) : (
                         <div style={{
-                          fontSize:"9px", color:`${c.accent}bb`, letterSpacing:"1px",
+                          fontSize:"10px", color:`${c.accent}bb`, letterSpacing:"1px",
                           textAlign:"center", padding:"3px 0",
                         }}>▸ APRI STATS</div>
                       )}
@@ -1186,7 +1043,7 @@ export default function Grattini() {
             <div style={{color:pg.color, fontFamily:FONT, fontSize:"16px", fontWeight:"bold", letterSpacing:"2px", marginBottom:"2px"}}>
               {pg.emoji} {pg.title}
             </div>
-            <div style={{color:C.dim, fontSize:"9px", letterSpacing:"3px"}}>{pg.sub.toUpperCase()} — {tutorialPage+1}/3</div>
+            <div style={{color:C.dim, fontSize:"10px", letterSpacing:"3px"}}>{pg.sub.toUpperCase()} — {tutorialPage+1}/3</div>
             <div style={{display:"flex", justifyContent:"center", gap:"5px", marginTop:"6px"}}>
               {PAGES.map((_, i) => (
                 <div key={i} style={{
@@ -1217,7 +1074,7 @@ export default function Grattini() {
                   <div style={{display:"flex", alignItems:"center", gap:"6px"}}>
                     <div style={{width:"8px", height:"8px", background:color, flexShrink:0, boxShadow:`0 0 4px ${color}`}}/>
                     <span style={{color, fontSize:"12px", fontWeight:"bold", letterSpacing:"0.5px"}}>{label}</span>
-                    <span style={{ marginLeft:"auto", fontSize:"9px", fontWeight:"bold", color: color === "#555" ? "#555" : color, background:"#00000066", padding:"1px 5px", border:`1px solid ${color}33` }}>{badge}</span>
+                    <span style={{ marginLeft:"auto", fontSize:"10px", fontWeight:"bold", color: color === "#555" ? "#555" : color, background:"#00000066", padding:"1px 5px", border:`1px solid ${color}33` }}>{badge}</span>
                   </div>
                   <div style={{color:C.dim, fontSize:"10px", lineHeight:"1.35"}}>{desc}</div>
                 </div>
@@ -1376,7 +1233,7 @@ export default function Grattini() {
                             e l'area grattabile, composta come in partita */}
                         <div style={{flexShrink:0}}>
                           <TicketThumb card={c} width={200} />
-                          <div style={{color:borderColor, fontSize:"9px", textAlign:"center", letterSpacing:"1px", marginTop:"5px"}}>
+                          <div style={{color:borderColor, fontSize:"10px", textAlign:"center", letterSpacing:"1px", marginTop:"5px"}}>
                             clicca per grattare
                           </div>
                         </div>
@@ -1532,7 +1389,7 @@ export default function Grattini() {
               <div style={{
                 display: "inline-block",
                 color: "#000", background: C.gold,
-                fontSize: "9px", letterSpacing: "3px", fontWeight: "bold",
+                fontSize: "10px", letterSpacing: "3px", fontWeight: "bold",
                 padding: "2px 8px", marginBottom: "8px",
                 boxShadow: `0 0 8px ${C.gold}aa`,
               }}>
@@ -1620,7 +1477,7 @@ export default function Grattini() {
                     <div style={{
                       display: "inline-block",
                       background: accent, color: "#000",
-                      padding: "2px 6px", fontSize: "8px", fontWeight: "bold",
+                      padding: "2px 6px", fontSize: "10px", fontWeight: "bold",
                       letterSpacing: "2px", marginBottom: "4px",
                       boxShadow: `0 0 6px ${accent}88`,
                     }}>
@@ -1638,13 +1495,13 @@ export default function Grattini() {
                     {/* Cost + Max pills */}
                     <div style={{display:"flex", justifyContent:"center", gap:"4px", marginBottom:"4px", flexWrap:"wrap"}}>
                       <div style={{
-                        fontSize:"9px", color: C.gold,
+                        fontSize:"10px", color: C.gold,
                         background: `${C.gold}14`,
                         border: `1px solid ${C.gold}66`,
                         padding: "1px 5px", letterSpacing: "0.5px",
                       }}>€{card.cost}</div>
                       <div style={{
-                        fontSize:"9px", color: C.green,
+                        fontSize:"10px", color: C.green,
                         background: `${C.green}14`,
                         border: `1px solid ${C.green}66`,
                         padding: "1px 5px", letterSpacing: "0.5px",
@@ -1654,7 +1511,7 @@ export default function Grattini() {
                     {/* Mechanic badge */}
                     {mechBadge && (
                       <div style={{
-                        color: accent, fontSize: "8px", letterSpacing: "1px",
+                        color: accent, fontSize: "10px", letterSpacing: "1px",
                         fontWeight: "bold", marginBottom: "3px",
                       }}>
                         {mechBadge}
@@ -1664,7 +1521,7 @@ export default function Grattini() {
                     {/* Malus warning */}
                     {card.malus && (
                       <div style={{
-                        color:C.red, fontSize:"9px", letterSpacing:"0.3px",
+                        color:C.red, fontSize:"10px", letterSpacing:"0.3px",
                         lineHeight: 1.3, marginTop: "4px",
                         borderTop: `1px dashed ${C.red}55`, paddingTop: "4px",
                       }}>
@@ -1676,7 +1533,7 @@ export default function Grattini() {
                     {card.requiresGrattatore && (
                       <div style={{
                         position: "absolute", top: "6px", right: "6px",
-                        color: C.cyan, fontSize: "9px",
+                        color: C.cyan, fontSize: "10px",
                         background: "#000a",
                         padding: "1px 4px",
                         border: `1px solid ${C.cyan}88`,
@@ -1781,7 +1638,7 @@ export default function Grattini() {
                 boxShadow: canEnter
                   ? `0 0 16px ${gateColor}44, inset 0 0 16px ${gateColor}12`
                   : `0 0 20px ${gateColor}66, inset 0 0 20px ${gateColor}22`,
-                animation: canEnter ? "none" : "pulse 1.2s infinite",
+                animation: canEnter ? "none" : ANIM.pulseActive,
               }}>
                 <CornerBrackets color={gateColor} size={12} inset={6} />
                 <div style={{
@@ -1876,7 +1733,7 @@ export default function Grattini() {
               {/* Title block */}
               <div>
                 <div style={{
-                  color: C.dim, fontSize: "9px",
+                  color: C.dim, fontSize: "10px",
                   letterSpacing: "4px", marginBottom: "2px",
                 }}>
                   ≋ PROSSIMO NODO ≋
@@ -1893,7 +1750,7 @@ export default function Grattini() {
                   <div style={{
                     display: "inline-block",
                     color: "#000", background: C.orange,
-                    fontSize: "9px", letterSpacing: "3px", fontWeight: "bold",
+                    fontSize: "10px", letterSpacing: "3px", fontWeight: "bold",
                     padding: "1px 7px", marginRight: "4px",
                     boxShadow: `0 0 8px ${C.orange}aa`,
                   }}>
@@ -1904,10 +1761,10 @@ export default function Grattini() {
                   <div style={{
                     display: "inline-block",
                     color: "#000", background: C.red,
-                    fontSize: "9px", letterSpacing: "3px", fontWeight: "bold",
+                    fontSize: "10px", letterSpacing: "3px", fontWeight: "bold",
                     padding: "1px 7px",
                     boxShadow: `0 0 8px ${C.red}aa`,
-                    animation: "pulse 1.2s infinite",
+                    animation: ANIM.pulseActive,
                   }}>
                     ⚠ BOSS ⚠
                   </div>
@@ -1942,7 +1799,7 @@ export default function Grattini() {
                 <div style={{
                   display: "inline-block",
                   background: C.red, color: "#000",
-                  padding: "2px 8px", fontSize: "9px", fontWeight: "bold",
+                  padding: "2px 8px", fontSize: "10px", fontWeight: "bold",
                   letterSpacing: "3px", marginBottom: "8px",
                   boxShadow: `0 0 8px ${C.red}aa`,
                 }}>
@@ -2149,11 +2006,11 @@ export default function Grattini() {
                       }}
                     >
                       <span style={{fontSize:"13px"}}><Asset id={`item-${g.id}`} emoji={g.emoji} size={15} /></span>
-                      <span style={{fontSize:"9px"}}>{g.name}</span>
+                      <span style={{fontSize:"10px"}}>{g.name}</span>
                       <span style={{
                         background: isEquipped ? C.cyan : "#222244",
                         color: isEquipped ? "#000" : C.dim,
-                        fontSize:"8px", padding:"0 3px",
+                        fontSize:"10px", padding:"0 3px",
                         fontWeight:"bold",
                       }}>{g.usesLeft}</span>
                     </button>
@@ -2185,7 +2042,7 @@ export default function Grattini() {
                       }}
                     >
                       <span style={{fontSize:"13px"}}><Asset id={`item-${itemId}`} emoji={item.emoji} size={15} /></span>
-                      <span style={{fontSize:"9px", color:C.dim}}>{item.name}</span>
+                      <span style={{fontSize:"10px", color:C.dim}}>{item.name}</span>
                     </button>
                   </Tooltip>
                 ) : null;
@@ -2425,7 +2282,7 @@ export default function Grattini() {
                       borderRadius:"0",
                       transition:"all 0.3s",
                       boxShadow: broken ? `0 0 6px ${C.gold}66` : "none",
-                      fontSize:"9px", display:"flex", alignItems:"center", justifyContent:"center",
+                      fontSize:"10px", display:"flex", alignItems:"center", justifyContent:"center",
                       color: broken ? "#000" : "#555",
                     }}>
                       {broken ? "✓" : "░"}
@@ -2914,13 +2771,13 @@ export default function Grattini() {
           }}>
             <div style={{
               background: C.gold, color: "#000",
-              padding: "2px 10px", fontSize: "9px", fontWeight: "bold",
+              padding: "2px 10px", fontSize: "10px", fontWeight: "bold",
               letterSpacing: "2px",
               boxShadow: `0 0 6px ${C.gold}88`,
             }}>
               ★ 📊 DIARIO DI RUN ★
             </div>
-            <div style={{marginLeft: "auto", color: C.gold, fontSize: "9px", letterSpacing: "1px"}}>
+            <div style={{marginLeft: "auto", color: C.gold, fontSize: "10px", letterSpacing: "1px"}}>
               12 metriche
             </div>
           </div>
@@ -2960,7 +2817,7 @@ export default function Grattini() {
                   pointerEvents: "none",
                 }}>{s.icon}</div>
                 <div style={{
-                  color: s.color, fontSize: "8px",
+                  color: s.color, fontSize: "10px",
                   letterSpacing: "1.5px", fontWeight: "bold",
                   marginBottom: "2px", position: "relative",
                 }}>
@@ -3130,7 +2987,7 @@ export default function Grattini() {
                   animation:`statTileIn 0.4s ${i * 0.06}s ease-out both`,
                   boxShadow:`inset 0 0 8px ${color}18`,
                 }}>
-                  <div style={{color:C.dim, fontSize:"9px"}}>{label}</div>
+                  <div style={{color:C.dim, fontSize:"10px"}}>{label}</div>
                   <div style={{color, fontSize:"12px", fontWeight:"bold"}}>{val}</div>
                 </div>
               ))}
@@ -3215,7 +3072,7 @@ export default function Grattini() {
                   {itemFoundModal.subtitle ? `✦ ${itemFoundModal.subtitle.toUpperCase()} ✦` : "✦ HAI TROVATO ✦"}
                 </div>
                 {rar && (
-                  <div style={{background:`${accent}22`, border:`1px solid ${accent}66`, color:accent, fontSize:"8px", letterSpacing:"1.5px", padding:"2px 6px", fontWeight:"bold"}}>
+                  <div style={{background:`${accent}22`, border:`1px solid ${accent}66`, color:accent, fontSize:"10px", letterSpacing:"1.5px", padding:"2px 6px", fontWeight:"bold"}}>
                     {rar.label}
                   </div>
                 )}
@@ -3225,7 +3082,7 @@ export default function Grattini() {
               <div style={{position:"relative", width:"96px", height:"96px", margin:"10px auto 4px", display:"flex", alignItems:"center", justifyContent:"center"}}>
                 <div style={{position:"absolute", inset:0, borderRadius:"50%", background:`radial-gradient(circle,${accent}44 0%,${accent}16 50%,transparent 70%)`, animation:"itemGlowRing 2.2s ease-in-out infinite"}}/>
                 <div style={{position:"absolute", inset:"18%", borderRadius:"50%", border:`1px solid ${accent}44`, animation:"itemGlowRing 2.2s ease-in-out infinite 0.7s"}}/>
-                <div style={{fontSize:"50px", position:"relative", zIndex:1, filter:`drop-shadow(0 0 14px ${accent})`, animation:isDanger?"pulse 1.4s ease-in-out infinite":"none"}}>
+                <div style={{fontSize:"50px", position:"relative", zIndex:1, filter:`drop-shadow(0 0 14px ${accent})`, animation:isDanger?ANIM.pulseActive:"none"}}>
                   <Asset id={itemFoundModal.assetId || assetIdByName(itemFoundModal.name)} emoji={em} size={64} />
                 </div>
               </div>
@@ -3245,7 +3102,7 @@ export default function Grattini() {
                   const isArt = /^[\s]*[│┌┐└┘╔╗╚╝║═╠╣░▒▓┼─]/.test(line);
                   const isStat = /^[+\-±]/.test(line.trim()) || /[€×x]\d/.test(line) || /VINCITA|BONUS|COMBO/.test(line);
                   if (isArt) return (
-                    <div key={i} style={{color:`${accent}99`, fontSize:"9px", lineHeight:"1.3", fontFamily:"monospace", whiteSpace:"pre", overflow:"hidden", textOverflow:"ellipsis"}}>{line}</div>
+                    <div key={i} style={{color:`${accent}99`, fontSize:"10px", lineHeight:"1.3", fontFamily:"monospace", whiteSpace:"pre", overflow:"hidden", textOverflow:"ellipsis"}}>{line}</div>
                   );
                   return (
                     <div key={i} style={{color:isStat?C.bright:C.text, fontSize:isStat?"12px":"11px", lineHeight:"1.7", fontWeight:isStat?"bold":"normal"}}>
@@ -3383,7 +3240,7 @@ export default function Grattini() {
                     onMouseLeave={e => { if (canSelect) { e.currentTarget.style.borderColor = i === player.activeNail ? ni.color : ni.color+"55"; e.currentTarget.style.background = i === player.activeNail ? ni.color+"15" : "#0a0a14"; }}}
                   >
                     <div style={{fontSize:"18px", marginBottom:"4px"}}>{nailEmoji}</div>
-                    <div style={{color:ni.color, fontSize:"7px", fontWeight:"bold", marginBottom:"3px"}}>{ni.label}</div>
+                    <div style={{color:ni.color, fontSize:"10px", fontWeight:"bold", marginBottom:"3px"}}>{ni.label}</div>
                     {/* HP pips */}
                     <div style={{display:"flex", gap:"2px", justifyContent:"center", flexWrap:"wrap"}}>
                       {TIER_ORDER.map((tier, ti) => {
@@ -3551,7 +3408,7 @@ export default function Grattini() {
                       >
                         <div style={{fontSize:"22px", filter:`drop-shadow(0 0 5px ${rc}88)`}}><Asset id={`item-${itemId}`} emoji={item.emoji} size={26} /></div>
                         <div style={{color:C.bright, fontSize:"10px", fontWeight:"bold", whiteSpace:"nowrap", maxWidth:"68px", overflow:"hidden", textOverflow:"ellipsis"}}>{item.name}</div>
-                        <div style={{color:rc, fontSize:"8px", letterSpacing:"1px"}}>{(item.rarity||"").toUpperCase()}</div>
+                        <div style={{color:rc, fontSize:"10px", letterSpacing:"1px"}}>{(item.rarity||"").toUpperCase()}</div>
                       </div>
                     </Tooltip>
                   );
@@ -3587,7 +3444,7 @@ export default function Grattini() {
                       >
                         <div style={{fontSize:"22px", filter:`drop-shadow(0 0 5px ${rc}88)`}}><Asset id={`item-${g.id}`} emoji={g.emoji} size={26} /></div>
                         <div style={{color:C.bright, fontSize:"10px", fontWeight:"bold", whiteSpace:"nowrap", maxWidth:"68px", overflow:"hidden", textOverflow:"ellipsis"}}>{g.name}</div>
-                        <div style={{color:isEquipped?rc:C.dim, fontSize:"8px", letterSpacing:"1px"}}>
+                        <div style={{color:isEquipped?rc:C.dim, fontSize:"10px", letterSpacing:"1px"}}>
                           {isEquipped ? "✓ ATTIVO" : `${g.usesLeft} usi`}
                         </div>
                       </div>
@@ -3690,7 +3547,7 @@ export default function Grattini() {
             </div>
             {/* Progress bar */}
             <div style={{margin:"8px auto 18px", maxWidth:"360px"}}>
-              <div style={{display:"flex", justifyContent:"space-between", fontSize:"9px", color:"#c060ff", marginBottom:"3px", letterSpacing:"1px"}}>
+              <div style={{display:"flex", justifyContent:"space-between", fontSize:"10px", color:"#c060ff", marginBottom:"3px", letterSpacing:"1px"}}>
                 <span>SCOPERTE · {enabledRelics.length} ATTIVE</span>
                 <span>{discoveredRelics.length} / {Object.keys(RELIC_DEFS).length}</span>
               </div>
@@ -3764,7 +3621,7 @@ export default function Grattini() {
                       {known && (
                         <div style={{
                           position:"absolute", top:6, left:6, zIndex:3,
-                          fontSize:"7px", letterSpacing:"1px", fontWeight:"bold",
+                          fontSize:"10px", letterSpacing:"1px", fontWeight:"bold",
                           color: accent,
                           background: isEpic ? "#1f1408" : "#140a1f",
                           border:`1px solid ${accent}88`,
@@ -3813,7 +3670,7 @@ export default function Grattini() {
                       ) : (
                         <div style={{
                           borderTop:`1px solid #1a1a28`, paddingTop:"5px",
-                          fontSize:"9px", color:"#3a3a52", textAlign:"center",
+                          fontSize:"10px", color:"#3a3a52", textAlign:"center",
                           letterSpacing:"1px",
                         }}>— LOCKED —</div>
                       )}
@@ -3858,7 +3715,7 @@ export default function Grattini() {
             </div>
             {/* Progress bar */}
             <div style={{margin:"8px auto 18px", maxWidth:"360px"}}>
-              <div style={{display:"flex", justifyContent:"space-between", fontSize:"9px", color:"#ffaa88", marginBottom:"3px", letterSpacing:"1px"}}>
+              <div style={{display:"flex", justifyContent:"space-between", fontSize:"10px", color:"#ffaa88", marginBottom:"3px", letterSpacing:"1px"}}>
                 <span>COLLEZIONE</span>
                 <span>{vintageCollected.length} / 5</span>
               </div>
@@ -3959,7 +3816,7 @@ export default function Grattini() {
                       </div>
                       <div style={{
                         display:"flex", justifyContent:"space-between",
-                        fontSize:"9px", color:C.dim,
+                        fontSize:"10px", color:C.dim,
                         borderTop:`1px solid ${known ? v.color+"33" : "#1a1a28"}`,
                         paddingTop:"5px", letterSpacing:"0.5px",
                       }}>
@@ -4027,7 +3884,7 @@ export default function Grattini() {
             </div>
             {/* Progress bar */}
             <div style={{margin:"8px auto 18px", maxWidth:"360px"}}>
-              <div style={{display:"flex", justifyContent:"space-between", fontSize:"9px", color:C.gold, marginBottom:"3px", letterSpacing:"1px"}}>
+              <div style={{display:"flex", justifyContent:"space-between", fontSize:"10px", color:C.gold, marginBottom:"3px", letterSpacing:"1px"}}>
                 <span>COLLEZIONE</span>
                 <span>{Object.keys(achievements).length} / {ACHIEVEMENTS.length}</span>
               </div>
@@ -4101,7 +3958,7 @@ export default function Grattini() {
                       {isSecret && (
                         <div style={{
                           position:"absolute", top:6, left:6, zIndex:3,
-                          fontSize:"7px", letterSpacing:"1px", fontWeight:"bold",
+                          fontSize:"10px", letterSpacing:"1px", fontWeight:"bold",
                           color: unlocked ? C.magenta : "#4a3a5a",
                           background: unlocked ? "#1a0a1f" : "#0a0810",
                           border:`1px solid ${unlocked ? C.magenta+"88" : "#2a1a3a"}`,
@@ -4129,7 +3986,7 @@ export default function Grattini() {
                       </div>
                       <div style={{
                         display:"flex", justifyContent:"space-between",
-                        fontSize:"9px", color:C.dim,
+                        fontSize:"10px", color:C.dim,
                         borderTop:`1px solid ${unlocked ? C.gold+"33" : "#1a1a28"}`,
                         paddingTop:"5px", letterSpacing:"0.5px",
                       }}>
@@ -4205,11 +4062,11 @@ export default function Grattini() {
                 }} />
                 <div style={{position:"relative", zIndex:2, display:"flex", alignItems:"center", justifyContent:"space-between", gap:"12px"}}>
                   <div>
-                    <div style={{color:C.cyan, fontSize:"9px", letterSpacing:"2px", opacity:0.8}}>WIN RATE</div>
+                    <div style={{color:C.cyan, fontSize:"10px", letterSpacing:"2px", opacity:0.8}}>WIN RATE</div>
                     <div style={{color:C.gold, fontSize:"36px", fontWeight:"bold", letterSpacing:"2px", textShadow:`0 0 14px ${C.gold}aa`, lineHeight:1}}>
                       {winRate}%
                     </div>
-                    <div style={{color:C.dim, fontSize:"9px", marginTop:"4px", letterSpacing:"1px"}}>
+                    <div style={{color:C.dim, fontSize:"10px", marginTop:"4px", letterSpacing:"1px"}}>
                       {totalWins} vittorie · {totalRuns} run
                     </div>
                   </div>
@@ -4246,7 +4103,7 @@ export default function Grattini() {
                   }}>
                     <div style={{display:"flex", alignItems:"center", gap:"6px"}}>
                       <span style={{fontSize:"16px", filter:`drop-shadow(0 0 4px ${s.color}88)`}}>{s.icon}</span>
-                      <span style={{color:s.color, fontSize:"8px", letterSpacing:"1.5px", fontWeight:"bold", opacity:0.8}}>{s.label}</span>
+                      <span style={{color:s.color, fontSize:"10px", letterSpacing:"1.5px", fontWeight:"bold", opacity:0.8}}>{s.label}</span>
                     </div>
                     <div style={{color:s.color, fontSize:"20px", fontWeight:"bold", letterSpacing:"1px", textShadow:`0 0 8px ${s.color}66`, lineHeight:1.1, marginTop:"2px"}}>
                       {s.val}
@@ -4297,7 +4154,7 @@ export default function Grattini() {
               flexShrink:0,
               padding:"0 8px",
               display:"flex", alignItems:"center",
-              color:C.dim, fontSize:"8px", letterSpacing:"1px", opacity:0.5,
+              color:C.dim, fontSize:"10px", letterSpacing:"1px", opacity:0.5,
               borderRight:"1px solid #12121e",
             }}>LOG</div>
             {/* Testo scorrevole */}

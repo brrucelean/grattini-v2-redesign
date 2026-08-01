@@ -8,6 +8,7 @@ import { S } from "../utils/styles.js";
 import { Btn } from "./Btn.jsx";
 import { Tooltip } from "./Tooltip.jsx";
 import { Asset } from "./Asset.jsx";
+import { ANIM } from "../styles/animations.js";
 
 const SLOT_SYMBOLS = ["🍋","🍒","🔔","💎","7️⃣","⭐"];
 
@@ -216,7 +217,7 @@ function SectionHeader({ icon, label, count, accent = C.gold, subtitle, scrollHi
             marginLeft: "auto",
             color: accent, fontSize: FS.xs, letterSpacing: "1px",
             opacity: 0.7, flexShrink: 0,
-            animation: "pulse 2s ease-in-out infinite",
+            animation: ANIM.pulseAmbient,
           }}>
             scorri →
           </div>
@@ -714,7 +715,7 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
             padding: "10px 12px",
             marginBottom: "14px",
             position: "relative",
-            animation: "pulse 2.4s ease-in-out infinite",
+            animation: ANIM.pulseAmbient,
           }}>
             <div style={{display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px"}}>
               <div style={{
@@ -743,7 +744,7 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
             marginBottom: "14px",
             letterSpacing: "1px",
             boxShadow: `0 0 10px ${C.red}55, inset 0 0 10px ${C.red}22`,
-            animation: "pulse 1.5s infinite",
+            animation: ANIM.pulseActive,
             textAlign: "center",
           }}>
             ⚠ DEBITO ATTIVO: €{player.brokerLoan} — da restituire al prossimo boss

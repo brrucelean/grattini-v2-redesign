@@ -1,5 +1,6 @@
 // Primitivi UI riusabili "Vintage": corner brackets, foil shimmer, badge solid.
 // Estratti da scratchlite.jsx + 7 componenti che li duplicavano inline.
+import { FS } from "../data/theme.js";
 
 const CORNERS = ["tl","tr","bl","br"];
 
@@ -77,10 +78,13 @@ export function FoilShimmer({ color = "#ffffff", speed = 2.4, intensity = 0.4, b
  *   style?: override CSS
  */
 export function VintageBadge({ color, children, stars = true, size = "md", shimmer = false, style = {} }) {
+  // Le tre taglie erano 7/8/10px: le prime due sotto il minimo leggibile, e i
+  // badge sono proprio l'elemento che deve dire "questo è raro" a colpo d'occhio.
+  // Ora partono da FS.xs (10px) e la differenza la fa il respiro, non il corpo.
   const sizes = {
-    sm: { fontSize:"7px",  padding:"1px 6px",  letterSpacing:"1.5px", glow:4  },
-    md: { fontSize:"8px",  padding:"2px 8px",  letterSpacing:"2px",   glow:6  },
-    lg: { fontSize:"10px", padding:"3px 12px", letterSpacing:"2.5px", glow:8  },
+    sm: { fontSize:FS.xs, padding:"2px 7px",   letterSpacing:"1.5px", glow:4  },
+    md: { fontSize:FS.sm, padding:"3px 9px",   letterSpacing:"2px",   glow:6  },
+    lg: { fontSize:FS.md, padding:"4px 13px",  letterSpacing:"2.5px", glow:8  },
   };
   const s = sizes[size] || sizes.md;
   return (

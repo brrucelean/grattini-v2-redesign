@@ -1,4 +1,4 @@
-import { C, FONT } from "../data/theme.js";
+import { C, FONT, T } from "../data/theme.js";
 import { S } from "../utils/styles.js";
 import { Btn } from "./Btn.jsx";
 import { Asset } from "./Asset.jsx";
@@ -24,7 +24,7 @@ function RoomTile({ room, canAfford, onClick }) {
         cursor: disabled ? "not-allowed" : "pointer",
         opacity: disabled ? 0.55 : 1,
         userSelect: "none",
-        transition: "transform 0.12s, box-shadow 0.15s",
+        transition: `transform ${T.instant}, box-shadow ${T.instant}`,
         overflow: "hidden",
       }}
       onMouseEnter={e => {
@@ -95,12 +95,12 @@ function RoomTile({ room, canAfford, onClick }) {
           {room.desc}
         </div>
         {room.risk && (
-          <div style={{color: C.red, fontSize: "9px", letterSpacing: "1px"}}>
+          <div style={{color: C.red, fontSize: "10px", letterSpacing: "1px"}}>
             ⚠ RISCHIO: {room.risk === "pavimento" ? "50% ladro nel sonno" : room.risk}
           </div>
         )}
         {room.kawaii && (
-          <div style={{color: C.pink, fontSize: "9px", letterSpacing: "1px"}}>
+          <div style={{color: C.pink, fontSize: "10px", letterSpacing: "1px"}}>
             ✨ MANICURE KAWAII INCLUSA — x2 premio
           </div>
         )}
@@ -119,7 +119,7 @@ function RoomTile({ room, canAfford, onClick }) {
         }}>
           {room.cost > 0 ? `€${room.cost}` : "GRATIS"}
         </div>
-        <div style={{color: accent, fontSize: "9px", letterSpacing: "1px", fontWeight: "bold"}}>
+        <div style={{color: accent, fontSize: "10px", letterSpacing: "1px", fontWeight: "bold"}}>
           +{room.heals} UNGHIE
         </div>
       </div>
@@ -180,7 +180,7 @@ export function LocandaView({ player, onRest, onLeave }) {
           <div style={{
             display: "inline-block",
             color: "#000", background: C.pink,
-            fontSize: "9px", letterSpacing: "3px", fontWeight: "bold",
+            fontSize: "10px", letterSpacing: "3px", fontWeight: "bold",
             padding: "1px 7px", marginBottom: "8px",
             boxShadow: `0 0 8px ${C.pink}aa`,
           }}>

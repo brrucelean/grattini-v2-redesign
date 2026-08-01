@@ -7,8 +7,11 @@ import { assetUrl } from "../assets/registry.js";
 //
 //   <Asset id="combat-attacco" emoji="⚔️" size={28} />
 //
-// size: numero (px) o stringa CSS ("1.2em"). pixel=true → nearest-neighbor.
-export function Asset({ id, emoji, size = "1em", alt = "", pixel = false, style = {}, className }) {
+// size: numero (px) o stringa CSS ("1.2em").
+// pixel: nearest-neighbor. È il DEFAULT (era opt-in): gli sprite sono pixel-art,
+// scalarli con interpolazione bilineare li impasta. Passare pixel={false} solo
+// per le rare immagini non-pixel (foto, gradienti).
+export function Asset({ id, emoji, size = "1em", alt = "", pixel = true, style = {}, className }) {
   const url = assetUrl(id);
   const dim = typeof size === "number" ? `${size}px` : size;
 

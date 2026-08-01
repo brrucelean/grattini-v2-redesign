@@ -581,7 +581,7 @@ export function EventView({ node, player, onChoice }) {
         <div style={{
           flexShrink:0,
           background: accent, color:"#000",
-          fontSize:"7px", fontWeight:"bold", letterSpacing:"2px",
+          fontSize:"10px", fontWeight:"bold", letterSpacing:"2px",
           padding:"3px 8px", fontFamily:FONT,
           boxShadow:`0 0 8px ${accent}88`,
           whiteSpace:"nowrap",
@@ -603,7 +603,7 @@ export function EventView({ node, player, onChoice }) {
         {/* Danger meter */}
         {cat.danger > 0 && (
           <div style={{flexShrink:0, display:"flex", alignItems:"center", gap:"5px"}}>
-            <span style={{fontSize:"7px", color:"#ff4444", letterSpacing:"1px", fontFamily:FONT, opacity:0.7}}>
+            <span style={{fontSize:"10px", color:"#ff4444", letterSpacing:"1px", fontFamily:FONT, opacity:0.7}}>
               PERICOLO
             </span>
             <DangerMeter level={cat.danger} color="#ff3355"/>
@@ -639,7 +639,7 @@ export function EventView({ node, player, onChoice }) {
                     filter:`drop-shadow(0 0 6px ${accent}66)`}} />
               ) : (
                 <pre style={{
-                  color: accent+"cc", fontSize:"7px", lineHeight:"1.2",
+                  color: accent+"cc", fontSize:"10px", lineHeight:"1.2",
                   margin:0, padding:"4px 2px",
                   fontFamily:FONT,
                   background:"#020208",
@@ -661,7 +661,7 @@ export function EventView({ node, player, onChoice }) {
               background: `${accent}22`,
               border:`1px solid ${accent}44`,
               padding:"2px 4px",
-              color:accent, fontSize:"7px", fontFamily:FONT,
+              color:accent, fontSize:"10px", fontFamily:FONT,
               letterSpacing:"1px", fontWeight:"bold",
               overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap",
             }}>
@@ -707,7 +707,7 @@ export function EventView({ node, player, onChoice }) {
             {!typingDone && (
               <div style={{
                 position:"absolute", bottom:"6px", right:"10px",
-                color:C.dim, fontSize:"8px", letterSpacing:"1px", fontFamily:FONT,
+                color:C.dim, fontSize:"10px", letterSpacing:"1px", fontFamily:FONT,
               }}>tocca per saltare →</div>
             )}
           </div>
@@ -717,7 +717,7 @@ export function EventView({ node, player, onChoice }) {
             <div style={{padding:"8px 10px 10px", display:"flex", flexDirection:"column", gap:"5px"}}>
               {/* Section label */}
               <div style={{
-                fontSize:"8px", color:accent+"99", letterSpacing:"2.5px",
+                fontSize:"10px", color:accent+"99", letterSpacing:"2.5px",
                 fontFamily:FONT, marginBottom:"3px",
                 display:"flex", alignItems:"center", gap:"6px",
               }}>
@@ -768,9 +768,10 @@ export function EventView({ node, player, onChoice }) {
                     >
                       {/* Indice */}
                       <span style={{
-                        flexShrink:0, width:"16px",
+                        // 16px bastavano a 7px di corpo; a 10px "[1]" ne occupa 18.
+                        flexShrink:0, width:"22px",
                         color: isDisabled ? "#333" : badgeCol,
-                        fontSize:"9px", fontFamily:FONT, fontWeight:"bold",
+                        fontSize:"10px", fontFamily:FONT, fontWeight:"bold",
                         textAlign:"center", opacity:0.8,
                       }}>[{i+1}]</span>
 
@@ -784,7 +785,7 @@ export function EventView({ node, player, onChoice }) {
                         {/* Disabled note inline */}
                         {isDisabled && ch.disabledNote && (
                           <span style={{
-                            display:"block", fontSize:"9px",
+                            display:"block", fontSize:"10px",
                             color:"#555566", marginTop:"2px", fontStyle:"italic",
                           }}>
                             ⛔ {ch.disabledNote}
@@ -798,7 +799,7 @@ export function EventView({ node, player, onChoice }) {
                         background: isDisabled ? "#0a0a14" : `${badgeCol}18`,
                         border:`1px solid ${isDisabled ? "#222233" : badgeCol + "55"}`,
                         color: isDisabled ? "#333344" : badgeCol,
-                        fontSize:"8px", fontWeight:"bold",
+                        fontSize:"10px", fontWeight:"bold",
                         padding:"3px 7px", letterSpacing:"0.5px",
                         fontFamily:FONT, whiteSpace:"nowrap",
                         minWidth:"40px", textAlign:"center",

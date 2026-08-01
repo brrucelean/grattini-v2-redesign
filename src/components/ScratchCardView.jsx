@@ -11,6 +11,7 @@ import { ScratchCell } from "./ScratchCell.jsx";
 import { hasAsset, assetUrl } from "../assets/registry.js";
 import { ticketLayout, inset } from "../data/ticketLayout.js";
 import { TicketHeader } from "./TicketHeader.jsx";
+import { ANIM } from "../styles/animations.js";
 
 // ─── SCRATCH CARD COMPONENT (per-cell nail damage + early stop) ───
 export function ScratchCardView({ card, onDone, nailState, nailImplant=null, fortune, grattaMania, equippedGrattatore, onCellScratch, onNailDamage=null, onItemFound=null, showFirstWarning, ambidestri=false, onCardActivate=null, lastWonPrize=0, extraTiles=[], onExtraTileUsed=null, relicEffects=[], onAdviceShown=null, layoutOverride=null }) {
@@ -655,7 +656,7 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
               }}>
               <div style={{fontSize: hasTicket ? "clamp(30px, 16cqh, 60px)" : "32px", lineHeight:1}}>{displaySym}</div>
               <div style={{
-                fontSize:"9px", letterSpacing:"1px",
+                fontSize:"10px", letterSpacing:"1px",
                 color: cell.scratched ? (isMatch ? C.gold : C.dim) : C.text,
               }}>
                 {cell.scratched ? (isMatch ? "STOP!" : "STOP") : "▶ CLICK"}
@@ -678,7 +679,7 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
           margin:"0 auto 8px", maxWidth:"min(340px, 94vw)", padding:"8px 12px", textAlign:"center",
           border:`2px solid ${C.red}`, background:"#1a0005", color:C.red, fontWeight:"bold",
           fontSize:"12px", letterSpacing:"0.5px", boxShadow:`0 0 14px ${C.red}88, inset 0 0 10px ${C.red}22`,
-          animation:"pulse 0.8s infinite",
+          animation:ANIM.pulseUrgent,
         }}>
           ✝ UNGHIA MORTA — seleziona un'unghia sana per grattare
         </div>
@@ -807,7 +808,7 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
         <div style={{
           display: "inline-block",
           background: accent, color: "#000",
-          padding: "2px 7px", fontSize: "8px", fontWeight: "bold",
+          padding: "2px 7px", fontSize: "10px", fontWeight: "bold",
           letterSpacing: "2px", marginBottom: "4px",
           boxShadow: `0 0 8px ${accent}aa`,
         }}>
@@ -864,13 +865,13 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
           background: "#1a0018", border: `2px solid ${C.magenta}`,
           padding: "10px 14px", marginBottom: "8px",
           boxShadow: `0 0 14px ${C.magenta}55, inset 0 0 16px ${C.magenta}14`,
-          animation: "pulse 1.8s ease-in-out infinite",
+          animation: ANIM.pulseAmbient,
         }}>
           {cornerBrackets(C.magenta, 10, 4, false)}
           <div style={{
             display: "inline-block",
             background: C.magenta, color: "#000",
-            padding: "2px 8px", fontSize: "9px", fontWeight: "bold",
+            padding: "2px 8px", fontSize: "10px", fontWeight: "bold",
             letterSpacing: "2px", marginBottom: "5px",
             boxShadow: `0 0 8px ${C.magenta}aa`,
           }}>
@@ -917,13 +918,13 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
             border: `2px solid ${warnCol}`,
             padding: "10px 14px", marginBottom: "8px",
             boxShadow: `0 0 16px ${warnCol}55, inset 0 0 16px ${warnCol}18`,
-            animation: "pulse 1.2s infinite",
+            animation: ANIM.pulseActive,
           }}>
             {cornerBrackets(warnCol, 10, 4, false)}
             <div style={{
               display: "inline-block",
               background: warnCol, color: "#000",
-              padding: "2px 8px", fontSize: "9px", fontWeight: "bold",
+              padding: "2px 8px", fontSize: "10px", fontWeight: "bold",
               letterSpacing: "2px", marginBottom: "5px",
               boxShadow: `0 0 8px ${warnCol}aa`,
             }}>
@@ -950,11 +951,11 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
             display: "flex", alignItems: "center", gap: "8px",
             justifyContent: "center", marginBottom: "4px",
           }}>
-            <span style={{fontSize: "18px", animation: "pulse 0.5s infinite", filter: `drop-shadow(0 0 6px ${C.red})`}}>⚡</span>
+            <span style={{fontSize: "18px", animation: ANIM.pulseUrgent, filter: `drop-shadow(0 0 6px ${C.red})`}}>⚡</span>
             <div style={{
               display: "inline-block",
               background: C.red, color: "#000",
-              padding: "2px 8px", fontSize: "9px", fontWeight: "bold",
+              padding: "2px 8px", fontSize: "10px", fontWeight: "bold",
               letterSpacing: "2px",
               boxShadow: `0 0 8px ${C.red}aa`,
             }}>
@@ -1089,7 +1090,7 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
           <span style={{
             display: "inline-block",
             background: C.cyan, color: "#000",
-            padding: "1px 6px", fontSize: "8px", fontWeight: "bold",
+            padding: "1px 6px", fontSize: "10px", fontWeight: "bold",
             letterSpacing: "2px",
             boxShadow: `0 0 6px ${C.cyan}88`,
           }}>
@@ -1099,7 +1100,7 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
             {equippedGrattatore.name}
           </span>
           <span style={{
-            color: C.cyan, fontSize: "9px",
+            color: C.cyan, fontSize: "10px",
             background: `${C.cyan}14`,
             border: `1px solid ${C.cyan}66`,
             padding: "1px 5px",
@@ -1121,7 +1122,9 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
               <div key={ti}
                 onClick={() => onExtraTileUsed?.(tileItemId, ti)}
                 style={{
-                  width:"52px", height:"52px",
+                  // 52px stavano stretti al nome a 10px (prima era 7px): la
+                  // tessera cresce, l'etichetta resta leggibile.
+                  width:"64px", height:"64px",
                   background:"#111",
                   border:"2px solid #888",
                   borderRadius:"0",
@@ -1134,7 +1137,7 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
                 title={tileDef?.name || tileItemId}
               >
                 {tileDef?.emoji || "❓"}
-                <span style={{fontSize:"7px", color:C.dim, marginTop:"2px"}}>{tileDef?.name?.slice(0,8)}</span>
+                <span style={{fontSize:"10px", color:C.dim, marginTop:"2px"}}>{tileDef?.name?.slice(0,8)}</span>
               </div>
             );
           })}
@@ -1145,7 +1148,7 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
       <div style={{margin: "6px auto 10px", maxWidth: "300px"}}>
         <div style={{
           display: "flex", justifyContent: "space-between", alignItems: "center",
-          fontSize: "9px", marginBottom: "3px", letterSpacing: "1px",
+          fontSize: "10px", marginBottom: "3px", letterSpacing: "1px",
         }}>
           <span style={{color: C.dim}}>
             GRATTATE <strong style={{color: C.bright}}>{scratched}</strong>/{totalCells}
@@ -1183,7 +1186,7 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
 
       {revealMsg && (
         <div style={{color:C.cyan, fontSize:"12px", textAlign:"center", margin:"4px 0", fontWeight:"bold",
-          animation:"pulse 0.6s ease-out"}}>{revealMsg}</div>
+          animation:ANIM.pulseOnce}}>{revealMsg}</div>
       )}
 
       {/* Consiglio unghia sanguinante — MODAL centrato che blocca interazione */}
@@ -1267,7 +1270,7 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
             border: `2px solid ${borderCol}`,
             padding: "12px 14px", marginBottom: "8px",
             boxShadow: `0 0 18px ${borderCol}66, inset 0 0 16px ${borderCol}18`,
-            animation: "pulse 1s infinite",
+            animation: ANIM.pulseActive,
             textAlign: "center",
           }}>
             {cornerBrackets(borderCol, 10, 4, false)}
@@ -1362,7 +1365,7 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
                 textTransform: "uppercase",
                 cursor: "pointer",
                 boxShadow: `0 0 18px ${C.green}99, 0 0 36px ${C.green}44`,
-                animation: "pulse 1.4s ease-in-out infinite",
+                animation: ANIM.pulseActive,
               }}
               onMouseEnter={e => {
                 e.currentTarget.style.boxShadow = `0 0 24px ${C.green}, 0 0 48px ${C.green}77`;
@@ -1389,7 +1392,7 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
           marginTop:"8px", padding:"8px 12px", borderRadius:"0",
           border:`1px solid ${C.gold}88`, background:"#1a1200",
           textAlign:"center",
-          animation:"pulse 0.6s infinite",
+          animation:ANIM.pulseUrgent,
           boxShadow:`0 0 18px ${C.gold}aa, 0 0 44px ${C.gold}44, inset 0 0 12px ${C.gold}22`,
         }}>
           <span style={{color:C.gold, fontSize:"13px", fontWeight:"bold", textShadow:`0 0 6px ${C.gold}88`}}>
@@ -1413,7 +1416,7 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
             <div style={{
               display: "inline-block",
               background: C.red, color: "#000",
-              padding: "2px 8px", fontSize: "9px", fontWeight: "bold",
+              padding: "2px 8px", fontSize: "10px", fontWeight: "bold",
               letterSpacing: "2px", marginBottom: "4px",
               boxShadow: `0 0 8px ${C.red}aa`,
             }}>

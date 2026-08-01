@@ -104,13 +104,13 @@ export function NailDisplay({ nails, activeNail, compact=false, onSelectNail=nul
             <div style={{color: isActive ? col : isDead ? "#555" : col + "aa", fontSize:"10px", fontWeight: isActive ? "bold" : "normal"}}>
               {isChirurgo ? n.implant.toUpperCase() : info.label}
             </div>
-            <div style={{color: isActive ? col + "cc" : C.dim, fontSize:"9px"}}>
+            <div style={{color: isActive ? col + "cc" : C.dim, fontSize:"10px"}}>
               {isDead ? "---" : isChirurgo ? `${n.implantUses}/${CHIRURGO_SLOT_MAX[n.implant]} slot` : `${n.scratchCount}/3`}
             </div>
-            {hasImplant && !isChirurgo && <div style={{color: col, fontSize:"9px", fontWeight:"bold", letterSpacing:"0.5px"}}>{n.implant.toUpperCase()}</div>}
-            {n.smalto > 0 && <div style={{color: C.magenta, fontSize:"9px", }}>💅×{n.smalto}</div>}
-            {isActive && <div style={{color: col, fontSize:"9px", }}>▲ ATTIVA</div>}
-            {canSwitch && <div style={{color: col + "88", fontSize:"9px"}}>↑ usa</div>}
+            {hasImplant && !isChirurgo && <div style={{color: col, fontSize:"10px", fontWeight:"bold", letterSpacing:"0.5px"}}>{n.implant.toUpperCase()}</div>}
+            {n.smalto > 0 && <div style={{color: C.magenta, fontSize:"10px", }}>💅×{n.smalto}</div>}
+            {isActive && <div style={{color: col, fontSize:"10px", }}>▲ ATTIVA</div>}
+            {canSwitch && <div style={{color: col + "88", fontSize:"10px"}}>↑ usa</div>}
           </div>
         );
       })}
