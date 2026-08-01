@@ -504,6 +504,14 @@ export default function Grattini() {
         @keyframes borderGlow { 0%,100% { box-shadow:0 0 4px currentColor33; } 50% { box-shadow:0 0 12px currentColor66, 0 0 24px currentColor22; } }
         @keyframes nailCrit { 0% { transform:scale(1); } 20% { transform:scale(1.18); filter:brightness(1.6); } 50% { transform:scale(0.94); } 100% { transform:scale(1); filter:brightness(1); } }
         @keyframes chipIn { 0% { opacity:0; transform:translateX(-6px) scale(0.9); } 100% { opacity:1; transform:translateX(0) scale(1); } }
+        /* Shake leggero — colpi subiti "normali". Lo screenShake pieno resta
+           riservato ai colpi pesanti e all'ingresso in FURIA. */
+        @keyframes screenShakeLight { 0% { transform: translate(0,0); } 20% { transform: translate(-2px,1px); } 40% { transform: translate(2px,-1px); } 60% { transform: translate(-1px,-1px); } 80% { transform: translate(1px,1px); } 100% { transform: translate(0,0); } }
+        /* Colpo PERFETTO: lo sprite nemico sbianca e scatta in scala */
+        @keyframes perfectHitFlash { 0% { transform:scale(1); filter:brightness(1); } 12% { transform:scale(1.10); filter:brightness(3.2) saturate(0.2); } 45% { transform:scale(1.06); filter:brightness(1.8) saturate(0.7); } 100% { transform:scale(1); filter:brightness(1) saturate(1); } }
+        @keyframes perfectRing { 0% { opacity:0.95; transform:scale(0.75); } 100% { opacity:0; transform:scale(1.5); } }
+        /* Coriandoli localizzati sulla cella vincente del grattino */
+        @keyframes cellBurst { 0% { transform:translate(-50%,-50%) scale(0.3) rotate(0deg); opacity:0; } 15% { opacity:1; } 55% { transform:translate(calc(-50% + var(--dx,0px) * 0.75), calc(-50% + var(--dy,0px) * 0.75)) scale(1.15) rotate(var(--rot,180deg)); opacity:1; } 100% { transform:translate(calc(-50% + var(--dx,0px)), calc(-50% + var(--dy,0px) + 14px)) scale(0.5) rotate(calc(var(--rot,180deg) * 2)); opacity:0; } }
         /* .foil-ascii::after rimosso — il shimmer diagonale con mix-blend-mode:screen
            creava un "contorno brillante" deformato sulle lettere box-drawing del titolo.
            Il class resta no-op per back-compat; il titolo ora si affida solo al gold

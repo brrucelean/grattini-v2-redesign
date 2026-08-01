@@ -6,6 +6,7 @@ import { makeNailCursor, NAIL_CURSOR, getNailVisual } from "../utils/nail.js";
 import { Tooltip } from "./Tooltip.jsx";
 import { VintageBadge } from "./Vintage.jsx";
 import { Asset } from "./Asset.jsx";
+import { NailTierBar, NailScratchBar, NailSlotBar, readNail } from "./NailMeter.jsx";
 
 // Chirurgo implants: slot totali e colore per tipo
 const CHIRURGO_SLOTS = {
@@ -15,11 +16,8 @@ const CHIRURGO_SLOTS = {
 };
 
 function NailSidebarImpl({ nails, activeNail, onSelectNail, locked=false, grattatori=[], equippedGrattatore=null, onEquipGrattatore=null, horizontal=false }) {
-  // Alive tiers in order worst→best (excluding morta)
-  const TIER_ORDER = ["marcia","sanguinante","graffiata","sana","kawaii"];
-  const TIER_COLORS = { marcia:C.red, sanguinante:C.orange, graffiata:C.gold, sana:C.green, kawaii:C.pink };
-  // Sprint 2: stati speciali fuori catena — mappa pip all'equivalente più vicino
-  const SPECIAL_TIER_MAP = { polliceVerde: "kawaii", unghiaNera: "marcia" };
+  // Tier/pip/tacche vivono in NailMeter.jsx — stesso linguaggio visivo dell'HUD
+  // e del combattimento (vedi NailTierBar / NailScratchBar / NailSlotBar).
   return (
     <div style={horizontal
       ? {display:"flex", flexDirection:"row", gap:"6px", alignItems:"stretch", overflowX:"auto", overflowY:"hidden", width:"100%", paddingBottom:"2px"}
@@ -39,17 +37,9 @@ function NailSidebarImpl({ nails, activeNail, onSelectNail, locked=false, gratta
         const isActive = i === activeNail;
         const isDead = n.state === "morta";
         const canSwitch = !isDead && !isActive && !locked;
-        // HP pips: how many tiers still alive
-        const pipState = SPECIAL_TIER_MAP[n.state] || n.state;
-        const tierIdx = TIER_ORDER.indexOf(pipState); // -1 if morta, 0-4 otherwise
-        const aliveTiers = isDead ? 0 : tierIdx + 1; // 1-5 pips filled
-        // Smalto: colpi protetti → riempi pip vuoti dei tier con rosa (kawaii),
-        // poi se ne avanzano aggiungili come pip extra dopo (come cremaHP).
-        const smaltoCount = isDead ? 0 : (n.smalto || 0);
-        const emptyTiers = Math.max(0, TIER_ORDER.length - aliveTiers);
-        const smaltoInTiers = Math.min(emptyTiers, smaltoCount);
-        const smaltoExtra = Math.max(0, smaltoCount - smaltoInTiers);
-        // Scratch damage bar within current tier (3 ticks)
+        // Derivazione condivisa (tier vivi, grattate rimaste, stato spento…)
+        const meter = readNail(n);
+        const aliveTiers = meter.aliveTiers;
         const dmgFilled = isDead ? 0 : n.scratchCount;
         const accent = visual?.accent;
         const borderCol = isDead ? "#222"
@@ -112,13 +102,11 @@ function NailSidebarImpl({ nails, activeNail, onSelectNail, locked=false, gratta
               }
               if (n.cremaHP > 0) tipLines.push(`🧴 Crema: ${n.cremaHP} colpi extra`);
               if (n.smalto > 0)  tipLines.push(`💅 Smalto: ${n.smalto} colpi`);
-              const stateLabel = isDead ? "MORTA"
-                : chirurgo ? chirurgo.label
-                : n.state === "sanguinante" ? "SANGUIN."
-                : n.state === "graffiata"   ? "GRAFFIAT"
-                : n.state === "polliceVerde" ? "🌿VERDE"
-                : n.state === "unghiaNera"   ? "🖤NERA"
-                : info.label.toUpperCase();
+              // Etichette corte VERE (mai troncate a metà parola come
+              // "SANGUIN."/"GRAFFIAT") + glifo non cromatico per gli stati
+              // spenti: ✕ MORTA vs ◆ NERA, distinguibili anche senza colore.
+              const stateLabel = chirurgo ? chirurgo.label
+                : `${meter.glyph ? meter.glyph + " " : ""}${meter.shortLabel}`;
               return (
                 <Tooltip text={tipLines.join("\n")} color={col}>
                   <span style={{display:"flex", flexDirection:"column", alignItems:"center", gap:"2px", width:"100%"}}>
@@ -131,35 +119,22 @@ function NailSidebarImpl({ nails, activeNail, onSelectNail, locked=false, gratta
                     }}>
                       <Asset id={!n.implant ? `nail-${n.state}` : null} emoji={visual?.emoji || "🖐"} size={34} />
                     </span>
-                    {/* Etichetta stato */}
+                    {/* Etichetta stato — 8px, niente ellipsis */}
                     <span style={{
-                      color: isDead ? "#444" : isActive ? col : col+"aa",
-                      fontSize:"7px", fontWeight: isActive ? "bold" : "normal",
-                      letterSpacing:"0.4px", lineHeight:1.1,
-                      maxWidth:"64px", overflow:"hidden",
-                      textOverflow:"ellipsis", whiteSpace:"nowrap",
+                      color: isDead ? "#8a8aa0" : isActive ? col : col+"cc",
+                      fontSize:"8px", fontWeight: isActive ? "bold" : "normal",
+                      letterSpacing:"0.3px", lineHeight:1.1,
+                      maxWidth:"64px", whiteSpace:"nowrap",
                       textAlign:"center",
                       textShadow: isActive && !isDead ? `0 0 6px ${col}88` : "none",
                     }}>{stateLabel}</span>
-                    {/* HP tier pips */}
-                    <span style={{display:"flex", gap:"1px", alignItems:"center"}}>
-                      {TIER_ORDER.map((tier, ti) => {
-                        const filled = ti < aliveTiers;
-                        const isSmaltoPip = !filled && ti < aliveTiers + smaltoInTiers;
-                        if (isSmaltoPip) return <span key={ti} style={{display:"inline-block", width:"7px", height:"4px", background:C.pink, border:`1px solid ${C.pink}aa`, flexShrink:0}}/>;
-                        const pipCol = filled ? TIER_COLORS[tier] : "#222";
-                        return <span key={ti} style={{display:"inline-block", width:"7px", height:"4px", background: filled ? pipCol : "#111", border:`1px solid ${filled ? pipCol+"aa" : "#2a2a2a"}`, flexShrink:0}}/>;
-                      })}
-                    </span>
-                    {/* Scratch damage ticks */}
-                    {!isDead && (
-                      <span style={{display:"flex", gap:"1px", alignItems:"center"}}>
-                        {[0,1,2].map(t => {
-                          const rem = 3 - dmgFilled;
-                          return <span key={t} style={{display:"inline-block", width:"7px", height:"2px", background: t < rem ? col+"cc" : "#111", border:`1px solid ${t < rem ? col+"55" : "#222"}`, flexShrink:0}}/>;
-                        })}
-                      </span>
-                    )}
+                    {/* HP tier + grattate — barre condivise (segmenti da 6px) */}
+                    {chirurgo
+                      ? <NailSlotBar nail={n} chirurgo={chirurgo} active={isActive} size="sm" />
+                      : <>
+                          <NailTierBar nail={n} active={isActive} size="sm" />
+                          <NailScratchBar nail={n} active={isActive} size="sm" showCount={false} />
+                        </>}
                     {/* Indicatore nail attiva — bottom bar gestita sul container */}
                   </span>
                 </Tooltip>
@@ -195,100 +170,28 @@ function NailSidebarImpl({ nails, activeNail, onSelectNail, locked=false, gratta
                     </span>
                     <span style={{flex:1, minWidth:0}}>
                       <span style={{display:"flex", alignItems:"center", gap:"4px"}}>
-                        <span style={{color: isActive ? col : col+"88", fontSize:"9px", fontWeight: isActive ? "bold" : "normal", whiteSpace:"nowrap"}}>
-                          {chirurgo ? chirurgo.label : info.label}
+                        <span style={{color: isDead ? "#8a8aa0" : isActive ? col : col+"aa", fontSize:"9px", fontWeight: isActive ? "bold" : "normal", whiteSpace:"nowrap"}}>
+                          {/* Glifo ✕/◆ davanti agli stati spenti: morta e unghia
+                              nera non si distinguono più solo per la tinta */}
+                          {chirurgo ? chirurgo.label : `${meter.glyph ? meter.glyph + " " : ""}${info.label}`}
                         </span>
                       </span>
                       {chirurgo ? (
                         // ─── CHIRURGO: slot fissi (2/4/5) colorati, niente bleeding ───
-                        <span style={{display:"flex", gap:"3px", marginTop:"4px", alignItems:"center", flexWrap:"wrap"}}>
-                          {Array(chirurgo.max).fill(0).map((_, si) => {
-                            const filled = si < (n.implantUses || 0);
-                            return (
-                              <span key={si} style={{
-                                display:"inline-block",
-                                width: chirurgo.max === 2 ? "14px" : chirurgo.max === 4 ? "11px" : "9px",
-                                height: "8px",
-                                background: filled ? chirurgo.color : "#111",
-                                border: `1px solid ${filled ? chirurgo.color : "#2a2a2a"}`,
-                                boxShadow: filled && isActive ? `0 0 6px ${chirurgo.color}cc, inset 0 0 3px #fff3` : filled ? `0 0 3px ${chirurgo.color}66` : "none",
-                                flexShrink:0,
-                              }}/>
-                            );
-                          })}
-                          <span style={{color: chirurgo.color+"aa", fontSize:"7px", marginLeft:"2px", letterSpacing:"0.5px"}}>
-                            {n.implantUses || 0}/{chirurgo.max}
-                          </span>
+                        <span style={{display:"flex", marginTop:"4px"}}>
+                          <NailSlotBar nail={n} chirurgo={chirurgo} active={isActive} size="md" />
                         </span>
                       ) : (
                         <>
-                          {/* HP tier pips */}
-                          <span style={{display:"flex", gap:"2px", marginTop:"3px", alignItems:"center"}}>
-                            {TIER_ORDER.map((tier, ti) => {
-                              const filled = ti < aliveTiers;
-                              // Pip vuoto coperto da smalto → riempi di rosa kawaii
-                              const isSmaltoPip = !filled && ti < aliveTiers + smaltoInTiers;
-                              if (isSmaltoPip) {
-                                return (
-                                  <span key={ti} style={{
-                                    display:"inline-block", width:"9px", height:"5px",
-                                    background: C.pink,
-                                    border: `1px solid ${C.pink}aa`,
-                                    boxShadow: isActive ? `0 0 4px ${C.pink}aa` : `0 0 2px ${C.pink}66`,
-                                    flexShrink:0,
-                                  }}/>
-                                );
-                              }
-                              const pipCol = filled ? TIER_COLORS[tier] : "#222";
-                              return (
-                                <span key={ti} style={{
-                                  display:"inline-block", width:"9px", height:"5px",
-                                  background: filled ? pipCol : "#111",
-                                  border: `1px solid ${filled ? pipCol+"aa" : "#2a2a2a"}`,
-                                  boxShadow: filled && isActive ? `0 0 4px ${pipCol}88` : "none",
-                                  flexShrink:0,
-                                }}/>
-                              );
-                            })}
-                            {/* Smalto extra: pip rosa dopo i 5 tier (se smalto > tier vuoti) */}
-                            {Array(smaltoExtra).fill(0).map((_,si) => (
-                              <span key={"s"+si} style={{
-                                display:"inline-block", width:"9px", height:"5px",
-                                background: C.pink,
-                                border: `1px solid ${C.pink}aa`,
-                                boxShadow: isActive ? `0 0 4px ${C.pink}aa` : `0 0 2px ${C.pink}66`,
-                                flexShrink:0,
-                              }}/>
-                            ))}
-                            {/* CremaHP white pips (extra buffer beyond kawaii) */}
-                            {Array(n.cremaHP||0).fill(0).map((_,ci) => (
-                              <span key={"c"+ci} style={{
-                                display:"inline-block", width:"9px", height:"5px",
-                                background:"#ffffff",
-                                border:"1px solid #aaaaaa",
-                                boxShadow: isActive ? "0 0 4px #ffffff88" : "none",
-                                flexShrink:0,
-                              }}/>
-                            ))}
+                          {/* HP tier — segmenti da 6px (prima 5px) */}
+                          <span style={{display:"flex", marginTop:"3px"}}>
+                            <NailTierBar nail={n} active={isActive} size="md" />
                           </span>
-                          {/* Scratch damage ticks */}
-                          {!isDead && (
-                            <span style={{display:"flex", gap:"2px", marginTop:"2px", alignItems:"center"}}>
-                              {[0,1,2].map(t => {
-                                const remaining = 3 - dmgFilled;
-                                const filled = t < remaining;
-                                return (
-                                  <span key={t} style={{
-                                    display:"inline-block", width:"9px", height:"3px",
-                                    background: filled ? col+"cc" : "#111",
-                                    border: `1px solid ${filled ? col+"55" : "#222"}`,
-                                    flexShrink:0,
-                                  }}/>
-                                );
-                              })}
-                              <span style={{color:C.dim, fontSize:"7px", marginLeft:"2px", opacity:0.6}}>{3 - dmgFilled}/3</span>
-                            </span>
-                          )}
+                          {/* Grattate rimaste — barra piena da 6px + conteggio
+                              (prima: 3 tacche da 3px, sotto la soglia visibile) */}
+                          <span style={{display:"flex", marginTop:"3px"}}>
+                            <NailScratchBar nail={n} active={isActive} size="md" />
+                          </span>
                         </>
                       )}
                       {n.smalto > 0 && <span style={{display:"block", color:C.magenta, fontSize:"8px", marginTop:"1px"}}>💅×{n.smalto}</span>}

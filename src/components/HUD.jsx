@@ -8,6 +8,7 @@ import { GRATTATORE_DEFS } from "../data/items.js";
 import { Tooltip } from "./Tooltip.jsx";
 import { NewsTicker } from "./NewsTicker.jsx";
 import { Asset } from "./Asset.jsx";
+import { NailPipRow } from "./NailMeter.jsx";
 
 // ─── StatusChip: pill riutilizzabile per status effects dell'HUD ───
 // Style unificato: gradient sottile + border colorato + neon glow.
@@ -158,19 +159,9 @@ function HUDImpl({ player, onOpenInventory, inventoryOpen = false, moneyBling = 
             background: aliveNails <= 1 ? "#1a0005" : "transparent",
             animation: aliveNails <= 1 ? "pulse 1s infinite" : "none",
           }}>
-            <span style={{display:"inline-flex", gap:"2px"}}>
-              {[0,1,2,3,4].map(i => {
-                const filled = i < aliveNails;
-                return (
-                  <span key={i} style={{
-                    display:"inline-block", width:"7px", height:"11px",
-                    background: filled ? viteColor : "#111",
-                    border:`2px solid ${filled ? viteColor+"ee" : "#333344"}`,
-                    boxShadow: filled ? `0 0 4px ${viteColor}88` : "none",
-                  }}/>
-                );
-              })}
-            </span>
+            {/* Stessa pip del combattimento (NailMeter): mostra lo stato REALE di
+                ogni unghia, non 5 tacche anonime tutte dello stesso colore. */}
+            <NailPipRow nails={player.nails} size="sm" gap={2} />
             <span style={{color:viteColor, fontSize:"13px", fontWeight:"bold"}}>{aliveNails}/5</span>
           </span>
           {/* Volume icona (no slider) */}
@@ -282,19 +273,10 @@ function HUDImpl({ player, onOpenInventory, inventoryOpen = false, moneyBling = 
             animation: aliveNails <= 1 ? "pulse 1s infinite" : "none",
           }}>
             <span style={{color:C.dim, fontSize:"11px", letterSpacing:"1px"}}>VITE</span>
-            <span style={{display:"inline-flex", gap:"2px"}}>
-              {[0,1,2,3,4].map(i => {
-                const filled = i < aliveNails;
-                return (
-                  <span key={i} style={{
-                    display:"inline-block", width:"10px", height:"16px",
-                    background: filled ? viteColor : "#111",
-                    border: `2px solid ${filled ? viteColor+"ee" : "#333344"}`,
-                    boxShadow: filled ? `0 0 6px ${viteColor}99, 0 0 12px ${viteColor}44` : "none",
-                  }}/>
-                );
-              })}
-            </span>
+            {/* Pattern compatto condiviso (NailMeter) — identico a combattimento
+                e HUD mobile: colore = stato dell'unghia, riempimento = grattate
+                rimaste, ✕ tratteggiato = morta, ◆ = unghia nera. */}
+            <NailPipRow nails={player.nails} size="md" gap={3} />
             <span style={{color:viteColor, fontSize:"13px", fontWeight:"bold"}}>{aliveNails}/5</span>
           </span>
         </Tooltip>

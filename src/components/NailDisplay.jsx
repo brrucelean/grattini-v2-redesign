@@ -1,68 +1,15 @@
 import { C, FONT } from "../data/theme.js";
-import { NAIL_INFO, NAIL_ORDER } from "../data/nails.js";
+import { NAIL_INFO } from "../data/nails.js";
 import { CHIRURGO_IMPLANT_IDS } from "../data/items.js";
 import { getNailVisual } from "../utils/nail.js";
 import { Asset } from "./Asset.jsx";
-
-// Slot totali per impianto chirurgo (deve matchare NailSidebar)
-const CHIRURGO_SLOT_MAX = { plastica: 2, ferro: 4, oro: 5 };
+import { NailPipRow, CHIRURGO_SLOT_MAX } from "./NailMeter.jsx";
 
 export function NailDisplay({ nails, activeNail, compact=false, onSelectNail=null }) {
+  // Compatto (HUD di combattimento) → pattern condiviso con l'HUD di gioco:
+  // stessa pip, stessi stati spenti, stesso tooltip. Vedi NailMeter.jsx.
   if (compact) {
-    const THRESHOLD = 3;
-    return (
-      <span style={{display:"inline-flex", gap:"3px", alignItems:"flex-end", verticalAlign:"middle"}}>
-        {nails.map((n, i) => {
-          const info = NAIL_INFO[n.state];
-          const visual = getNailVisual(n);
-          const displayCol = visual?.color || info.color;
-          const isDead = n.state === "morta";
-          const isActive = i === activeNail;
-          const hasImplant = !!n.implant && (n.implantUses || 0) > 0;
-          const isChirurgo = hasImplant && CHIRURGO_IMPLANT_IDS.has(n.implant);
-          // Colore dietro la batteria: prossimo stato peggiore, ma nero se marcia (ultima prima di morta)
-          const nextIdx = NAIL_ORDER.indexOf(n.state) - 1;
-          const nextColor = (isDead || n.state === "marcia" || nextIdx < 0)
-            ? "#000"
-            : NAIL_INFO[NAIL_ORDER[nextIdx]].color + "cc";
-          // Percentuale rimanente: per chirurgo usa implantUses/max, altrimenti scratchCount
-          const fillPct = isDead ? 0
-            : isChirurgo ? (n.implantUses || 0) / (CHIRURGO_SLOT_MAX[n.implant] || 1)
-            : (THRESHOLD - n.scratchCount) / THRESHOLD;
-          const hasSmalto = n.smalto && n.smalto > 0;
-          const title = `${isChirurgo ? n.implant.toUpperCase() : info.label}${hasImplant && !isChirurgo ? ` + ${n.implant.toUpperCase()}` : ""}${isChirurgo ? ` (${n.implantUses}/${CHIRURGO_SLOT_MAX[n.implant]} slot)` : !isDead ? ` (${n.scratchCount}/${THRESHOLD})` : ""}${hasSmalto ? ` 💅×${n.smalto}` : ""}`;
-          return (
-            <span key={i} title={title}
-              style={{
-                display:"inline-block",
-                width: isActive ? "11px" : "9px",
-                height: "22px",
-                borderRadius: "2px",
-                border: `1px solid ${isDead ? "#333" : hasSmalto ? C.magenta : isActive ? displayCol : displayCol + "88"}`,
-                boxShadow: isDead ? "none"
-                  : isActive ? `0 0 6px ${displayCol}cc${hasSmalto ? `, 0 0 4px ${C.magenta}88` : ""}`
-                  : hasImplant ? `0 0 5px ${displayCol}88`
-                  : hasSmalto ? `0 0 4px ${C.magenta}66`
-                  : "none",
-                background: nextColor,
-                overflow:"hidden",
-                position:"relative",
-                transition:"width 0.15s",
-              }}>
-              {/* Strato pieno — sale dal basso */}
-              <span style={{
-                position:"absolute",
-                bottom:0, left:0, right:0,
-                height: `${fillPct * 100}%`,
-                background: isDead ? "transparent" : displayCol,
-                transition:"height 0.25s ease",
-                display:"block",
-              }} />
-            </span>
-          );
-        })}
-      </span>
-    );
+    return <NailPipRow nails={nails} activeNail={activeNail} size="md" onSelectNail={onSelectNail} />;
   }
   return (
     <div style={{display:"flex", gap:"8px", flexWrap:"wrap"}}>

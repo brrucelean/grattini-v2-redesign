@@ -420,13 +420,18 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
   const [log, setLog] = useState([]); // [{text, color}]
   const [enemyPlan, setEnemyPlan] = useState([]); // carte nemico del turno
   const [enemyHitFlash, setEnemyHitFlash] = useState(0);
+  // Colpo PERFETTO: payoff visivo dedicato (flash bianco + scatto di scala sullo
+  // sprite). Prima il minigioco di tempismo meglio riuscito produceva solo testo
+  // e lo stesso nudge di 4px del colpo normale.
+  const [perfectHit, setPerfectHit] = useState(0); // 0 | id incrementale (per riavviare l'animazione)
+  const perfectId = useRef(0);
   const [painFlash, setPainFlash] = useState(0);
   const [activeTiming, setActiveTiming] = useState(null); // {mode, onResult} minigioco tempismo
   const [currentExchange, setCurrentExchange] = useState(-1); // scambio in corso (per telegrafo)
   const [busy, setBusy] = useState(false); // uno scambio è in risoluzione → blocca la grattata delle altre carte
   const [coins, setCoins] = useState([]); // monete che volano
-  const [floaters, setFloaters] = useState([]); // numeri/testi fluttuanti {id, text, color, zone, big}
-  const [shake, setShake] = useState(false); // screen shake su danno subìto
+  const [floaters, setFloaters] = useState([]); // numeri/testi fluttuanti {id, text, color, zone, big, dx, dy}
+  const [shake, setShake] = useState(null); // null | "light" | "heavy" — screen shake su danno subìto
   const coinId = useRef(0);
   const floaterId = useRef(0);
   const logScrollRef = useRef(null);
@@ -510,15 +515,21 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
       onGrattatoreConsumed?.();
     }
     atkDmgRef.current += dmg;
-    if (quality === "perfect") {
+    const isPerfect = quality === "perfect";
+    if (isPerfect) {
       pushLog(`⚔️ ${cell.name}: COLPO PERFETTO! ${dmg} danni (×1.4)`, C.green);
-      setEnemyHitFlash(1.4);
       AudioEngine.perfectHit?.();
       spawnFloater("PERFETTO!", C.green, "enemy", true);
+      // Payoff dedicato: flash bianco + scatto di scala sullo sprite nemico.
+      // (Il vecchio setEnemyHitFlash(1.4) veniva comunque sovrascritto da
+      // dealDamage con 1, quindi a schermo il perfetto era indistinguibile.)
+      perfectId.current += 1;
+      setPerfectHit(perfectId.current);
+      setTimeout(() => setPerfectHit(0), 620);
     } else if (quality === "good") pushLog(`⚔️ ${cell.name}: ${dmg} danni`, C.gold);
     else pushLog(`⚔️ ${cell.name}: colpo maldestro, solo ${dmg} danni`, C.dim);
     flyCoins(2);
-    dealDamage(dmg);
+    dealDamage(dmg, isPerfect);
   };
 
   // Dopo l'azione del player, il nemico risponde per questo scambio
@@ -530,7 +541,7 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
         const bonus = Math.round(atkDmgRef.current * 0.25);
         pushLog(`🔥 COMBO ATTACCO! +${bonus} danni!`, C.magenta);
         onCombo?.();
-        dealDamage(bonus);
+        dealDamage(bonus, true);
       }
     }
     if (hpRef.current <= 0) { winNow(); return; }
@@ -631,6 +642,7 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
         onNailDamage?.(1);
         AudioEngine.nailCrack?.();
         setPainFlash(0.3); setTimeout(() => setPainFlash(0), 350);
+        triggerShake("light"); // anche il colpo attutito si sente addosso
         spawnFloater("−1", C.orange, "player");
         pushLog(`${enemyLabel} 🗡 ${c.name}: parata parziale — 1 danno`, C.gold);
         checkDefeat();
@@ -651,7 +663,9 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
       onNailDamage?.(baseSteps);
       setPainFlash(0.5); setTimeout(() => setPainFlash(0.2), 150); setTimeout(() => setPainFlash(0), 500);
       AudioEngine.painScream?.();
-      triggerShake();
+      // Scossa proporzionata: piena solo per i colpi pesanti (2+ unghie),
+      // leggera per il colpo secco da 1 — prima era tutto o niente.
+      triggerShake(baseSteps >= 2 ? "heavy" : "light");
       spawnFloater(`−${baseSteps}💢`, C.red, "player", true);
       pushLog(`${enemyLabel} 🗡 ${c.name}: COLPITO! ${baseSteps} danno alle unghie`, C.red);
       checkDefeat();
@@ -697,12 +711,27 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
   };
 
   // Testo/numero fluttuante ancorato a una zona: "enemy" | "player" | "loot"
+  // Più floater possono nascere nello stesso istante e sulla stessa zona (es.
+  // "PERFETTO!" + il numero di danno): senza scarto si sovrapponevano pixel su
+  // pixel e ne restava leggibile uno solo.
   const spawnFloater = (text, color, zone = "enemy", big = false) => {
     const id = floaterId.current++;
-    setFloaters(prev => [...prev, { id, text, color, zone, big }]);
+    setFloaters(prev => {
+      const sameZone = prev.filter(f => f.zone === zone).length;
+      return [...prev, {
+        id, text, color, zone, big,
+        dx: (id % 2 ? 1 : -1) * (10 + sameZone * 16),
+        dy: sameZone * 20,
+      }];
+    });
     setTimeout(() => setFloaters(prev => prev.filter(f => f.id !== id)), 1100);
   };
-  const triggerShake = () => { setShake(true); setTimeout(() => setShake(false), 380); };
+  // "heavy" = colpo pesante / FURIA (screenShake pieno). "light" = colpo subìto
+  // normale: prima non scuoteva affatto, ora c'è una scossa breve e contenuta.
+  const triggerShake = (intensity = "heavy") => {
+    setShake(intensity);
+    setTimeout(() => setShake(null), intensity === "heavy" ? 380 : 240);
+  };
 
   // Aggiunge una riga al log del turno (mostrato live in turnEnd)
   const pushLog = (text, color = C.dim) => {
@@ -711,20 +740,28 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
   };
 
   // Applica danno all'HP nemico (scudo prima, poi HP). Aggiorna gli state per il render.
-  const dealDamage = (d) => {
+  // `big` alza il numero fluttuante a taglia "critica" (colpo perfetto / combo).
+  const dealDamage = (d, big = false) => {
     let remaining = d;
     if (shieldRef.current > 0) {
       const absorbed = Math.min(shieldRef.current, remaining);
       shieldRef.current -= absorbed; remaining -= absorbed;
       setEnemyShield(shieldRef.current);
-      if (absorbed > 0) pushLog(`🛡 Scudo nemico assorbe ${absorbed}`, C.blue);
+      if (absorbed > 0) {
+        pushLog(`🛡 Scudo nemico assorbe ${absorbed}`, C.blue);
+        // Anche il danno mangiato dallo scudo ha un suo numero: senza, il colpo
+        // sembrava semplicemente non essere avvenuto.
+        spawnFloater(`🛡 ${absorbed}`, C.blue, "enemy");
+      }
     }
     if (remaining > 0) {
       hpRef.current = Math.max(0, hpRef.current - remaining);
       setEnemyHp(hpRef.current);
       AudioEngine.hitEnemy?.(); // suono impatto
       setEnemyHitFlash(1); setTimeout(() => setEnemyHitFlash(0), 350);
-      spawnFloater(`-${remaining}`, C.red, "enemy"); // numero danno sul nemico
+      // Numero di danno rosso che sale e sfuma sul nemico — stesso pattern dei
+      // floater di oro/cura; la barra HP da sola (transition 0.4s) non bastava.
+      spawnFloater(`−${remaining}`, big ? "#ffffff" : C.red, "enemy", big);
     }
   };
 
@@ -751,7 +788,7 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
     if (r.block || r.dodge) pendingParryRef.current = true;
     if (r.guard) pendingGuardRef.current = true;
     if (r.enemyShield) { shieldRef.current += r.enemyShield; setEnemyShield(shieldRef.current); }
-    if (r.self) { onNailDamage?.(r.self); setPainFlash(0.35); setTimeout(() => setPainFlash(0), 400); }
+    if (r.self) { onNailDamage?.(r.self); setPainFlash(0.35); setTimeout(() => setPainFlash(0), 400); triggerShake("light"); }
     pushLog(r.log, CAT_COLORS[c.category] || C.dim);
   };
 
@@ -822,7 +859,9 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
       border: `2px solid ${C.gold}77`, borderRadius: "6px",
       background: "linear-gradient(180deg, rgba(12,10,20,0.68) 0%, rgba(4,3,8,0.82) 100%)",
       boxShadow: `0 0 0 1px #000, 0 0 26px ${C.gold}22, inset 0 0 40px rgba(0,0,0,0.55)`,
-      animation: shake ? "screenShake 0.38s" : "none",
+      animation: shake === "heavy" ? "screenShake 0.38s"
+        : shake === "light" ? "screenShakeLight 0.24s"
+        : "none",
     }}>
       {/* Angoli ottone del cabinet */}
       {[["top","left"],["top","right"],["bottom","left"],["bottom","right"]].map(([v,h],i)=>(
@@ -843,10 +882,12 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
         const a = FLOATER_ANCHOR[f.zone] || FLOATER_ANCHOR.enemy;
         return (
           <div key={f.id} style={{
-            position: "absolute", left: a.left, top: a.top, zIndex: 55,
+            position: "absolute",
+            left: `calc(${a.left} + ${f.dx || 0}px)`, top: `calc(${a.top} + ${f.dy || 0}px)`,
+            zIndex: 55,
             pointerEvents: "none", whiteSpace: "nowrap",
             color: f.color, fontWeight: "bold",
-            fontSize: f.big ? "22px" : "16px",
+            fontSize: f.big ? "26px" : "17px",
             textShadow: `0 0 8px ${f.color}, 0 1px 2px #000`,
             animation: "combatFloat 1.1s ease-out forwards",
           }}>{f.text}</div>
@@ -856,9 +897,13 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
       {/* ── SCHEDA NEMICO — readout CRT compatto orizzontale ── */}
       <div style={{
         display: "flex", alignItems: "stretch", gap: "12px",
-        border: `2px solid ${C.red}`, borderRadius: "4px", padding: "9px 12px",
-        background: "#160308", boxShadow: `0 0 18px ${C.red}44, inset 0 0 24px rgba(0,0,0,0.6)`,
-        transform: enemyHitFlash ? "translateX(4px)" : "none", transition: "transform 0.1s",
+        border: `2px solid ${perfectHit ? "#ffffff" : C.red}`, borderRadius: "4px", padding: "9px 12px",
+        background: "#160308",
+        boxShadow: perfectHit
+          ? `0 0 34px #ffffffcc, 0 0 60px ${C.red}88, inset 0 0 24px rgba(255,255,255,0.18)`
+          : `0 0 18px ${C.red}44, inset 0 0 24px rgba(0,0,0,0.6)`,
+        transform: enemyHitFlash ? "translateX(4px)" : "none",
+        transition: "transform 0.1s, box-shadow 0.12s, border-color 0.12s",
       }}>
         {/* Schermo "mostro" CRT — ritratto sprite del nemico, riquadro compatto a sinistra */}
         <div style={{
@@ -873,17 +918,28 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
             position: "absolute", inset: 0, pointerEvents: "none", zIndex: 2, opacity: 0.5,
             backgroundImage: "repeating-linear-gradient(0deg, rgba(0,0,0,0.25) 0px, rgba(0,0,0,0.25) 1px, transparent 1px, transparent 3px)",
           }} />
+          {/* Onda d'urto del colpo perfetto — anello bianco che si espande */}
+          {perfectHit > 0 && (
+            <div key={`ring-${perfectHit}`} aria-hidden style={{
+              position: "absolute", inset: "6px", zIndex: 3, pointerEvents: "none",
+              border: "3px solid #ffffff", borderRadius: "3px",
+              boxShadow: "0 0 20px #ffffffcc, inset 0 0 20px #ffffff66",
+              animation: "perfectRing 0.6s ease-out forwards",
+            }} />
+          )}
           {hasAsset(`spr-${enemySpriteKey(enemy)}`) ? (
             <Asset id={`spr-${enemySpriteKey(enemy)}`} size={140}
               style={{width:"100%", height:"auto", display:"block",
                 filter:`drop-shadow(0 0 6px ${C.red}aa)`,
-                animation: enemyHitFlash ? "none" : "neonText 2.4s infinite"}} />
+                animation: perfectHit ? "perfectHitFlash 0.6s ease-out"
+                  : enemyHitFlash ? "none" : "neonText 2.4s infinite"}} />
           ) : (
             <pre style={{
               margin: 0, textAlign: "center", color: "#ff6a6a", fontFamily: FONT,
               fontSize: "7px", lineHeight: "1.05", whiteSpace: "pre",
               textShadow: `0 0 6px ${C.red}aa`,
-              animation: enemyHitFlash ? "none" : "neonText 2.4s infinite",
+              animation: perfectHit ? "perfectHitFlash 0.6s ease-out"
+                : enemyHitFlash ? "none" : "neonText 2.4s infinite",
             }}>
               {(SPR_BIG[enemySpriteKey(enemy)] || SPR_BIG.miniboss).join("\n")}
             </pre>
