@@ -95,15 +95,20 @@ export function Tooltip({ text, children, color }) {
     );
   }
 
-  // ── MOUSE: ancorato al box dell'elemento (sotto, o sopra se non c'è
-  //    posto) invece che al cursore — stessa logica del touch, così non
-  //    finisce mai sovrapposto all'elemento stesso su tessere alte. ──
+  // ── MOUSE: ancorato alla prima posizione utile vicino al cursore invece
+  //    di inseguirlo ad ogni mousemove. ──
   return (
     <span ref={wrapRef} style={{display:"block", flexShrink:0, cursor:"inherit"}}
-      onMouseEnter={e => {
-        if (pos) return; // già ancorato
-        const r = e.currentTarget.getBoundingClientRect();
-        setPos(anchorBelow(r));
+      onMouseMove={e => {
+        e.stopPropagation();
+        if (pos) return; // già ancorato: niente inseguimento
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const nearRight = e.clientX > vw - 240;
+        const nearBottom = e.clientY > vh - 80;
+        const x = nearRight ? e.clientX - 230 : e.clientX + 14;
+        const y = nearBottom ? e.clientY - 60 : e.clientY + 18;
+        setPos({ x, y });
       }}
       onMouseLeave={() => setPos(null)}>
       {children}
