@@ -1,4 +1,4 @@
-import { C, FONT, W } from "../data/theme.js";
+import { C, FONT, FONT_TITLE, FS, W, T } from "../data/theme.js";
 
 // ─── SHARED STYLES — CGA ARCADE PIXEL-ART ────────────────────
 export const S = {
@@ -25,6 +25,10 @@ export const S = {
     boxShadow: `4px 4px 0 #000000, 0 0 20px ${C.cyan}14, inset 0 0 20px #00000066`,
   },
   // Bottone default — bordo 2px + pixel shadow
+  // transition: prima era "none", quindi il glow di hover (applicato via DOM in
+  // Btn.jsx) scattava di colpo. Ora dissolve in D.instant su ombra e testo:
+  // il transform resta fuori dalla transizione perché lo stato :active
+  // (definito in styles/animations.js) deve rispondere secco al click.
   btn: {
     fontFamily: FONT,
     background: "#0a0a14",
@@ -33,8 +37,8 @@ export const S = {
     padding: "8px 16px",
     cursor: "pointer",
     borderRadius: "0",
-    fontSize: "13px",
-    transition: "none",
+    fontSize: FS.md,
+    transition: `box-shadow ${T.instant}, text-shadow ${T.instant}`,
     textShadow: `0 0 6px ${C.cyan}44`,
     boxShadow: "2px 2px 0 #000000",
   },
@@ -47,8 +51,8 @@ export const S = {
     padding: "8px 16px",
     cursor: "pointer",
     borderRadius: "0",
-    fontSize: "13px",
-    transition: "none",
+    fontSize: FS.md,
+    transition: `box-shadow ${T.instant}, text-shadow ${T.instant}`,
     boxShadow: `2px 2px 0 #000000, 0 0 14px ${C.gold}44`,
     textShadow: `0 0 8px ${C.gold}99`,
   },
@@ -61,8 +65,8 @@ export const S = {
     padding: "8px 16px",
     cursor: "pointer",
     borderRadius: "0",
-    fontSize: "13px",
-    transition: "none",
+    fontSize: FS.md,
+    transition: `box-shadow ${T.instant}, text-shadow ${T.instant}`,
     boxShadow: `2px 2px 0 #000000, 0 0 14px ${C.red}44`,
     textShadow: `0 0 8px ${C.red}99`,
   },
@@ -74,12 +78,22 @@ export const S = {
     border: `2px solid #222`,
     padding: "8px 16px",
     borderRadius: "0",
-    fontSize: "13px",
+    fontSize: FS.md,
     cursor: "not-allowed",
     boxShadow: "2px 2px 0 #000000",
   },
   pre:   { margin: 0, fontFamily: FONT, whiteSpace: "pre", lineHeight: "1.2" },
-  title: { color: C.gold,  textAlign: "center", fontSize: "11px", letterSpacing: "2px", textShadow: `0 0 10px ${C.gold}77` },
-  h2:    { color: C.cyan,  margin: "0 0 8px 0", fontSize: "15px", letterSpacing: "1px", textShadow: `0 0 12px ${C.cyan}88` },
-  h3:    { color: C.gold,  margin: "8px 0 4px 0", fontSize: "14px", letterSpacing: "1px", textShadow: `0 0 10px ${C.gold}77` },
+
+  // ─── TIPOGRAFIA ────────────────────────────────────────────
+  // Era invertita: `title` stava a 11px, cioè PIÙ PICCOLO di h2 (15px) e
+  // h3 (14px). Ora la gerarchia scende davvero — display > title > h2 > h3 —
+  // e i livelli cerimoniali usano il grottesco condensato (FONT_TITLE),
+  // lasciando il monospace al corpo e ai dati da terminale.
+  display: { fontFamily: FONT_TITLE, color: C.gold, textAlign: "center", fontSize: FS.huge, letterSpacing: "3px", lineHeight: 1.05, textShadow: `0 0 18px ${C.gold}88` },
+  title:   { fontFamily: FONT_TITLE, color: C.gold, textAlign: "center", fontSize: FS.xxl, letterSpacing: "3px", lineHeight: 1.1, textShadow: `0 0 14px ${C.gold}77` },
+  h2:      { fontFamily: FONT_TITLE, color: C.cyan, margin: "0 0 8px 0", fontSize: FS.xl, letterSpacing: "2px", textShadow: `0 0 12px ${C.cyan}88` },
+  h3:      { color: C.gold, margin: "8px 0 4px 0", fontSize: FS.lg, letterSpacing: "1px", textShadow: `0 0 10px ${C.gold}77` },
+  // Numeri-chiave (soldi, danni, punteggi): stessa voce dei titoli, così le
+  // cifre importanti si leggono come un'insegna e non come un listato.
+  num:     { fontFamily: FONT_TITLE, fontSize: FS.xl, letterSpacing: "1px", fontWeight: "bold" },
 };

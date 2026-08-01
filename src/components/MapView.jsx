@@ -1,5 +1,5 @@
 import { useMemo, useRef, useEffect } from "react";
-import { C, FONT, FS } from "../data/theme.js";
+import { C, FONT, FS, T } from "../data/theme.js";
 import { NODE_ICONS, NODE_TOOLTIPS } from "../data/map.js";
 import { Asset } from "./Asset.jsx";
 import { hasAsset } from "../assets/registry.js";
@@ -607,7 +607,12 @@ export function MapView({ map, currentRow, visitedNodes, onSelectNode, reachable
               : isActive && safeNode               ? "#77ffaa"
               : isActive && secretUnlocked         ? "#ccaaff"
               : isActive                           ? C.gold
-              : "#202030";
+              // Nodo bloccato: era #202030 sul fondo #080812, cioè ~1.15:1 di
+              // contrasto — l'etichetta esisteva ma non si leggeva. Ora grigio
+              // medio (C.dimMid ≈ 5:1): resta chiaramente spento rispetto ai
+              // nodi attivi, ma dice cosa c'è. L'icona tiene la sua opacità
+              // ridotta, quindi la gerarchia non cambia.
+              : C.dimMid;
 
             return (
               <Tooltip key={node.id} text={tooltip}>
@@ -628,7 +633,7 @@ export function MapView({ map, currentRow, visitedNodes, onSelectNode, reachable
                     opacity: visited ? 0.48 : effectivelyHidden ? 0.45 : 1,
                     zIndex: isBoss ? 3 : isActive ? 2 : 1,
                     boxShadow: shadow,
-                    transition:"transform 0.1s, box-shadow 0.18s",
+                    transition:`transform ${T.instant}, box-shadow ${T.instant}`,
                     animation,
                     userSelect:"none",
                     touchAction:"manipulation",

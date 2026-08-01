@@ -6,7 +6,7 @@ import { Asset } from "./Asset.jsx";
 
 // Pip visuali per gli usi (max 5, poi numero)
 function UsesPips({ count, color }) {
-  if (count > 5) return <span style={{color, fontSize:"8px", fontWeight:"bold"}}>×{count}</span>;
+  if (count > 5) return <span style={{color, fontSize:"10px", fontWeight:"bold"}}>×{count}</span>;
   return (
     <span style={{display:"inline-flex", gap:"1px"}}>
       {Array(count).fill(0).map((_,i) => (
@@ -24,7 +24,7 @@ function SectionHeader({ color, label, count, max }) {
     <div style={{textAlign:"center", marginBottom:"5px"}}>
       <VintageBadge color={color} size="sm" shimmer>{label}</VintageBadge>
       {typeof count === "number" && (
-        <div style={{color: color+"aa", fontSize:"7px", marginTop:"2px", letterSpacing:"1px"}}>
+        <div style={{color: color+"aa", fontSize:"10px", marginTop:"2px", letterSpacing:"1px"}}>
           {count}{typeof max === "number" ? `/${max}` : ""}
         </div>
       )}
@@ -45,7 +45,7 @@ export function InventorySidebar({ items, grattatori, equippedGrattatore, onUseI
       {/* Stato vuoto */}
       {!hasAnything && (
         <div style={{
-          color:C.dim, fontSize:"9px", textAlign:"center",
+          color:C.dim, fontSize:"10px", textAlign:"center",
           marginTop:"18px", lineHeight:"1.6",
           position:"relative",
           border:`1px dashed ${C.dim}55`,
@@ -56,7 +56,7 @@ export function InventorySidebar({ items, grattatori, equippedGrattatore, onUseI
           <CornerBrackets color={C.dim+"99"}/>
           <div style={{fontSize:"22px", marginBottom:"6px", opacity:0.4, filter:"grayscale(1)"}}>🎒</div>
           <div style={{opacity:0.6}}>❝ zaino<br/>vuoto ❞</div>
-          <div style={{fontSize:"7px", marginTop:"6px", letterSpacing:"1px", opacity:0.4}}>
+          <div style={{fontSize:"10px", marginTop:"6px", letterSpacing:"1px", opacity:0.4}}>
             ★ niente da usare ★
           </div>
         </div>
@@ -109,13 +109,13 @@ export function InventorySidebar({ items, grattatori, equippedGrattatore, onUseI
                   <div style={{flex:1, minWidth:0}}>
                     <div style={{
                       color: isEquipped ? C.cyan : C.cyan+"aa",
-                      fontSize:"8px", fontWeight: isEquipped ? "bold" : "normal",
+                      fontSize:"10px", fontWeight: isEquipped ? "bold" : "normal",
                       whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis",
                       letterSpacing:"0.3px",
                     }}>{g.name}</div>
                     <div style={{
                       color: lowUses ? C.orange : C.dim,
-                      fontSize:"7px", display:"flex", alignItems:"center", gap:"3px", marginTop:"1px",
+                      fontSize:"10px", display:"flex", alignItems:"center", gap:"3px", marginTop:"1px",
                     }}>
                       <UsesPips count={g.usesLeft} color={lowUses ? C.orange : C.cyan}/>
                       <span style={{opacity:0.7}}>{g.usesLeft > 5 ? "" : "usi"}</span>
@@ -168,13 +168,13 @@ export function InventorySidebar({ items, grattatori, equippedGrattatore, onUseI
                   <span style={{fontSize:"14px", lineHeight:1, flexShrink:0}}><Asset id={item.id ? `item-${item.id}` : null} emoji={item.emoji} size={14} /></span>
                   <div style={{flex:1, minWidth:0}}>
                     <div style={{
-                      color: C.gold+"cc", fontSize:"8px",
+                      color: C.gold+"cc", fontSize:"10px",
                       whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis",
                       letterSpacing:"0.3px",
                     }}>{item.name}</div>
                   </div>
                   <span style={{
-                    color: C.gold, fontSize:"9px", flexShrink:0, fontWeight:"bold",
+                    color: C.gold, fontSize:"10px", flexShrink:0, fontWeight:"bold",
                     textShadow:`0 0 4px ${C.gold}88`,
                   }}>▶</span>
                 </div>
@@ -188,7 +188,7 @@ export function InventorySidebar({ items, grattatori, equippedGrattatore, onUseI
         <div style={{
           marginTop:"6px", paddingTop:"4px",
           borderTop:`1px solid ${C.dim}33`,
-          textAlign:"center", color:C.dim, fontSize:"7px", letterSpacing:"1px",
+          textAlign:"center", color:C.dim, fontSize:"10px", letterSpacing:"1px",
         }}>
           slot consumabili: {items.length}/5
         </div>

@@ -134,9 +134,14 @@ function NailSidebarImpl({ nails, activeNail, onSelectNail, locked=false, gratta
                     {/* Etichetta stato */}
                     <span style={{
                       color: isDead ? "#444" : isActive ? col : col+"aa",
-                      fontSize:"7px", fontWeight: isActive ? "bold" : "normal",
+                      fontSize:"10px", fontWeight: isActive ? "bold" : "normal",
                       letterSpacing:"0.4px", lineHeight:1.1,
-                      maxWidth:"64px", overflow:"hidden",
+                      // L'etichetta è passata da 7px a 10px: in colonna (desktop)
+                      // la sidebar è larga 160px, quindi il tetto si allarga
+                      // invece di tagliare la parola. In riga (mobile) le 5
+                      // unghie si dividono la larghezza dello schermo e il
+                      // troncamento resta necessario.
+                      maxWidth: horizontal ? "64px" : "96px", overflow:"hidden",
                       textOverflow:"ellipsis", whiteSpace:"nowrap",
                       textAlign:"center",
                       textShadow: isActive && !isDead ? `0 0 6px ${col}88` : "none",
@@ -195,7 +200,7 @@ function NailSidebarImpl({ nails, activeNail, onSelectNail, locked=false, gratta
                     </span>
                     <span style={{flex:1, minWidth:0}}>
                       <span style={{display:"flex", alignItems:"center", gap:"4px"}}>
-                        <span style={{color: isActive ? col : col+"88", fontSize:"9px", fontWeight: isActive ? "bold" : "normal", whiteSpace:"nowrap"}}>
+                        <span style={{color: isActive ? col : col+"88", fontSize:"10px", fontWeight: isActive ? "bold" : "normal", whiteSpace:"nowrap"}}>
                           {chirurgo ? chirurgo.label : info.label}
                         </span>
                       </span>
@@ -216,7 +221,7 @@ function NailSidebarImpl({ nails, activeNail, onSelectNail, locked=false, gratta
                               }}/>
                             );
                           })}
-                          <span style={{color: chirurgo.color+"aa", fontSize:"7px", marginLeft:"2px", letterSpacing:"0.5px"}}>
+                          <span style={{color: chirurgo.color+"aa", fontSize:"10px", marginLeft:"2px", letterSpacing:"0.5px"}}>
                             {n.implantUses || 0}/{chirurgo.max}
                           </span>
                         </span>
@@ -286,12 +291,12 @@ function NailSidebarImpl({ nails, activeNail, onSelectNail, locked=false, gratta
                                   }}/>
                                 );
                               })}
-                              <span style={{color:C.dim, fontSize:"7px", marginLeft:"2px", opacity:0.6}}>{3 - dmgFilled}/3</span>
+                              <span style={{color:C.dim, fontSize:"10px", marginLeft:"2px", opacity:0.6}}>{3 - dmgFilled}/3</span>
                             </span>
                           )}
                         </>
                       )}
-                      {n.smalto > 0 && <span style={{display:"block", color:C.magenta, fontSize:"8px", marginTop:"1px"}}>💅×{n.smalto}</span>}
+                      {n.smalto > 0 && <span style={{display:"block", color:C.magenta, fontSize:"10px", marginTop:"1px"}}>💅×{n.smalto}</span>}
                     </span>
                   </span>
                 </Tooltip>
@@ -322,7 +327,7 @@ function NailSidebarImpl({ nails, activeNail, onSelectNail, locked=false, gratta
             }}>
               <span style={{fontSize:"15px", lineHeight:1, flexShrink:0}}><Asset id={`item-${g.id}`} emoji={g.emoji} size={15} /></span>
               <span style={{flex:1, minWidth:0}}>
-                <span style={{color:C.cyan, fontSize:"9px", fontWeight:"bold", display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>{g.name}</span>
+                <span style={{color:C.cyan, fontSize:"10px", fontWeight:"bold", display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>{g.name}</span>
                 <span style={{display:"flex", gap:"2px", marginTop:"3px", flexWrap:"wrap", alignItems:"center"}}>
                   {Array(Math.min(uses, 10)).fill(0).map((_,pi) => (
                     <span key={pi} style={{
@@ -331,7 +336,7 @@ function NailSidebarImpl({ nails, activeNail, onSelectNail, locked=false, gratta
                       boxShadow:`0 0 4px ${C.cyan}88`, flexShrink:0,
                     }}/>
                   ))}
-                  {uses > 10 && <span style={{color:C.cyan, fontSize:"7px", marginLeft:"2px"}}>{uses}</span>}
+                  {uses > 10 && <span style={{color:C.cyan, fontSize:"10px", marginLeft:"2px"}}>{uses}</span>}
                 </span>
               </span>
             </div>
@@ -339,7 +344,7 @@ function NailSidebarImpl({ nails, activeNail, onSelectNail, locked=false, gratta
           </>
         );
       })()}
-      <div style={{color: locked ? C.orange : C.dim, fontSize:"8px", textAlign:"center", marginTop:"4px", lineHeight:"1.4", opacity: locked ? 0.8 : 0.5}}>
+      <div style={{color: locked ? C.orange : C.dim, fontSize:"10px", textAlign:"center", marginTop:"4px", lineHeight:"1.4", opacity: locked ? 0.8 : 0.5}}>
         {locked ? <>🔒 finisci il<br/>grattino prima</> : <>clicca per<br/>cambiare</>}
       </div>
     </div>

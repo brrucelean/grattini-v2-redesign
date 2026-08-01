@@ -8,6 +8,7 @@ import { GRATTATORE_DEFS } from "../data/items.js";
 import { Tooltip } from "./Tooltip.jsx";
 import { NewsTicker } from "./NewsTicker.jsx";
 import { Asset } from "./Asset.jsx";
+import { ANIM } from "../styles/animations.js";
 
 // ─── StatusChip: pill riutilizzabile per status effects dell'HUD ───
 // Style unificato: gradient sottile + border colorato + neon glow.
@@ -83,7 +84,7 @@ function HUDImpl({ player, onOpenInventory, inventoryOpen = false, moneyBling = 
       )}
       {player.fortune > 0 && (
         <Tooltip text={`🍀 FORTUNA +${player.fortune} — ${player.fortuneTurns} turni rimasti`}>
-          <StatusChip color={C.green} active><Asset id="hud-fortuna" emoji="🍀" size={13} /> +{player.fortune}<span style={{fontSize:"8px", opacity:0.65, marginLeft:"2px"}}>({player.fortuneTurns}t)</span></StatusChip>
+          <StatusChip color={C.green} active><Asset id="hud-fortuna" emoji="🍀" size={13} /> +{player.fortune}<span style={{fontSize:"10px", opacity:0.65, marginLeft:"2px"}}>({player.fortuneTurns}t)</span></StatusChip>
         </Tooltip>
       )}
       {player.tumore && (
@@ -156,7 +157,7 @@ function HUDImpl({ player, onOpenInventory, inventoryOpen = false, moneyBling = 
             border:`1px solid ${viteColor}88`,
             padding:"2px 6px", flexShrink:0,
             background: aliveNails <= 1 ? "#1a0005" : "transparent",
-            animation: aliveNails <= 1 ? "pulse 1s infinite" : "none",
+            animation: aliveNails <= 1 ? ANIM.pulseActive : "none",
           }}>
             <span style={{display:"inline-flex", gap:"2px"}}>
               {[0,1,2,3,4].map(i => {
@@ -279,7 +280,7 @@ function HUDImpl({ player, onOpenInventory, inventoryOpen = false, moneyBling = 
             padding:"2px 7px", cursor:"default",
             background: aliveNails <= 1 ? "#1a0005" : "transparent",
             boxShadow: aliveNails <= 1 ? `0 0 6px ${C.red}66, inset 0 0 4px ${C.red}22` : "none",
-            animation: aliveNails <= 1 ? "pulse 1s infinite" : "none",
+            animation: aliveNails <= 1 ? ANIM.pulseActive : "none",
           }}>
             <span style={{color:C.dim, fontSize:"11px", letterSpacing:"1px"}}>VITE</span>
             <span style={{display:"inline-flex", gap:"2px"}}>

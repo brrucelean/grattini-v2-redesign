@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, memo } from "react";
 import { C, FONT } from "../data/theme.js";
 import { TICKER_COLORS, TICKER_LABELS, getNewsPool } from "../data/art.js";
+import { ANIM } from "../styles/animations.js";
 
 function NewsTickerImpl({ currentBiome = 0 }) {
   // Pool notizie = globali + quelle del bioma corrente (ricomputate al cambio bioma)
@@ -51,9 +52,9 @@ function NewsTickerImpl({ currentBiome = 0 }) {
       <div style={{
         flexShrink:0,
         background: col, color:"#000",
-        fontSize:"8px", fontWeight:"bold", letterSpacing:"1px",
+        fontSize:"10px", fontWeight:"bold", letterSpacing:"1px",
         padding:"2px 6px", whiteSpace:"nowrap",
-        animation:"pulse 1s ease-in-out infinite",
+        animation:ANIM.pulseActive,
       }}>{label}</div>
     </div>
   );

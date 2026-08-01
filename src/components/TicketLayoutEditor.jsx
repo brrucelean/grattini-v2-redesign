@@ -170,7 +170,7 @@ export function TicketLayoutEditor({ cardId, onChange, children }) {
         <span style={{
           position: "absolute", top: "-9px", left: "4px",
           background: color, color: "#000", fontFamily: FONT,
-          fontSize: "9px", fontWeight: "bold", padding: "1px 5px", letterSpacing: "1px",
+          fontSize: "10px", fontWeight: "bold", padding: "1px 5px", letterSpacing: "1px",
         }}>{label}</span>
         {HANDLES.map(h => (
           <div key={h}

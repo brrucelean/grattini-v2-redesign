@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { C, FONT } from "../data/theme.js";
 import { S } from "../utils/styles.js";
 import { CornerBrackets } from "./Vintage.jsx";
+import { ANIM } from "../styles/animations.js";
 
 // ─── DOPPIO O NULLA COMPONENT ──────────────────────────────────
 export function DoppioONullaView({ prize, onDecline, onResult }) {
@@ -128,14 +129,14 @@ export function DoppioONullaView({ prize, onDecline, onResult }) {
           letterSpacing: "5px", marginBottom: "4px",
           textShadow: `0 0 14px ${accent}aa, 0 0 30px ${accent}55`,
           fontFamily: FONT,
-          animation: "pulse 1.8s ease-in-out infinite",
+          animation: ANIM.pulseAmbient,
         }}>
           🎰 DOPPIO O NULLA 🎰
         </div>
         <div style={{
           display: "inline-block",
           color: "#000", background: accent,
-          fontSize: "9px", letterSpacing: "3px", fontWeight: "bold",
+          fontSize: "10px", letterSpacing: "3px", fontWeight: "bold",
           padding: "2px 10px",
           boxShadow: `0 0 8px ${accent}aa`,
         }}>
@@ -158,7 +159,7 @@ export function DoppioONullaView({ prize, onDecline, onResult }) {
         {/* Current prize */}
         <div style={{textAlign: "center"}}>
           <div style={{
-            color: C.dim, fontSize: "9px", letterSpacing: "2px",
+            color: C.dim, fontSize: "10px", letterSpacing: "2px",
             marginBottom: "4px",
           }}>HAI IN MANO</div>
           <div style={{
@@ -178,7 +179,7 @@ export function DoppioONullaView({ prize, onDecline, onResult }) {
         {/* Stakes */}
         <div style={{textAlign: "center"}}>
           <div style={{
-            color: C.dim, fontSize: "9px", letterSpacing: "2px",
+            color: C.dim, fontSize: "10px", letterSpacing: "2px",
             marginBottom: "4px",
           }}>RISCHI PER</div>
           <div style={{
@@ -238,7 +239,7 @@ export function DoppioONullaView({ prize, onDecline, onResult }) {
           <div style={{
             textShadow: revealed ? `0 0 20px ${resultColor}` : "none",
             filter: revealed ? `drop-shadow(0 0 10px ${resultColor}aa)` : "none",
-            animation: revealed ? "pulse 0.6s ease-in-out" : "none",
+            animation: revealed ? ANIM.pulseOnce : "none",
           }}>{resultSymbol}</div>
           <div style={{
             fontSize: "22px", fontWeight: "bold", color: resultColor, fontFamily: FONT,
@@ -297,7 +298,7 @@ export function DoppioONullaView({ prize, onDecline, onResult }) {
           <div style={{
             position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: "8px", color: C.bright, letterSpacing: "2px",
+            fontSize: "10px", color: C.bright, letterSpacing: "2px",
             fontWeight: "bold", mixBlendMode: "difference",
           }}>
             {scratchProgress}%
@@ -313,7 +314,7 @@ export function DoppioONullaView({ prize, onDecline, onResult }) {
           padding: "5px 14px", fontSize: "12px", fontWeight: "bold",
           letterSpacing: "3px", marginBottom: "8px",
           boxShadow: `0 0 16px ${won ? C.gold : C.red}aa`,
-          animation: "pulse 0.5s ease-in-out",
+          animation: ANIM.pulseOnce,
         }}>
           ★ {won ? `🎉 RADDOPPIATO — €${prize * 2}!` : "💀 PERSO TUTTO!"} ★
         </div>
