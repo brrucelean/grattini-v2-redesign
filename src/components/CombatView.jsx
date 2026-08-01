@@ -1080,7 +1080,17 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
               </div>
             )}
             <div style={{
-              display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gridTemplateRows: "repeat(3, 1fr)",
+              display: "grid",
+              // minmax(0,160px): sotto quella soglia le colonne si comportano
+              // come 1fr (si dividono lo spazio disponibile, comportamento
+              // identico a prima su mobile). Sopra, il tetto di 160px impedisce
+              // alle carte di diventare lastre sproporzionate su desktop largo
+              // (il canvas nativo è 220×160, ~1.4:1 — 160px di colonna resta
+              // vicino a quella proporzione data l'altezza riga ~94-110px).
+              // justifyContent centra la griglia invece di stirarla sull'intero
+              // cabinet (fino a 1280px via W.content).
+              gridTemplateColumns: "repeat(3, minmax(0, 160px))", gridTemplateRows: "repeat(3, 1fr)",
+              justifyContent: "center",
               gap: "6px", flex: "1 1 auto", minHeight: `${COMBAT_CARD_H * 3 + 12}px`,
             }}>
               {hand.map((cell, i) => {
