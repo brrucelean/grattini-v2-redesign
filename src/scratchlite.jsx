@@ -2091,17 +2091,12 @@ export default function Grattini() {
            Su desktop largo il banco stesso si allarga per riempire lo spazio
            residuo (vedi wideDesk in ShopView) invece di restare stretto e
            lasciare che il layout lo ricentri in un'isola: flex-start lo tiene
-           subito dopo la sidebar UNGHIE, la fiancata ZAINO segue a ruota.
-           flex:"1 0 auto" fa sì che la riga occupi TUTTA l'altezza del DESK:
-           banco e fiancata si stirano (align-items:stretch di default) e la
-           colonna UNGHIE, il banco e lo ZAINO chiudono alla stessa quota —
-           niente più fiancata alta 100px sospesa su una voragine nera. */}
+           subito dopo la sidebar UNGHIE, la fiancata ZAINO segue a ruota. */}
       {screen === "shop" && player && (
         <div style={{
           width:"100%",
           display:"flex", justifyContent: wideDesk ? "flex-start" : "center",
           gap: wideDesk ? "14px" : "0",
-          ...(wideDesk ? { flex:"1 0 auto", minHeight:0 } : null),
         }}>
           <Suspense fallback={<LazyFallback />}>
           <ShopView

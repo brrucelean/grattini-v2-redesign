@@ -27,28 +27,7 @@ const rarityAccent = (rarity, vip = false) => {
 };
 
 // ─── ScrollRow: contenitore App Store — scroll orizzontale ──
-// grid=true (solo desktop molto largo): niente scroll, la merce si dispone su
-// più file e le tessere si allargano fino a riempire la colonna. Con lo scroll
-// orizzontale, su 700px di scaffale tre tessere da 130px lasciavano il 45%
-// della riga nero — qui lo spazio orizzontale se lo prende la merce.
-function ScrollRow({ children, bg = "#05050b", grid = false }) {
-  if (grid) {
-    return (
-      <div style={{
-        display: "grid",
-        // auto-fit (non auto-fill): le colonne vuote collassano e le tessere
-        // presenti si spartiscono tutta la larghezza — niente coda nera in
-        // fondo alla riga. Il residuo, quando la merce è poca, lo distribuisce
-        // il margine auto della tessera (vedi ProductTile fluid): spazio
-        // uguale attorno a ogni pezzo invece di un buco unico a destra.
-        gridTemplateColumns: "repeat(auto-fit, minmax(132px, 1fr))",
-        gap: "12px",
-        marginBottom: "16px",
-      }}>
-        {children}
-      </div>
-    );
-  }
+function ScrollRow({ children, bg = "#05050b" }) {
   return (
     <div style={{position:"relative", marginBottom:"16px"}}>
       <div style={{
@@ -79,7 +58,7 @@ function ScrollRow({ children, bg = "#05050b", grid = false }) {
 }
 
 // ─── ProductTile: card App-Store style ───────────────────────
-function ProductTile({ emoji, assetId, name, subtitle, cost, maxPrize, accent, canAfford, onClick, tooltip, badgeLabel, shimmer = false, disabled = false, fluid = false }) {
+function ProductTile({ emoji, assetId, name, subtitle, cost, maxPrize, accent, canAfford, onClick, tooltip, badgeLabel, shimmer = false, disabled = false }) {
   const cantPay = !canAfford || disabled;
   return (
     <Tooltip text={tooltip}>
@@ -88,9 +67,7 @@ function ProductTile({ emoji, assetId, name, subtitle, cost, maxPrize, accent, c
         className={shimmer && !cantPay ? "holo holo-strong" : undefined}
         style={{
           flexShrink: 0,          // non si schiaccia nel row orizzontale
-          width: fluid ? "100%" : "130px",   // fluid: riempie la cella della griglia
-          maxWidth: fluid ? "240px" : undefined, // oltre la tessera si sformerebbe
-          margin: fluid ? "0 auto" : undefined,   // centrata nella cella
+          width: "130px",
           // Passata ottone: base calda con sheen dall'alto invece del nero piatto
           background: cantPay
             ? "linear-gradient(180deg, #12110d 0%, #0a0a12 100%)"
@@ -119,7 +96,7 @@ function ProductTile({ emoji, assetId, name, subtitle, cost, maxPrize, accent, c
       >
         {/* Preview area */}
         <div style={{
-          position: "relative", height: fluid ? "88px" : "62px",
+          position: "relative", height: "62px",
           background: `linear-gradient(135deg, ${accent.c}18, ${accent.c}05)`,
           borderBottom: `1px solid ${accent.c}44`,
           display: "flex", alignItems: "center", justifyContent: "center",
@@ -146,7 +123,7 @@ function ProductTile({ emoji, assetId, name, subtitle, cost, maxPrize, accent, c
             fontSize: "28px", position: "relative", zIndex: 2,
             textShadow: `0 0 12px ${accent.c}`,
             filter: cantPay ? "grayscale(0.6) brightness(0.7)" : "none",
-          }}><Asset id={assetId} emoji={emoji} size={fluid ? 44 : 28} /></div>
+          }}><Asset id={assetId} emoji={emoji} size={28} /></div>
           {/* Shimmer foil per rarità alta */}
           {shimmer && !cantPay && (
             <div style={{
@@ -269,18 +246,6 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
     return () => window.removeEventListener("resize", h);
   }, []);
   const mobile = vw < 600;
-  // Su finestre molto larghe il banco arriva a ~1500px: una sola colonna di
-  // scaffali lascia 1000px di nero alla destra di ogni riga (le tessere sono
-  // fisse a 130px, non si allargano) e allunga il pannello oltre il fondo
-  // schermo. A due colonne lo spazio orizzontale viene riempito da merce vera
-  // e l'altezza rientra nella finestra. Soglia 1360px di finestra ≈ 950px di
-  // banco netti (tolte sidebar UNGHIE 160 + fiancata ZAINO 230 + gap): sotto,
-  // le due colonne scendono a ~420px e le intestazioni di reparto si tagliano.
-  const twoCol = wideDesk && vw >= 1360;
-  // Scaffali a griglia (invece dello scroll orizzontale) su tutto il desktop
-  // largo: le tessere si allargano fino a coprire la colonna invece di
-  // restare tre francobolli da 130px in fondo a sinistra.
-  const gridShelf = wideDesk;
 
   // ─── SLOT MACHINE STATE ────────────────────────────────────────
   const [slotReels, setSlotReels] = useState(["🎰","🎰","🎰"]);
@@ -490,37 +455,23 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
         </div>
       </div>
 
-      {/* Contenuto — lo scroll verticale è gestito dal DESK esterno.
-          twoCol: due colonne di scaffali. I due wrapper interni diventano
-          display:contents quando NON siamo a due colonne, così l'ordine dei
-          reparti resta esattamente quello di prima (carte · grattatori ·
-          consumabili · VIP · slot · broker) senza duplicare il markup. */}
+      {/* Contenuto — lo scroll verticale è gestito dal DESK esterno */}
       <div style={{
         padding: mobile ? "0 10px 10px" : "0 12px 12px",
-        flex: 1,
-        ...(twoCol ? {
-          display: "grid",
-          gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
-          columnGap: "20px",
-          alignContent: "start",
-        } : null),
       }}>
-
-      <div style={{ display: twoCol ? "block" : "contents", minWidth: 0 }}>
 
         {/* ═══ GRATTA & VINCI ═══ */}
         <SectionHeader
           icon="🎫" label="Gratta & Vinci" count={shopCards.length}
           accent={C.gold} subtitle="scegli il tuo destino"
-          scrollHint={!gridShelf}
+          scrollHint
         />
-        <ScrollRow grid={gridShelf}>
+        <ScrollRow>
           {shopCards.map(c => {
             const rar = cardRarity(c);
             const accent = rarityAccent(rar);
             return (
               <ProductTile
-                fluid={gridShelf}
                 key={c.id}
                 emoji={c.emoji || "🎫"}
                 assetId={`card-${c.id}`}
@@ -542,9 +493,9 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
         <SectionHeader
           icon="🔧" label="Grattatori" count={allGrattatoriIds.length}
           accent={C.cyan} subtitle="proteggono le unghie"
-          scrollHint={!gridShelf}
+          scrollHint
         />
-        <ScrollRow grid={gridShelf}>
+        <ScrollRow>
           {allGrattatoriIds.map(id => {
             const g = GRATTATORE_DEFS[id];
             if (!g) return null;
@@ -552,7 +503,6 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
             const accent = rarityAccent(g.rarity, isVip);
             return (
               <ProductTile
-                fluid={gridShelf}
                 key={id}
                 emoji={g.emoji}
                 assetId={`item-${id}`}
@@ -570,26 +520,21 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
           })}
         </ScrollRow>
 
-      </div>{/* fine colonna A — scaffali biglietti e grattatori */}
-
-      <div style={{ display: twoCol ? "block" : "contents", minWidth: 0 }}>
-
         {/* ═══ CONSUMABILI ═══ */}
         {allConsumabili.length > 0 && (
           <>
             <SectionHeader
               icon="💊" label="Consumabili" count={allConsumabili.length}
               accent={C.green} subtitle="cura · bluff · sotto-banco"
-              scrollHint={!gridShelf}
+              scrollHint
             />
-            <ScrollRow grid={gridShelf}>
+            <ScrollRow>
               {allConsumabili.map(id => {
                 const item = ITEM_DEFS[id];
                 if (!item) return null;
                 const accent = rarityAccent(item.rarity);
                 return (
                   <ProductTile
-                    fluid={gridShelf}
                     key={id}
                     emoji={item.emoji}
                     assetId={`item-${id}`}
@@ -614,7 +559,7 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
             <SectionHeader
               icon="👑" label="Zona VIP" count={vipItems.length + vipCards.length}
               accent={C.gold} subtitle="accesso esclusivo — riservato"
-              scrollHint={!gridShelf}
+              scrollHint
             />
             <div style={{
               padding: "8px 8px 2px",
@@ -624,12 +569,11 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
               marginBottom: "16px",
               position: "relative",
             }}>
-              <ScrollRow bg="#030200" grid={gridShelf}>
+              <ScrollRow bg="#030200">
                 {vipCards.map(c => {
                   const accent = rarityAccent("leggendaria", true);
                   return (
                     <ProductTile
-                      fluid={gridShelf}
                       key={c.id}
                       emoji={c.emoji || "🎫"}
                       assetId={`card-${c.id}`}
@@ -652,7 +596,6 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
                   const accent = rarityAccent("leggendaria", true);
                   return (
                     <ProductTile
-                      fluid={gridShelf}
                       key={id}
                       emoji={item.emoji}
                       name={item.name}
@@ -813,8 +756,6 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
           </div>
         )}
 
-      </div>{/* fine colonna B — consumabili, VIP, slot, broker */}
-
       </div>{/* fine scroll verticale */}
 
       {/* ═══ AZIONI STICKY ═══ */}
@@ -890,12 +831,11 @@ export function ShopZainoRail({ player, onEquipGrattatore, onUseItem }) {
   return (
     <div style={{
       width: "230px", flexShrink: 0,
-      // Stesso margine verticale del banco (10px sopra e sotto) e nessun
-      // alignSelf: la fiancata si stira come il banco, così i due riquadri
-      // aprono e chiudono alla stessa quota. Prima era alignSelf:"flex-start"
-      // + sticky: alta quanto il suo contenuto (~100px con zaino vuoto), con
-      // 800px di nero sotto — la causa vera del "zaino non allineato".
-      margin: "10px 0",
+      // position:sticky non ha alcun effetto sulla posizione iniziale (scatta
+      // solo scrollando oltre `top`): senza marginTop qui, il banco (che ha
+      // margin:"10px 0") parte 10px più in basso della fiancata — bordi che
+      // non combaciano. marginTop lo allinea, `top` gestisce solo lo sticky.
+      alignSelf: "flex-start", position: "sticky", top: "10px", marginTop: "10px",
       display: "flex", flexDirection: "column", gap: "2px",
       fontFamily: FONT,
       background: "linear-gradient(180deg, rgba(10,9,18,0.82) 0%, rgba(4,3,8,0.9) 100%)",
@@ -903,17 +843,14 @@ export function ShopZainoRail({ player, onEquipGrattatore, onUseItem }) {
       WebkitBackdropFilter: "blur(10px) saturate(1.3)",
       border: `2px solid ${C.gold}44`,
       boxShadow: `inset 0 0 26px rgba(0,0,0,0.6)`,
-      overflowY: "auto",
+      maxHeight: "calc(100dvh - 40px)", overflowY: "auto",
     }}>
-      <div style={{ textAlign: "center", padding: "8px 6px 6px", borderBottom: `1px solid ${C.gold}33`, flexShrink: 0 }}>
+      <div style={{ textAlign: "center", padding: "8px 6px 6px", borderBottom: `1px solid ${C.gold}33` }}>
         <VintageBadge color={C.gold} size="md">🎒 ZAINO</VintageBadge>
       </div>
 
       {!hasGrattatori && !hasItems && (
-        <div style={{
-          flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
-          color: C.dim, fontSize: "11px", fontStyle: "italic", textAlign: "center", padding: "14px 10px",
-        }}>
+        <div style={{ color: C.dim, fontSize: "11px", fontStyle: "italic", textAlign: "center", padding: "14px 10px" }}>
           Zaino vuoto — compra qualcosa dal banco.
         </div>
       )}
