@@ -200,14 +200,6 @@ export function MapView({ map, currentRow, visitedNodes, onSelectNode, reachable
 
       {/* ── keyframes ── */}
       <style>{`
-        @keyframes mapCurrentRowPulse {
-          0%,100% { background:${biomeColor}14; }
-          50%      { background:${biomeColor}26; }
-        }
-        @keyframes mapNodeReachable {
-          0%,100% { box-shadow:0 0 12px currentColor,0 0 4px currentColor inset; }
-          50%      { box-shadow:0 0 26px currentColor,0 0 10px currentColor inset; }
-        }
         @keyframes mapYouAreHere {
           0%,100% { opacity:1; transform:translateX(0) scaleX(1); }
           50%      { opacity:0.6; transform:translateX(3px) scaleX(1.15); }
@@ -216,6 +208,13 @@ export function MapView({ map, currentRow, visitedNodes, onSelectNode, reachable
           0%   { stroke-dashoffset:24; }
           100% { stroke-dashoffset:0; }
         }
+        @keyframes mapRowIn {
+          from { opacity:0; transform:translateY(6px); }
+          to   { opacity:1; transform:translateY(0); }
+        }
+        /* Bagliore dei nodi: resta un box-shadow animato. È la firma visiva
+           della mappa e l'area coinvolta è piccola (2-4 nodi da ~5 kpx),
+           quindi non vale il rischio di riprodurla con un altro livello. */
         @keyframes bossGlow {
           0%,100% { box-shadow:0 0 20px #ff2244ee,0 0 40px #ff224455,3px 3px 0 #000; }
           50%      { box-shadow:0 0 32px #ff2244ff,0 0 60px #ff224477,3px 3px 0 #000; }
@@ -224,13 +223,32 @@ export function MapView({ map, currentRow, visitedNodes, onSelectNode, reachable
           0%,100% { box-shadow:0 0 10px #cc9900cc,3px 3px 0 #000; }
           50%      { box-shadow:0 0 22px #ffcc00ee,0 0 40px #ffcc0033,3px 3px 0 #000; }
         }
-        @keyframes mapRowIn {
-          from { opacity:0; transform:translateY(6px); }
-          to   { opacity:1; transform:translateY(0); }
+
+        /* ── RESPIRI LUMINOSI — versione compositor-only ─────────────
+           Prima erano @keyframes che animavano box-shadow / background
+           (bagliore dei nodi, riga corrente, filo sotto l'header). Sono
+           proprietà di PAINT: il browser ridisegnava quelle aree a ogni
+           frame — misurato, era il grosso del costo di questa schermata
+           (main thread ~28-32% da fermi, con la mappa che non fa nulla).
+           Stessa resa, tecnica diversa: il bagliore al MASSIMO sta su un
+           livello dedicato e si anima la sola opacity, che il compositor
+           gestisce sulla GPU senza ridisegnare niente. */
+        @keyframes mapGlowFade {
+          0%,100% { opacity:0.35; }
+          50%      { opacity:1; }
         }
-        @keyframes mapHeadPulse {
-          0%,100% { box-shadow:inset 0 0 0 0 ${biomeColor}00; }
-          50%      { box-shadow:inset 0 -2px 0 0 ${biomeColor}66; }
+        @keyframes mapVeilFade {
+          0%,100% { opacity:0.5; }
+          50%      { opacity:1; }
+        }
+        /* Filo luminoso sotto l'header: era un box-shadow inset animato
+           sull'intera barra (131 kpx ridipinti a ogni frame). */
+        .map-head { position:relative; }
+        .map-head::after {
+          content:""; position:absolute; left:0; right:0; bottom:0; height:2px;
+          background:${biomeColor}66; pointer-events:none;
+          will-change:opacity;
+          animation:mapGlowFade 3s ease-in-out infinite;
         }
         @keyframes progressShimmer {
           0%   { background-position:200% 0; }
@@ -240,11 +258,10 @@ export function MapView({ map, currentRow, visitedNodes, onSelectNode, reachable
       `}</style>
 
       {/* ══ HEADER FISSO ══════════════════════════════════════════ */}
-      <div style={{
+      <div className="map-head" style={{
         flexShrink:0,
         background:`linear-gradient(180deg, ${biomeColor}22 0%, ${biomeColor}0a 100%)`,
         borderBottom:`2px solid ${biomeColor}88`,
-        animation:"mapHeadPulse 3s ease-in-out infinite",
         padding:"0",
       }}>
         {/* riga superiore: bioma info + progresso */}
@@ -390,14 +407,23 @@ export function MapView({ map, currentRow, visitedNodes, onSelectNode, reachable
           ))}
 
           {/* ── HIGHLIGHT RIGA CORRENTE ───────────────────────────── */}
+          {/* La velatura che respira è un figlio a sé che anima `opacity`:
+              animare `background` sul contenitore costringeva il browser a
+              ridipingere tutta la fascia (71 kpx) a ogni frame. */}
           <div style={{
             position:"absolute", left:0, right:0,
             top: currentRow * ROW_H, height: ROW_H,
-            animation:"mapCurrentRowPulse 2s ease-in-out infinite",
             borderTop:`2px solid ${biomeColor}66`,
             borderBottom:`2px solid ${biomeColor}66`,
             pointerEvents:"none", zIndex:0,
-          }}/>
+          }}>
+            <div style={{
+              position:"absolute", inset:0,
+              background:`${biomeColor}26`,
+              pointerEvents:"none", willChange:"opacity",
+              animation:"mapVeilFade 2s ease-in-out infinite",
+            }}/>
+          </div>
 
           {/* ── "SEI QUI" — indicatore freccia sinistra ──────────── */}
           <div style={{
