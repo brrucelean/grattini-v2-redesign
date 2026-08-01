@@ -367,11 +367,12 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
   return (
     <div style={{
       ...S.panel,
-      margin: mobile ? "0" : "10px auto",
-      // Su desktop largo lo zaino sta fisso a fianco (vedi ShopZainoRail sotto
-      // e la composizione in scratchlite.jsx): il banco si restringe un po'
-      // per fargli posto, invece di occupare da solo tutto W.content.
-      maxWidth: wideDesk ? "820px" : W.content,
+      margin: mobile ? "0" : (wideDesk ? "10px 0" : "10px auto"),
+      // Su desktop largo il banco CRESCE per riempire lo spazio residuo tra la
+      // sidebar UNGHIE e la fiancata ZAINO (flex, non un margin:auto che lo
+      // ricentrerebbe in un'isola) — un tetto largo solo per non diventare
+      // assurdo su un monitor ultra-wide.
+      ...(wideDesk ? { flex:"1 1 auto", maxWidth:"1600px" } : { maxWidth: W.content }),
       /* Vetro traslucido: lascia intravedere scene-shop dietro, senza perdere leggibilità */
       background: "linear-gradient(180deg, rgba(10,9,18,0.82) 0%, rgba(4,3,8,0.9) 100%)",
       backdropFilter: "blur(10px) saturate(1.3)",

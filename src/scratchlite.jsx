@@ -724,20 +724,8 @@ export default function Grattini() {
         </div>
       )}
 
-      {/* ── MAIN AREA — riga (desktop) / colonna (mobile) ──
-           Su desktop, sidebar UNGHIE (160px) e contenuto centravano ciascuno
-           per conto proprio nello spazio residuo: su una finestra molto larga
-           la sidebar restava incollata al bordo sinistro mentre il resto si
-           centrava altrove, con un vuoto enorme e senza motivo in mezzo.
-           Un tetto sull'intera riga (160px sidebar + W.content, lo stesso
-           limite già stabilito per il contenuto delle singole schermate)
-           tiene sidebar e contenuto insieme come un solo blocco composto,
-           lasciando lo spazio in eccesso simmetrico ai due lati. */}
-      <div style={{
-        flex:1, width:"100%", display:"flex", flexDirection: isMobile ? "column" : "row",
-        overflow:"hidden", minHeight:0,
-        ...(isMobile ? {} : { maxWidth: `calc(160px + ${W.content})`, margin:"0 auto" }),
-      }}>
+      {/* ── MAIN AREA — riga (desktop) / colonna (mobile) ── */}
+      <div style={{flex:1, width:"100%", display:"flex", flexDirection: isMobile ? "column" : "row", overflow:"hidden", minHeight:0}}>
 
       {/* ── UNGHIE — colonna sinistra (desktop) / striscia orizzontale in cima (mobile) ── */}
       {player && !["title","tutorialNails"].includes(screen) && (
@@ -2099,11 +2087,15 @@ export default function Grattini() {
         </div>
       )}
 
-      {/* ═══ SHOP (Tabaccaio) ═══ */}
+      {/* ═══ SHOP (Tabaccaio) ═══
+           Su desktop largo il banco stesso si allarga per riempire lo spazio
+           residuo (vedi wideDesk in ShopView) invece di restare stretto e
+           lasciare che il layout lo ricentri in un'isola: flex-start lo tiene
+           subito dopo la sidebar UNGHIE, la fiancata ZAINO segue a ruota. */}
       {screen === "shop" && player && (
         <div style={{
-          maxWidth: W.content, width:"100%",
-          display:"flex", justifyContent:"center",
+          width:"100%",
+          display:"flex", justifyContent: wideDesk ? "flex-start" : "center",
           gap: wideDesk ? "14px" : "0",
         }}>
           <Suspense fallback={<LazyFallback />}>
