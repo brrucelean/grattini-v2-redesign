@@ -155,6 +155,30 @@ ${kf("holoTitleHue", `{
   0%,100% { filter: hue-rotate(-12deg) saturate(1.1); }
   50%     { filter: hue-rotate(28deg) saturate(1.5) brightness(1.1); }
 }`)}
+
+/* ── FEEDBACK COMBATTIMENTO / GRATTATA (fase 2 dell'audit) ── */
+/* Shake leggero — colpi subiti "normali". Lo screenShake pieno resta
+   riservato ai colpi pesanti e all'ingresso in FURIA. */
+${kf("screenShakeLight", `{
+  0% { transform: translate(0,0); } 20% { transform: translate(-2px,1px); }
+  40% { transform: translate(2px,-1px); } 60% { transform: translate(-1px,-1px); }
+  80% { transform: translate(1px,1px); } 100% { transform: translate(0,0); }
+}`)}
+/* Colpo PERFETTO: lo sprite nemico sbianca e scatta in scala */
+${kf("perfectHitFlash", `{
+  0% { transform:scale(1); filter:brightness(1); }
+  12% { transform:scale(1.10); filter:brightness(3.2) saturate(0.2); }
+  45% { transform:scale(1.06); filter:brightness(1.8) saturate(0.7); }
+  100% { transform:scale(1); filter:brightness(1) saturate(1); }
+}`)}
+${kf("perfectRing", "{ 0% { opacity:0.95; transform:scale(0.75); } 100% { opacity:0; transform:scale(1.5); } }")}
+/* Coriandoli localizzati sulla cella vincente del grattino */
+${kf("cellBurst", `{
+  0% { transform:translate(-50%,-50%) scale(0.3) rotate(0deg); opacity:0; }
+  15% { opacity:1; }
+  55% { transform:translate(calc(-50% + var(--dx,0px) * 0.75), calc(-50% + var(--dy,0px) * 0.75)) scale(1.15) rotate(var(--rot,180deg)); opacity:1; }
+  100% { transform:translate(calc(-50% + var(--dx,0px)), calc(-50% + var(--dy,0px) + 14px)) scale(0.5) rotate(calc(var(--rot,180deg) * 2)); opacity:0; }
+}`)}
 `;
 
 // ─── CLASSI DI EFFETTO ───────────────────────────────────────

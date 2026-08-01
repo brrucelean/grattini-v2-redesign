@@ -35,7 +35,7 @@ export const C = {
   pinkMid:    "#b35a94",  pinkLow:    "#6b3759",
   // Neutri di supporto: grigi leggibili su fondo nero (il vecchio #202030
   // sul bg #080812 dava ~1.15:1 di contrasto, cioè invisibile).
-  dimMid:     "#4a4a60",  // grigio medio — label di elementi bloccati/inerti
+  dimMid:     "#7a7a95",  // grigio medio — label di elementi bloccati/inerti (validato ~4.7:1 sulla velatura scura dell'etichetta nodo mappa)
   dimLow:     "#33334a",  // bordi di elementi inerti
 };
 

@@ -711,7 +711,10 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
               bloodMode={nailState === "marcia"}
               isBloody={bloodyCells.has(idx)}
               blocked={nailState === "morta"} onBlockedAttempt={warnDeadNail}
-              ambidestri={ambidestri} themeColor={card.theme?.border} fill={hasTicket} />
+              ambidestri={ambidestri} themeColor={card.theme?.border} fill={hasTicket}
+              /* Scala la festa dei coriandoli col valore del biglietto:
+                 la LEGGENDARIA merita più della COMUNE. */
+              winTier={tier} />
           );
         })}
       </div>

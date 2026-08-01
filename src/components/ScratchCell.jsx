@@ -7,12 +7,43 @@ import { AudioEngine, ParticleSystem } from "../audio.js";
 import { Haptics } from "../utils/haptics.js";
 
 // ─── SCRATCH CELL (canvas silver-layer drag-to-reveal) ──────
-export function ScratchCell({ cell, idx, onScratch, finished, isWinSymbol, isPartialMatch, ambidestri=false, bloodMode=false, isBloody=false, themeColor=null, blocked=false, onBlockedAttempt=null, fill=false }) {
+// ─── CORIANDOLI DI CELLA ─────────────────────────────────────
+// La festa stava tutta nella schermata di vittoria finale: la grattata vincente
+// — il momento in cui il giocatore SCOPRE di aver vinto — aveva solo un bordo
+// verde e un box-shadow pulsante. Qui il premio si festeggia dove nasce.
+// Emoji + CSS come i coriandoli della victory screen: nessuna libreria, nessun
+// canvas in più (il ParticleSystem globale resta la polvere della grattata).
+const CELL_CONFETTI = ["🎉","✨","🎊","⭐","💫","🌟"];
+const JACKPOT_CONFETTI = ["💰","👑","💎","🏆","✨","🌟","🎊","💫"];
+function cellBurstPieces(tier, seed) {
+  const rng = (s) => { const x = Math.sin(s * 9301 + 49297) * 233280; return x - Math.floor(x); };
+  // Più alto è il tier del biglietto, più grossa è la festa (jackpot = 14 pezzi)
+  const n = tier >= 4 ? 14 : tier >= 3 ? 11 : tier >= 2 ? 8 : 6;
+  const pool = tier >= 3 ? JACKPOT_CONFETTI : CELL_CONFETTI;
+  return Array.from({ length: n }, (_, i) => {
+    const ang = (i / n) * Math.PI * 2 + rng(seed + i) * 0.7;
+    const dist = 26 + rng(seed * 3 + i) * 34;
+    return {
+      k: i,
+      emoji: pool[i % pool.length],
+      dx: Math.round(Math.cos(ang) * dist),
+      dy: Math.round(Math.sin(ang) * dist - 12), // bias verso l'alto
+      rot: Math.round(90 + rng(seed * 7 + i) * 320),
+      size: 10 + Math.round(rng(seed * 11 + i) * (tier >= 3 ? 12 : 7)),
+      delay: Math.round(rng(seed * 13 + i) * 220),
+      dur: 900 + Math.round(rng(seed * 17 + i) * 700),
+    };
+  });
+}
+
+export function ScratchCell({ cell, idx, onScratch, finished, isWinSymbol, isPartialMatch, ambidestri=false, bloodMode=false, isBloody=false, themeColor=null, blocked=false, onBlockedAttempt=null, fill=false, winTier=1 }) {
   const canvasRef = useRef(null);
+  const rootRef = useRef(null);
   const drawing = useRef(false);
   const revealed = useRef(cell.scratched);
   const scratchTicks = useRef(0); // throttle del check getImageData (costoso su mobile)
   const [winAnim, setWinAnim] = useState(false); // glow burst al reveal vincente
+  const [burst, setBurst] = useState(null);      // coriandoli localizzati sulla cella
   const prevScratched = useRef(cell.scratched);
   // Pattern pseudo-random stabile basato su idx — così ogni cella sporca ha macchie di sangue coerenti
   // tra i render (altrimenti ballerebbero ad ogni update di React).
@@ -51,6 +82,18 @@ export function ScratchCell({ cell, idx, onScratch, finished, isWinSymbol, isPar
         setWinAnim(true);
         Haptics.win();
         setTimeout(() => setWinAnim(false), 900);
+        // Coriandoli sulla cella che ha chiuso la combinazione vincente.
+        const pieces = cellBurstPieces(winTier, idx + 1);
+        setBurst(pieces);
+        const maxLife = Math.max(...pieces.map(p => p.delay + p.dur));
+        setTimeout(() => setBurst(null), maxLife + 100);
+        // Sbuffo di scintille dal centro della cella — stesso ParticleSystem
+        // della polverina di grattata, così la festa ha anche "materia".
+        const r = rootRef.current?.getBoundingClientRect();
+        if (r) {
+          const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+          ParticleSystem.spawn(cx, cy, winTier >= 3 ? 26 : 16, false);
+        }
       }
     }
     prevScratched.current = cell.scratched;
@@ -144,10 +187,15 @@ export function ScratchCell({ cell, idx, onScratch, finished, isWinSymbol, isPar
   const symFontSize = isCard ? "20px" : (cell.value !== undefined || isStop) ? "16px" : "24px";
 
   return (
+    // Wrapper senza overflow: i coriandoli devono poter uscire dai bordi della
+    // cella. Tiene lui la misura (aspect-ratio / fill); la tessera vera riempie
+    // il wrapper, quindi l'impaginazione della griglia non cambia.
+    <div ref={rootRef} style={{
+      width:"100%", ...(fill ? {height:"100%"} : {aspectRatio:"1.3"}),
+      position:"relative",
+    }}>
     <div style={{
-      // `fill` = la cella riempie la sua traccia di griglia (biglietto AI, dove il
-      // pannello di gioco ha una forma sua); altrimenti tiene l'aspetto 1.3 classico.
-      width:"100%", ...(fill ? {height:"100%"} : {aspectRatio:"1.3"}), position:"relative",
+      position:"absolute", inset:0,
       border:`3px solid ${cell.scratched && isBloody ? "#ff2030" : (cell.scratched ? borderColor : unrevealedBorder)}`,
       borderRadius:"0", overflow:"hidden",
       background: cell.scratched ? bg : "#111",
@@ -245,6 +293,30 @@ export function ScratchCell({ cell, idx, onScratch, finished, isWinSymbol, isPar
           onTouchEnd={()=>{ drawing.current=false; }}
         />
       )}
+    </div>
+
+    {/* ── CORIANDOLI: burst dal centro della cella vincente ── */}
+    {burst && (
+      <div aria-hidden style={{position:"absolute", inset:0, pointerEvents:"none", zIndex:12}}>
+        {/* Onda d'urto */}
+        <span style={{
+          position:"absolute", left:"50%", top:"50%",
+          width:"70%", height:"70%", marginLeft:"-35%", marginTop:"-35%",
+          border:`2px solid ${winTier >= 3 ? C.gold : C.green}`,
+          boxShadow:`0 0 14px ${winTier >= 3 ? C.gold : C.green}aa`,
+          animation:"perfectRing 0.65s ease-out forwards",
+        }}/>
+        {burst.map(p => (
+          <span key={p.k} style={{
+            position:"absolute", left:"50%", top:"50%",
+            fontSize:`${p.size}px`, lineHeight:1,
+            "--dx":`${p.dx}px`, "--dy":`${p.dy}px`, "--rot":`${p.rot}deg`,
+            animation:`cellBurst ${p.dur}ms ${p.delay}ms ease-out forwards`,
+            filter:"drop-shadow(0 1px 2px #000)",
+          }}>{p.emoji}</span>
+        ))}
+      </div>
+    )}
     </div>
   );
 }

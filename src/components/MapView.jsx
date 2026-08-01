@@ -559,7 +559,7 @@ export function MapView({ map, currentRow, visitedNodes, onSelectNode, reachable
               : isActive && dangerNode            ? "#ff4444"
               : isActive && safeNode              ? "#44dd88"
               : isActive                          ? C.gold
-              : "#181828";
+              : "#2a2a40"; // bloccato: bordo appena percettibile (era #181828, quasi lo sfondo)
 
             const bgCol = visited                  ? "#0e0b06"
               : isBoss                             ? "#380000"
@@ -601,6 +601,8 @@ export function MapView({ map, currentRow, visitedNodes, onSelectNode, reachable
               : (isElite ? "★ ELITE — rischio e premi raddoppiati! " : "")
                 + (NODE_TOOLTIPS[node.type] || node.type);
 
+            // Nodo esistente ma non ancora raggiungibile
+            const isLocked = !visited && !isActive;
             const labelColor = visited             ? "#2e2818"
               : isBoss                             ? "#ff5577"
               : isActive && dangerNode             ? "#ff7777"
@@ -609,9 +611,10 @@ export function MapView({ map, currentRow, visitedNodes, onSelectNode, reachable
               : isActive                           ? C.gold
               // Nodo bloccato: era #202030 sul fondo #080812, cioè ~1.15:1 di
               // contrasto — l'etichetta esisteva ma non si leggeva. Ora grigio
-              // medio (C.dimMid ≈ 5:1): resta chiaramente spento rispetto ai
-              // nodi attivi, ma dice cosa c'è. L'icona tiene la sua opacità
-              // ridotta, quindi la gerarchia non cambia.
+              // medio (C.dimMid, ~4.7:1 sulla velatura scura dell'etichetta):
+              // il nodo si legge come "esiste ma non ora", non come una macchia
+              // vuota. La gerarchia rispetto ai raggiungibili resta, ma la porta
+              // l'icona (opacità ridotta, niente glow), non il testo cancellato.
               : C.dimMid;
 
             return (
@@ -688,6 +691,9 @@ export function MapView({ map, currentRow, visitedNodes, onSelectNode, reachable
                       : isActive
                         ? `drop-shadow(0 0 6px ${borderCol}) drop-shadow(0 0 12px ${borderCol}66)`
                         : "none",
+                    // Il peso di "bloccato" lo porta l'icona (spenta, desaturata),
+                    // non più l'etichetta illeggibile: il nodo resta identificabile.
+                    opacity: isLocked && !effectivelyHidden ? 0.6 : 1,
                     position:"relative", zIndex:1,
                     display:"inline-flex", alignItems:"center", justifyContent:"center",
                   }}>
