@@ -102,7 +102,7 @@ export const GRATTATORE_DEFS = {
   coltelloAffilato:{ name:"Coltello Affilato", desc:"COMBAT: +50% danno sulla prossima carta ATTACCO grattata in combattimento", cost:18, rarity:"media", emoji:"🔪",
                     effect:"atkBoost", value:0.5, maxUses:1 },
   fasciaPolso:    { name:"Fascia da Polso", desc:"COMBAT: allarga la zona PERFETTO nella barra di tempismo (attacco e parata) per tutta la fight", cost:28, rarity:"rara", emoji:"🥊",
-                    effect:"widePerfect", value:0.06, maxUses:99 },
+                    effect:"widePerfect", value:0.06, maxUses:1 },
   guantoFerro:    { name:"Guanto di Ferro", desc:"COMBAT: la prima parata della fight è automaticamente PERFETTA, qualunque sia il tempismo", cost:35, rarity:"rara", emoji:"🧤",
                     effect:"guaranteedParry", maxUses:1 },
 };
