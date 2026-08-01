@@ -14,6 +14,18 @@ const isTouchDevice =
 const TIP_W = 220;   // stessa maxWidth del riquadro, serve per il clamp orizzontale
 const TIP_H = 72;    // altezza stimata, solo per decidere sopra/sotto
 
+// Ancora il tooltip SOTTO (o sopra, se non c'è posto) il box dell'elemento —
+// non vicino al cursore: su una tessera alta (es. le card del tabaccaio),
+// un'ancora cursore-relativa poteva finire a metà della tessera stessa,
+// con i due bordi (card + tooltip) sovrapposti l'uno sull'altro.
+function anchorBelow(r) {
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const x = Math.max(8, Math.min(r.left + r.width / 2 - TIP_W / 2, vw - TIP_W - 8));
+  const below = r.bottom + 8;
+  const y = below + TIP_H > vh ? Math.max(8, r.top - TIP_H - 8) : below;
+  return { x, y };
+}
+
 export function Tooltip({ text, children, color }) {
   const [pos, setPos] = useState(null);
   const [shown, setShown] = useState(false); // dissolvenza in entrata
@@ -67,11 +79,7 @@ export function Tooltip({ text, children, color }) {
       if (pos) { setPos(null); return; }
       const r = wrapRef.current?.getBoundingClientRect();
       if (!r) return;
-      const vw = window.innerWidth, vh = window.innerHeight;
-      const x = Math.max(8, Math.min(r.left + r.width / 2 - TIP_W / 2, vw - TIP_W - 8));
-      const below = r.bottom + 8;
-      const y = below + TIP_H > vh ? Math.max(8, r.top - TIP_H - 8) : below;
-      setPos({ x, y });
+      setPos(anchorBelow(r));
     };
     // onClickCapture e non onClick: alcuni children fermano la propagazione nel
     // loro handler, in fase di cattura il tooltip si apre comunque.
@@ -87,20 +95,15 @@ export function Tooltip({ text, children, color }) {
     );
   }
 
-  // ── MOUSE: hover come prima, ma il riquadro si ANCORA alla prima posizione
-  //    utile invece di inseguire il cursore ad ogni mousemove ──
+  // ── MOUSE: ancorato al box dell'elemento (sotto, o sopra se non c'è
+  //    posto) invece che al cursore — stessa logica del touch, così non
+  //    finisce mai sovrapposto all'elemento stesso su tessere alte. ──
   return (
     <span ref={wrapRef} style={{display:"block", flexShrink:0, cursor:"inherit"}}
-      onMouseMove={e => {
-        e.stopPropagation();
-        if (pos) return; // già ancorato: niente inseguimento
-        const vw = window.innerWidth;
-        const vh = window.innerHeight;
-        const nearRight = e.clientX > vw - 240;
-        const nearBottom = e.clientY > vh - 80;
-        const x = nearRight ? e.clientX - 230 : e.clientX + 14;
-        const y = nearBottom ? e.clientY - 60 : e.clientY + 18;
-        setPos({ x, y });
+      onMouseEnter={e => {
+        if (pos) return; // già ancorato
+        const r = e.currentTarget.getBoundingClientRect();
+        setPos(anchorBelow(r));
       }}
       onMouseLeave={() => setPos(null)}>
       {children}

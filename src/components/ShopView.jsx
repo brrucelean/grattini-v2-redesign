@@ -831,7 +831,11 @@ export function ShopZainoRail({ player, onEquipGrattatore, onUseItem }) {
   return (
     <div style={{
       width: "230px", flexShrink: 0,
-      alignSelf: "flex-start", position: "sticky", top: "10px",
+      // position:sticky non ha alcun effetto sulla posizione iniziale (scatta
+      // solo scrollando oltre `top`): senza marginTop qui, il banco (che ha
+      // margin:"10px 0") parte 10px più in basso della fiancata — bordi che
+      // non combaciano. marginTop lo allinea, `top` gestisce solo lo sticky.
+      alignSelf: "flex-start", position: "sticky", top: "10px", marginTop: "10px",
       display: "flex", flexDirection: "column", gap: "2px",
       fontFamily: FONT,
       background: "linear-gradient(180deg, rgba(10,9,18,0.82) 0%, rgba(4,3,8,0.9) 100%)",
