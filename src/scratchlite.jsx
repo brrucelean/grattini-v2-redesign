@@ -724,8 +724,20 @@ export default function Grattini() {
         </div>
       )}
 
-      {/* ── MAIN AREA — riga (desktop) / colonna (mobile) ── */}
-      <div style={{flex:1, width:"100%", display:"flex", flexDirection: isMobile ? "column" : "row", overflow:"hidden", minHeight:0}}>
+      {/* ── MAIN AREA — riga (desktop) / colonna (mobile) ──
+           Su desktop, sidebar UNGHIE (160px) e contenuto centravano ciascuno
+           per conto proprio nello spazio residuo: su una finestra molto larga
+           la sidebar restava incollata al bordo sinistro mentre il resto si
+           centrava altrove, con un vuoto enorme e senza motivo in mezzo.
+           Un tetto sull'intera riga (160px sidebar + W.content, lo stesso
+           limite già stabilito per il contenuto delle singole schermate)
+           tiene sidebar e contenuto insieme come un solo blocco composto,
+           lasciando lo spazio in eccesso simmetrico ai due lati. */}
+      <div style={{
+        flex:1, width:"100%", display:"flex", flexDirection: isMobile ? "column" : "row",
+        overflow:"hidden", minHeight:0,
+        ...(isMobile ? {} : { maxWidth: `calc(160px + ${W.content})`, margin:"0 auto" }),
+      }}>
 
       {/* ── UNGHIE — colonna sinistra (desktop) / striscia orizzontale in cima (mobile) ── */}
       {player && !["title","tutorialNails"].includes(screen) && (
