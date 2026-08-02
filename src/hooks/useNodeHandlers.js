@@ -456,7 +456,14 @@ export function useNodeHandlers({
       addLog(`🏆 Vittoria! Guadagni €${Math.max(0, result.playerMoney) * (currentNode?.elite ? 2 : 1)}!${eliteTag}`, C.green);
       if (result.winNail) addLog(`✨ Hai preso un'unghia al nemico! Una tua unghia risorge.`, C.green);
       if (result.nailHeals > 0) addLog(`Cure in combattimento: ${result.nailHeals} unghie curate!`, C.green);
-      // Boss defeated? Drop reliquia casuale
+      // Boss defeated? Drop reliquia casuale.
+      // foundRelic resta accessibile più sotto: prima il popup della reliquia
+      // partiva con 500ms di ritardo (setTimeout) mentre quello di "bioma
+      // sbloccato" scattava subito, nello stesso identico slot di popup —
+      // quello della reliquia arrivava dopo e lo sovrascriveva prima che si
+      // riuscisse a leggerlo. Ora, quando capitano insieme (boss + reliquia +
+      // nuovo bioma), li uniamo in un solo popup invece di farli gareggiare.
+      let foundRelic = null;
       if (currentNode?.type === "boss" || (currentNode?.type === "miniboss" && roll(0.25))) {
         const owned = new Set((player?.relics || []).map(r => r.id));
         const available = Object.entries(RELIC_DEFS).filter(([id]) => !owned.has(id));
@@ -470,10 +477,14 @@ export function useNodeHandlers({
             setStored(STORAGE_KEYS.relicsDiscovered, next);
             return next;
           });
-          setTimeout(() => {
-            setItemFoundModal({ emoji: relicDef.emoji, name: `RELIQUIA: ${relicDef.name}`, desc: `${relicDef.desc}\n\nEffetto permanente per tutta la run!`, subtitle: "RELIQUIA TROVATA!", rarity: relicDef.rarity });
-          }, 500);
+          foundRelic = relicDef;
           addLog(`${relicDef.emoji} RELIQUIA TROVATA: ${relicDef.name}! ${relicDef.desc}`, C.gold);
+          // Miniboss: nessun bioma da sbloccare dopo, quindi il popup della
+          // reliquia resta da solo — lo mostriamo subito, non c'è più nulla
+          // che possa sovrascriverlo.
+          if (currentNode?.type !== "boss") {
+            setItemFoundModal({ emoji: relicDef.emoji, name: `RELIQUIA: ${relicDef.name}`, desc: `${relicDef.desc}\n\nEffetto permanente per tutta la run!`, subtitle: "RELIQUIA TROVATA!", rarity: relicDef.rarity });
+          }
         }
       }
       // Boss defeated? Advance biome or victory
@@ -509,14 +520,25 @@ export function useNodeHandlers({
             `    ╔══════════════════════════════╗\n    ║   🏮 QUARTIERE  CINESE 🏮   ║\n    ╚══════════════════════════════╝\n\n           🏮     🏮     🏮\n            ║      ║      ║\n      ┌─────────────────────────┐\n      │    ╱╲    ╱╲    ╱╲      │\n      │   ╱龍╲  ╱金╲  ╱福╲     │\n      │  ╱────╲╱────╲╱────╲    │\n      │                        │\n      │  🐲  IL DRAGO D'ORO  🐲 │\n      │     TI  ASPETTA...     │\n      └─────────────────────────┘\n           🏮     🏮     🏮\n\n   L'aria sa di incenso e tè verde.\n   Lanterne rosse ovunque. 你好!\n   Qui le regole sono diverse.`,
           ];
           setItemFoundModal({
-            emoji: "🌍",
+            emoji: foundRelic ? foundRelic.emoji : "🌍",
             name: `⚡ BIOMA ${nextBiome + 1} SBLOCCATO! ⚡`,
-            desc: (CUTSCENE_ART[nextBiome - 1] || "") + `\n\n${BIOMES[nextBiome].name}\n"${BIOMES[nextBiome].desc}"\n\nBoss: ${BIOMES[nextBiome].boss}`,
+            // Reliquia (se trovata) in cima, poi lo sblocco bioma — un solo
+            // popup invece di due che si sovrascrivono a vicenda.
+            desc: (foundRelic
+              ? `🏆 RELIQUIA TROVATA: ${foundRelic.name}\n${foundRelic.desc}\nEffetto permanente per tutta la run!\n\n${"─".repeat(28)}\n\n`
+              : "") + (CUTSCENE_ART[nextBiome - 1] || "") + `\n\n${BIOMES[nextBiome].name}\n"${BIOMES[nextBiome].desc}"\n\nBoss: ${BIOMES[nextBiome].boss}`,
             subtitle: `Hai conquistato il bioma ${nextBiome}/${BIOMES.length}`,
             buttonLabel: `Entra in ${BIOMES[nextBiome].name} →`,
           });
           setScreen("map");
         } else {
+          // Vittoria finale: se una reliquia è appena stata trovata sull'ultimo
+          // boss, mostrala prima della schermata di vittoria — prima veniva
+          // messa in coda con 500ms di ritardo e rischiava di sparire dietro
+          // il cambio schermo, ora è sincrona e precede la transizione.
+          if (foundRelic) {
+            setItemFoundModal({ emoji: foundRelic.emoji, name: `RELIQUIA: ${foundRelic.name}`, desc: `${foundRelic.desc}\n\nEffetto permanente per tutta la run!`, subtitle: "RELIQUIA TROVATA!", rarity: foundRelic.rarity });
+          }
           // Victory! unlock achievements
           unlockAchievement("first_win");
           setPlayer(p => {

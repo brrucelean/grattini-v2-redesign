@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { C, FONT } from "../data/theme.js";
+import { C, FONT, W } from "../data/theme.js";
 import { NPC_ART, SPR_BIG, NPC_PALETTE, VECCHIO_DIALOGHI } from "../data/art.js";
 import { MACELLAIO_IMPLANTS, GRATTATORE_DEFS } from "../data/items.js";
 import { S } from "../utils/styles.js";
@@ -548,7 +548,11 @@ export function EventView({ node, player, onChoice }) {
 
   return (
     <div style={{
-      maxWidth:"900px", margin:"10px auto",
+      // Prima 900px, un tetto diverso da quello usato da CombatView (W.content,
+      // 1280px) per uno schermo dello stesso tipo — sidebar+contenuto centrale
+      // narrativo. Stesso tetto ora: il duello e il dialogo NPC condividono lo
+      // stesso "formato di pannello", invece di uno stretto e uno largo senza motivo.
+      maxWidth: W.content, width:"100%", margin:"10px 0",
       position:"relative",
       background:"#04040e",
       border:`2px solid ${accent}66`,

@@ -2186,9 +2186,14 @@ export default function Grattini() {
         </div>
       )}
 
-      {/* ═══ EVENT / NPC ═══ */}
+      {/* ═══ EVENT / NPC ═══
+           Stesso pattern flex-start di ShopView (vedi commento lì): a schermo
+           largo il pannello si allinea subito dopo la sidebar UNGHIE invece di
+           restare centrato con margini vuoti identici su entrambi i lati —
+           prima solo il negozio faceva così, evento e combattimento restavano
+           centrati "a isola" con più spazio morto ai lati. */}
       {screen === "event" && player && currentNode && (
-        <div style={{maxWidth:"900px", width:"100%"}}>
+        <div style={{width:"100%", display:"flex", justifyContent: wideDesk ? "flex-start" : "center"}}>
           <Suspense fallback={<LazyFallback />}>
           <EventView
             node={currentNode}
@@ -2209,8 +2214,12 @@ export default function Grattini() {
         </div>
       )}
 
-      {/* ═══ COMBAT ═══ */}
+      {/* ═══ COMBAT ═══
+           Stesso pattern flex-start di ShopView/EventView: a schermo largo il
+           pannello si allinea subito dopo la sidebar UNGHIE invece di restare
+           centrato "a isola" con margini vuoti su entrambi i lati. */}
       {screen === "combat" && player && combatEnemy && (
+        <div style={{flex:1, minHeight:0, width:"100%", display:"flex", justifyContent: wideDesk ? "flex-start" : "center", overflow:"hidden"}}>
         <div style={{flex:1, minHeight:0, width:"100%", maxWidth:W.content, display:"flex", flexDirection:"column", overflow:"hidden"}}>
           <Suspense fallback={<LazyFallback />}>
           <CombatView
@@ -2275,6 +2284,7 @@ export default function Grattini() {
             }}
           />
           </Suspense>
+        </div>
         </div>
       )}
 
