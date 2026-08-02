@@ -493,14 +493,20 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
     if (finished || finishedRef.current) return;
 
     // ── setteemezzo incassa anticipato ──
-    // IMPORTANTE: solo su carte generate come vincenti. Su una carta perdente
-    // (card.prize === 0) il fallback pagava comunque cost*3 — le celle perdenti
-    // sono 5/6/7 e la PRIMA carta batte spesso un banco basso, quindi il 60%
-    // delle carte perdenti era incassabile (RTP 221% invece del 95-100% target).
-    // Ora le carte perdenti sono generate senza prefissi "stand-and-win"
-    // (vedi generateCard/setteemezzo) e qui restano comunque una sconfitta.
-    if (card.mechanic === "setteemezzo" && claiming && !winFound && card.prize > 0) {
-      const basePrize = card.prize;
+    // Il bottone "INCASSA LA VINCITA" appare ogni volta che runningSum batte
+    // il banco (vedi condizione di rendering più sotto), indipendentemente da
+    // card.prize. Ma questo blocco pagava SOLO se card.prize > 0: su una carta
+    // generata come "perdente" (card.prize === 0) il giocatore poteva battere
+    // comunque il banco — cosa frequente, i valori delle celle sono indipendenti
+    // dal flag vincente/perdente — cliccare INCASSA non pagava nulla e mostrava
+    // pure il messaggio sbagliato "Hai abbandonato il gratta" nonostante avesse
+    // vinto la mano. Prima di questo fix (RTP 221%, vedi git blame) il fallback
+    // era cost*3 ed era troppo generoso; qui uso lo stesso fallback modesto già
+    // usato ovunque altro nel file per "vinto ma senza premio esplicito"
+    // (cost + fino a ~15% di maxPrize) invece di pagare zero.
+    if (card.mechanic === "setteemezzo" && claiming && !winFound) {
+      const basePrize = card.prize > 0 ? card.prize
+        : Math.max(card.cost, Math.round(card.cost + Math.random() * card.maxPrize * 0.15));
       const nailMult = getNailMult(!!equippedGrattatore);
       const p = Math.round(basePrize * nailMult);
       const boostedP = applyGrattatoreBonus(p);
