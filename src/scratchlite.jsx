@@ -1062,8 +1062,19 @@ export default function Grattini() {
           { emoji:"🗺️", title:"LA MAPPA & I SOLDI", sub:"dove vai, cosa compri", color:C.gold },
         ];
         const pg = PAGES[tutorialPage] || PAGES[0];
-        const Panel = ({ accent, head, children }) => (
-          <div style={{ background:"#0b0b14", border:`1px solid ${accent}55`, padding:"8px 11px", marginBottom:"8px", flexShrink:0 }}>
+        // Bordo neutro di default per tutti i box: prima ogni Panel prendeva il
+        // bordo dal proprio accent (rosso/giallo/ciano/arancio...) e la pagina
+        // finiva con 6-8 colori attivi che non indicavano nessuna priorità.
+        // L'accent resta sul titolo (serve comunque a distinguere i blocchi a
+        // colpo d'occhio) e sul bordo SOLO quando strong=true, riservato al
+        // blocco davvero da ricordare (es. TEMPISMO nel combattimento).
+        const Panel = ({ accent, head, children, strong=false }) => (
+          <div style={{
+            background: strong ? "#0d0f1a" : "#0b0b14",
+            border: strong ? `2px solid ${accent}88` : `1px solid ${C.dimLow}`,
+            boxShadow: strong ? `0 0 14px ${accent}22` : "none",
+            padding:"8px 11px", marginBottom:"8px", flexShrink:0,
+          }}>
             <div style={{color:accent, fontSize:"10px", fontWeight:"bold", letterSpacing:"1px", marginBottom:"5px"}}>{head}</div>
             <div style={{color:C.text, fontSize:"11px", lineHeight:"1.65"}}>{children}</div>
           </div>
@@ -1080,7 +1091,7 @@ export default function Grattini() {
             <div style={{color:pg.color, fontFamily:FONT, fontSize:"16px", fontWeight:"bold", letterSpacing:"2px", marginBottom:"2px"}}>
               {pg.emoji} {pg.title}
             </div>
-            <div style={{color:C.dim, fontSize:"10px", letterSpacing:"3px"}}>{pg.sub.toUpperCase()} — {tutorialPage+1}/3</div>
+            <div style={{color:C.dimMid, fontSize:"10px", letterSpacing:"3px"}}>{pg.sub.toUpperCase()} — {tutorialPage+1}/3</div>
             <div style={{display:"flex", justifyContent:"center", gap:"5px", marginTop:"6px"}}>
               {PAGES.map((_, i) => (
                 <div key={i} style={{
@@ -1133,9 +1144,17 @@ export default function Grattini() {
               <span style={{color:C.red}}>🗡️ ATTACCO</span> → fa danno al nemico.<br/>
               <span style={{color:C.blue}}>🛡 DIFESA</span> → ti prepara a PARARE il prossimo colpo.<br/>
               <span style={{color:C.gold}}>💰 DENARO</span> → bottino in € (non fa danno).<br/>
-              <span style={{color:C.dim}}>Gratti una carta → il nemico risponde subito (vedi <strong style={{color:C.text}}>«IN ARRIVO ▸»</strong>).</span>
+              Gratti una carta → il nemico risponde subito (vedi <strong style={{color:C.bright}}>«IN ARRIVO ▸»</strong>).
             </Panel>
-            <Panel accent={C.cyan} head="🎯 TEMPISMO (la barra col cursore)">
+            <Panel accent={C.cyan} head="🎯 TEMPISMO (la barra col cursore)" strong>
+              {/* Mini illustrazione della barra: zona verde al centro, cursore
+                  a metà — un solo elemento visivo spiega TEMPISMO più delle
+                  4 righe di testo sotto, e riempie lo spazio laterale che
+                  altrimenti resta nero. */}
+              <div style={{ position:"relative", height:"14px", margin:"2px 0 10px", background:"#3a1010", border:`1px solid ${C.dimLow}` }}>
+                <div style={{ position:"absolute", left:"38%", width:"24%", top:0, bottom:0, background:C.green, boxShadow:`0 0 6px ${C.green}` }}/>
+                <div style={{ position:"absolute", left:"48%", top:"-4px", width:0, height:0, borderLeft:"5px solid transparent", borderRight:"5px solid transparent", borderTop:`7px solid ${C.bright}`, filter:`drop-shadow(0 0 3px ${C.bright})` }}/>
+              </div>
               Quando <strong style={{color:C.red}}>ATTACCHI</strong>: ferma il cursore nel <strong style={{color:C.green}}>VERDE</strong> = <strong>COLPO PERFETTO</strong> (più danno).<br/>
               Se hai giocato una <strong style={{color:C.blue}}>DIFESA</strong> e il nemico attacca, parte la <strong>PARATA</strong>: perfetta = <strong style={{color:C.green}}>annulli il colpo e contrattacchi</strong>.<br/>
               <strong style={{color:C.red}}>Senza difesa, il colpo ti rovina un'unghia.</strong>
@@ -1152,10 +1171,22 @@ export default function Grattini() {
               Scegli il cammino a nodi fino al <strong style={{color:C.red}}>👹 BOSS</strong> del bioma. Battilo per sbloccare il bioma successivo.
             </Panel>
             <Panel accent={C.gold} head="📍 I NODI">
-              <span style={{color:C.red}}>🗡️ 💀</span> combattimenti &nbsp;·&nbsp; <span style={{color:C.cyan}}>🏪 tabaccaio</span> (grattini & grattatori)<br/>
-              <span style={{color:C.magenta}}>🏨 locanda</span> (curi le unghie con €) &nbsp;·&nbsp; <span style={{color:C.text}}>❓ eventi/NPC</span><br/>
-              <span style={{color:"#88ccff"}}>🧤 guantaio</span> (l'unico che vende il <strong style={{color:C.bright}}>Guanto da BOSS</strong>, protezione per la boss-fight)<br/>
-              <span style={{color:C.dim}}>⛪ 👵 🙏 possono aiutarti… o fregarti. Leggi sempre le scelte.</span>
+              {/* Una riga per voce con gutter icona a larghezza fissa: prima
+                  era prosa con <br/>, e la voce più lunga (guantaio) andava a
+                  capo allineandosi sotto l'icona invece che sotto il testo. */}
+              {[
+                { icon:"🗡️ 💀", body: <span style={{color:C.red}}>combattimenti</span> },
+                { icon:"🏪",    body: <><span style={{color:C.cyan}}>tabaccaio</span> (grattini & grattatori)</> },
+                { icon:"🏨",    body: <><span style={{color:C.magenta}}>locanda</span> (curi le unghie con €)</> },
+                { icon:"❓",    body: <span style={{color:C.text}}>eventi/NPC</span> },
+                { icon:"🧤",    body: <><span style={{color:"#88ccff"}}>guantaio</span> (l'unico che vende il <strong style={{color:C.bright}}>Guanto da BOSS</strong>, protezione per la boss-fight)</> },
+                { icon:"⛪ 👵 🙏", body: <span style={{color:C.dimMid}}>sacerdote, anziana, mendicante: possono aiutarti… o fregarti. Leggi sempre le scelte.</span> },
+              ].map((row, i) => (
+                <div key={i} style={{ display:"flex", gap:"8px", marginBottom: i < 5 ? "4px" : 0 }}>
+                  <span style={{flex:"0 0 42px"}}>{row.icon}</span>
+                  <span style={{flex:1}}>{row.body}</span>
+                </div>
+              ))}
             </Panel>
             <Panel accent={C.gold} head="💰 I SOLDI (€)">
               Sono il bottino di combattimenti e grattate. Servono per <strong style={{color:C.bright}}>curarti in locanda</strong>, comprare <strong style={{color:C.bright}}>grattatori da combattimento</strong> e consumabili.<br/>
