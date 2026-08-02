@@ -570,7 +570,12 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
   // ── Tier / accent resolution ──────────────────────────────────
   // Preserves `card.theme?.border` (used by special mechanic cards: labirinto, combina, tesoro).
   const TIER_META = {
-    1: { label: "COMUNE",      color: C.green,   emoji: "🎫" },
+    // COMUNE grigio-blu neutro, non verde: allineato al colore usato per la
+    // stessa rarità in ShopView.jsx (rarityAccent → "#7a8aaa"). Prima erano
+    // due sistemi scollegati — la stessa rarità "comune" cambiava colore a
+    // seconda che la si vedesse nel negozio o sulla carta grattino — e il
+    // verde qui collideva col significato di "vincita/salute" usato altrove.
+    1: { label: "COMUNE",      color: "#7a8aaa", emoji: "🎫" },
     2: { label: "MEDIA",       color: C.cyan,    emoji: "🎟️" },
     3: { label: "RARA",        color: C.magenta, emoji: "💎" },
     4: { label: "LEGGENDARIA", color: C.gold,    emoji: "👑" },
