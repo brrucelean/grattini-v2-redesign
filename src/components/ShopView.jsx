@@ -371,8 +371,13 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
       // Su desktop largo il banco CRESCE per riempire lo spazio residuo tra la
       // sidebar UNGHIE e la fiancata ZAINO (flex, non un margin:auto che lo
       // ricentrerebbe in un'isola) — un tetto largo solo per non diventare
-      // assurdo su un monitor ultra-wide.
-      ...(wideDesk ? { flex:"1 1 auto", maxWidth:"1600px" } : { maxWidth: W.content }),
+      // assurdo su un monitor ultra-wide. minWidth:0 è necessario: un flex
+      // item ha di default min-width:auto, cioè non si restringe mai sotto
+      // la larghezza "naturale" del contenuto — con le righe di card larghe
+      // (GRATTA & VINCI ne ha 9) il banco non si restringeva mai abbastanza,
+      // sforava a destra, e la fiancata ZAINO finiva tagliata fuori dallo
+      // schermo invece di scorrere in vista.
+      ...(wideDesk ? { flex:"1 1 auto", maxWidth:"1600px", minWidth:0 } : { maxWidth: W.content }),
       /* Vetro traslucido: lascia intravedere scene-shop dietro, senza perdere leggibilità */
       background: "linear-gradient(180deg, rgba(10,9,18,0.82) 0%, rgba(4,3,8,0.9) 100%)",
       backdropFilter: "blur(10px) saturate(1.3)",
