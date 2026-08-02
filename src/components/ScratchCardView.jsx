@@ -229,8 +229,9 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
     if (cells[idx].scratched || finished) return;
     if (!equippedGrattatore && nailState === "marcia") scratchedWhileMarcia.current = true;
     // Macchia visiva: SOLO con unghia marcia (rosso) e senza grattatore.
-    // Sanguinante (arancione) è uno stato "dolore" — ha già il suo penalty al premio,
-    // ma non sporca ancora visivamente la schedina. Solo marcia = sangue vero sulla carta.
+    // Sanguinante (arancione) è uno stato "dolore" — fa male ma il premio resta
+    // intero, e non sporca ancora visivamente la schedina. Solo marcia penalizza
+    // il premio (25%) e macchia davvero la carta.
     if (!equippedGrattatore && nailState === "marcia") {
       setBloodyCells(prev => { if (prev.has(idx)) return prev; const next = new Set(prev); next.add(idx); return next; });
     }
@@ -935,15 +936,15 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
         </div>
       )}
 
-      {/* ⚠ Avviso unghia danneggiata — Vintage */}
-      {(nailState === "sanguinante" || nailState === "marcia") && !finished && scratched === 0 && (() => {
-        const isMarcia = nailState === "marcia";
-        const warnCol = isMarcia ? C.red : C.orange;
-        const pct = isMarcia ? "25%" : "50%";
+      {/* ⚠ Avviso unghia danneggiata — Vintage.
+          Solo "marcia" riduce il premio (25%): sanguinante fa male ma il
+          premio resta intero, quindi non genera più questo avviso. */}
+      {nailState === "marcia" && !finished && scratched === 0 && (() => {
+        const warnCol = C.red;
         return (
           <div style={{
             position: "relative",
-            background: isMarcia ? "#1a0000" : "#1a0a00",
+            background: "#1a0000",
             border: `2px solid ${warnCol}`,
             padding: "10px 14px", marginBottom: "8px",
             boxShadow: `0 0 16px ${warnCol}55, inset 0 0 16px ${warnCol}18`,
@@ -957,11 +958,10 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
               letterSpacing: "2px", marginBottom: "5px",
               boxShadow: `0 0 8px ${warnCol}aa`,
             }}>
-              ★ 🩸 UNGHIA {isMarcia ? "MARCIA" : "SANGUINANTE"} ★
+              ★ 🩸 UNGHIA MARCIA ★
             </div>
             <div style={{color: C.text, fontSize: "10px", lineHeight: 1.5}}>
-              Premi ridotti al <strong style={{color: C.gold}}>{pct}</strong> del valore nominale.
-              {isMarcia && " Cambia unghia o curati prima."}
+              Premi ridotti al <strong style={{color: C.gold}}>25%</strong> del valore nominale. Cambia unghia o curati prima.
             </div>
           </div>
         );
@@ -1377,12 +1377,11 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
       {/* 🩸 Promemoria persistente unghia danneggiata — resta visibile anche dopo
           la prima grattata, proprio quando compaiono i bottoni di decisione
           (prima spariva subito dopo scratched===0, nascondendo lo sconto nel
-          momento in cui l'unico dato mostrato era il RITIRA/INCASSA). */}
+          momento in cui l'unico dato mostrato era il RITIRA/INCASSA).
+          Solo "marcia" riduce il premio: sanguinante non lo tocca più. */}
       {!finished && scratched > 0
-        && (nailState === "sanguinante" || nailState === "marcia" || scratchedWhileMarcia.current) && (() => {
-        const isMarciaNow = nailState === "marcia" || scratchedWhileMarcia.current;
-        const warnCol = isMarciaNow ? C.red : C.orange;
-        const pct = isMarciaNow ? "25%" : "50%";
+        && (nailState === "marcia" || scratchedWhileMarcia.current) && (() => {
+        const warnCol = C.red;
         return (
           <div style={{
             display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
@@ -1390,7 +1389,7 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
             background: `${warnCol}14`, border: `1px solid ${warnCol}66`,
             padding: "3px 10px", marginBottom: "8px", letterSpacing: "0.3px",
           }}>
-            🩸 Premio ridotto al {pct}
+            🩸 Premio ridotto al 25%
           </div>
         );
       })()}

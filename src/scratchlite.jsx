@@ -1102,7 +1102,7 @@ export default function Grattini() {
               {[
                 { label:"Sana",         color:C.green,   badge:"💚 PIENO",   desc:"Intatta. Premio al 100%." },
                 { label:"Graffiata",    color:C.gold,    badge:"💛 PIENO",   desc:"Usura iniziale. Premio pieno." },
-                { label:"Sanguinante",  color:C.orange,  badge:"🩸 −50%",    desc:"Fa male. Premio dimezzato." },
+                { label:"Sanguinante",  color:C.orange,  badge:"🩸 PIENO",   desc:"Fa male, ma il premio resta intero." },
                 { label:"Marcia",       color:C.red,     badge:"🦠 −75%",    desc:"Solo 25% del premio." },
                 { label:"Morta ✝",      color:"#555",    badge:"💀 FUORI",   desc:"Inutilizzabile. Prossima." },
                 { label:"Kawaii ♡",     color:"#ff88cc", badge:"✨ ×2",      desc:"Rara. Premio raddoppiato." },
