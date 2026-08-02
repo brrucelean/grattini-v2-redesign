@@ -490,14 +490,7 @@ export const NPC_PALETTE = {
   guantaio:   ["#d4a574", C.gold, "#8b5a2b"],
 };
 
-// Un solo colore "mid" (informativo, non urgente — vedi GERARCHIA TONALE in
-// theme.js) invece di 8 tinte piene: prima il ticker ruotava anche su
-// gold/cyan/magenta/green, cioè gli stessi colori che altrove significano
-// rarità/HP/stato. Il giocatore imparava "il magenta è raro" sulla mappa e
-// poi vedeva magenta su una notizia di flavour qualsiasi — il colore aveva
-// smesso di comunicare priorità. Le etichette restano varie (fanno da voce
-// editoriale del ticker), solo il colore è ora neutro e costante.
-export const TICKER_COLORS = [C.dimMid];
+export const TICKER_COLORS = [C.gold, C.cyan, C.pink, C.green, C.orange, C.magenta, "#ff4466", "#44ffcc"];
 export const TICKER_LABELS = ["⚡ FLASH", "🔴 BREAKING", "💥 ULTIMA ORA", "🗞 NOTIZIE", "⚠ ALLERTA", "📡 IN DIRETTA", "🔥 BOMBA", "💫 ESCLUSIVA"];
 
 export const NPC_CARMELO_COMMENTS = {
