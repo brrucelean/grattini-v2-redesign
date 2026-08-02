@@ -1106,7 +1106,7 @@ export default function Grattini() {
 
           {/* ══ PAGINA 1 — UNGHIE ══ */}
           {tutorialPage === 0 && (<>
-            <div style={{color:C.dim, fontSize:"10px", lineHeight:"1.5", textAlign:"center", marginBottom:"8px"}}>
+            <div style={{color:C.text, fontSize:"10px", lineHeight:"1.5", textAlign:"center", marginBottom:"8px"}}>
               Le tue <strong style={{color:C.bright}}>5 unghie</strong> sono la barra vita: le consumi grattando i biglietti <em>e</em> le perdi quando un nemico ti colpisce in combattimento.
             </div>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"6px", marginBottom:"10px", flexShrink:0 }}>
@@ -1128,7 +1128,9 @@ export default function Grattini() {
                 </div>
               ))}
             </div>
-            <Panel accent={C.gold} head="⚠ COME SI CONSUMANO">
+            {/* strong: è la regola con la condizione di game over, l'equivalente
+                di TEMPISMO a pagina 2 — un blocco critico per pagina, non tutti. */}
+            <Panel accent={C.gold} head="⚠ COME SI CONSUMANO" strong>
               Ogni <strong style={{color:C.bright}}>3 celle grattate</strong> → l'unghia peggiora di uno stato.<br/>
               Quando una muore, passi automaticamente alla prossima.<br/>
               Tutte e 5 morte → <strong style={{color:C.red}}>GAME OVER</strong>. Le unghie <strong style={{color:C.bright}}>non ricrescono</strong> (ma puoi curarle).
