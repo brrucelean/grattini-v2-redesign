@@ -63,31 +63,30 @@ export function CarmeloLogBox({ npc, name, color, messages, footer, height="170p
 
   return (
     <div onClick={skip} style={{
-      // Ritratto SOPRA e testo SOTTO (prima erano affiancati con lo sprite a 96px
-      // in una colonna da 110px: il personaggio spariva e restava un box vuoto).
-      display:"flex", flexDirection:"column", cursor:"pointer",
+      // Ritratto a SINISTRA, testo a DESTRA (come Sacerdote/Mendicante in
+      // EventView, per coerenza tra le schermate NPC). Un tentativo precedente
+      // di affiancarli era stato scartato perché lo sprite stava in una
+      // colonna troppo stretta (110px) e "spariva": qui la colonna ritratto è
+      // larga 220px E prende tutta l'altezza del box (prima dividendo lo
+      // spazio in verticale con il testo, ora il testo ha la sua colonna
+      // indipendente a destra) — lo sprite ha molto più spazio, non meno.
+      display:"flex", flexDirection:"row", cursor:"pointer",
       border:`2px solid ${color}66`,
       boxShadow:`0 0 30px ${color}22, inset 0 0 60px ${color}08`,
       background:"#04040e", animation:"dialogueIn 0.3s ease-out",
-      // Il box riempie l'altezza che il genitore gli concede (`height` resta il
-      // minimo). Con un'altezza fissa il contenuto traboccava; centrandolo e
-      // basta restavano bande vuote sopra e sotto: qui è il RITRATTO a espandersi
-      // e prendersi lo spazio, mentre il testo resta della sua altezza naturale.
       flex:"1 1 auto", minHeight:height, minWidth:0,
       position:"relative", overflow:"hidden",
     }}>
       <CornerBrackets color={color} size={13} inset={-3} thickness={2} glow />
       <div style={{
-        // flex:1 → il ritratto assorbe tutta l'altezza in eccesso invece di
-        // lasciarla come vuoto attorno al box.
-        flex:"1 1 auto", minHeight:0, borderBottom:`1px solid ${color}44`,
+        flex:"0 0 220px", minWidth:0, borderRight:`1px solid ${color}44`,
         background:`linear-gradient(180deg, ${color}12 0%, transparent 100%)`,
         display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
-        padding:"12px 6px 10px", overflow:"hidden",
+        padding:"12px 10px", overflow:"hidden",
       }}>
         {hasAsset(`spr-${npc}`) ? (
           <Asset id={`spr-${npc}`} size={176} style={{
-            width:"auto", maxWidth:"min(340px, 40vw)", height:"100%", minHeight:"120px",
+            width:"auto", maxWidth:"100%", height:"auto", maxHeight:"100%",
             objectFit:"contain",
             filter:`drop-shadow(0 0 14px ${color}66)`,
           }} />
@@ -105,7 +104,7 @@ export function CarmeloLogBox({ npc, name, color, messages, footer, height="170p
           overflow:"hidden", textOverflow:"ellipsis",
         }}>★ {name.toUpperCase()} ★</div>
       </div>
-      <div style={{flex:"0 0 auto", maxHeight:"58%", padding:"12px 18px 14px", display:"flex", flexDirection:"column", minHeight:0}}>
+      <div style={{flex:"1 1 auto", minWidth:0, padding:"12px 18px 14px", display:"flex", flexDirection:"column", minHeight:0}}>
         <div style={{color, fontSize:"12px", fontWeight:"bold", letterSpacing:"1.5px",
           marginBottom:"10px",
           textShadow:`0 0 10px ${color}, 0 0 18px ${color}55`,
