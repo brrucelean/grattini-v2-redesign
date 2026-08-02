@@ -913,7 +913,7 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
       {(nailState === "sanguinante" || nailState === "marcia") && !finished && scratched === 0 && (() => {
         const isMarcia = nailState === "marcia";
         const warnCol = isMarcia ? C.red : C.orange;
-        const pct = isMarcia ? "20%" : "35%";
+        const pct = isMarcia ? "25%" : "50%";
         return (
           <div style={{
             position: "relative",
@@ -1339,6 +1339,27 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
                 <span style={{color:C.dim, fontSize:"11px", alignSelf:"center"}}>o continua a grattare →</span>
               )}
             </div>
+          </div>
+        );
+      })()}
+
+      {/* 🩸 Promemoria persistente unghia danneggiata — resta visibile anche dopo
+          la prima grattata, proprio quando compaiono i bottoni di decisione
+          (prima spariva subito dopo scratched===0, nascondendo lo sconto nel
+          momento in cui l'unico dato mostrato era il RITIRA/INCASSA). */}
+      {!finished && scratched > 0
+        && (nailState === "sanguinante" || nailState === "marcia" || scratchedWhileMarcia.current) && (() => {
+        const isMarciaNow = nailState === "marcia" || scratchedWhileMarcia.current;
+        const warnCol = isMarciaNow ? C.red : C.orange;
+        const pct = isMarciaNow ? "25%" : "50%";
+        return (
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
+            color: warnCol, fontSize: "10px", fontWeight: "bold",
+            background: `${warnCol}14`, border: `1px solid ${warnCol}66`,
+            padding: "3px 10px", marginBottom: "8px", letterSpacing: "0.3px",
+          }}>
+            🩸 Premio ridotto al {pct}
           </div>
         );
       })()}
