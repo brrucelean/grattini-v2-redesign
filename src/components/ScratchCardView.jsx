@@ -165,6 +165,20 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
     return Math.round(p);
   };
 
+  // Moltiplicatore-unghia per lo stato corrente. Unica fonte di verità: prima
+  // calcPrize() lo calcolava correttamente (basato su NAIL_INFO, quindi valido
+  // per QUALSIASI stato — marcia, sanguinante, unghiaNera, kawaii, ecc.), ma
+  // gli incassi anticipati (setteemezzo "INCASSA LA VINCITA", collect "INCASSA
+  // ORA") lo reimplementavano da soli con `effMarcia ? 0.15 : 1` — percentuale
+  // sbagliata (0.15 invece di 0.25) e "sanguinante" ignorato del tutto: chi
+  // incassava prima con unghia sanguinante prendeva il 100% invece del 50%.
+  const getNailMult = (usingGrattatore) => {
+    const effMarcia = !usingGrattatore && (nailState === "marcia" || scratchedWhileMarcia.current);
+    const nailInfo = NAIL_INFO[nailState] || NAIL_INFO.sana;
+    const rawMult = usingGrattatore ? Math.max(nailInfo.mult, 1.0) : nailInfo.mult;
+    return effMarcia ? Math.min(rawMult, 0.25) : rawMult;
+  };
+
   // Calculate prize with all modifiers
   const calcPrize = () => {
     let prize = card.prize;
@@ -175,10 +189,8 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
     // IMPORTANTE: se l'unghia era marcia mentre grattavi e poi è guarita,
     // la schedina resta "sporca" — applichiamo comunque il 25% (coerente con isDirty nell'UI).
     const usingGrattatore = !!equippedGrattatore;
-    const effMarcia = !usingGrattatore && (nailState === "marcia" || scratchedWhileMarcia.current);
     const nailInfo = NAIL_INFO[nailState] || NAIL_INFO.sana;
-    const rawMult = usingGrattatore ? Math.max(nailInfo.mult, 1.0) : nailInfo.mult;
-    const nailMult = effMarcia ? Math.min(rawMult, 0.25) : rawMult;
+    const nailMult = getNailMult(usingGrattatore);
     prize = Math.round(prize * nailMult);
     // Implant prize multiplier
     if (nailImplant) {
@@ -314,8 +326,13 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
       const nonStopLeft = newCells.filter(c => !c.scratched && !c.isStop).length;
       if (nonStopLeft === 0) {
         const { cancelled: wc } = calcPrize();
-        const boostedCollected = applyGrattatoreBonus(newCollected);
-        setWinFound(true); setWinPrize(wc ? 0 : boostedCollected); setWinPrizeFull(boostedCollected); setCancelled(wc);
+        // Prima qui non veniva applicato nessun moltiplicatore-unghia: finire
+        // la carta con un'unghia danneggiata pagava il 100% come una sana.
+        const nailMult = getNailMult(!!equippedGrattatore);
+        const rawCollected = Math.round(newCollected * nailMult);
+        const boostedCollected = applyGrattatoreBonus(rawCollected);
+        const boostedFull = applyGrattatoreBonus(newCollected);
+        setWinFound(true); setWinPrize(wc ? 0 : boostedCollected); setWinPrizeFull(boostedFull); setCancelled(wc);
         AudioEngine.win();
       }
       return;
@@ -482,9 +499,9 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
     // Ora le carte perdenti sono generate senza prefissi "stand-and-win"
     // (vedi generateCard/setteemezzo) e qui restano comunque una sconfitta.
     if (card.mechanic === "setteemezzo" && claiming && !winFound && card.prize > 0) {
-      const effMarcia = nailState === "marcia" || scratchedWhileMarcia.current;
       const basePrize = card.prize;
-      const p = effMarcia ? Math.round(basePrize * 0.15) : basePrize;
+      const nailMult = getNailMult(!!equippedGrattatore);
+      const p = Math.round(basePrize * nailMult);
       const boostedP = applyGrattatoreBonus(p);
       const boostedFull = applyGrattatoreBonus(basePrize);
       setWinFound(true); setWinPrize(boostedP); setWinPrizeFull(boostedFull); setCancelled(false);
@@ -502,10 +519,14 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
         onDone({ win: false, prize: 0, message: "VINCITA ANNULLATA! L'unghia ha rovinato il biglietto!", cellsScratched: scratched });
         return;
       }
-      const effMarcia = nailState === "marcia" || scratchedWhileMarcia.current;
-      const rawCollected = effMarcia ? Math.round(collectedRef.current * 0.15) : collectedRef.current;
+      // Prima solo "marcia" scontava l'incasso anticipato, e per giunta al
+      // 15% invece del 25% corretto: con unghia sanguinante (-50% previsto)
+      // il cash-out anticipato pagava il 100%, nessuno sconto applicato.
+      const nailMult = getNailMult(!!equippedGrattatore);
+      const rawCollected = Math.round(collectedRef.current * nailMult);
       const effCollected = applyGrattatoreBonus(rawCollected);
-      let collectMsg = effMarcia ? `🩸 INCASSATO €${effCollected} (unghia marcia!)` : `HAI INCASSATO €${effCollected}!`;
+      const discounted = nailMult < 1;
+      let collectMsg = discounted ? `🩸 INCASSATO €${effCollected} (unghia danneggiata!)` : `HAI INCASSATO €${effCollected}!`;
       if (equippedGrattatore && effCollected !== rawCollected) {
         collectMsg += ` ${equippedGrattatore.emoji} ${equippedGrattatore.name}: €${rawCollected} → €${effCollected}!`;
       }
@@ -1265,7 +1286,12 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
 
       {/* WIN FOUND - CLAIM BUTTON — Vintage */}
       {winFound && !finished && (() => {
-        const isDirty = !cancelled && (nailState === "marcia" || scratchedWhileMarcia.current);
+        // Prima guardava solo "marcia": una vincita scontata per unghia
+        // sanguinante (-50%) veniva mostrata come una vincita pulita, senza
+        // il badge "VINCITA SPORCA" né lo strikethrough del prezzo pieno.
+        // winPrize < winPrizeFull è la condizione reale (vale per qualsiasi
+        // stato che scala il moltiplicatore: marcia, sanguinante, unghiaNera).
+        const isDirty = !cancelled && winPrize < winPrizeFull;
         const borderCol = cancelled ? C.red : isDirty ? C.red : C.green;
         const prizeCol  = cancelled ? C.red : isDirty ? C.orange : C.green;
         const badgeLabel = cancelled ? "VINCITA ANNULLATA"
