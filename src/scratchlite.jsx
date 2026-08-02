@@ -1062,8 +1062,33 @@ export default function Grattini() {
           { emoji:"🗺️", title:"LA MAPPA & I SOLDI", sub:"dove vai, cosa compri", color:C.gold },
         ];
         const pg = PAGES[tutorialPage] || PAGES[0];
-        const Panel = ({ accent, head, children }) => (
-          <div style={{ background:"#0b0b14", border:`1px solid ${accent}55`, padding:"8px 11px", marginBottom:"8px", flexShrink:0 }}>
+        // Bordo neutro di default per tutti i box: prima ogni Panel prendeva il
+        // bordo dal proprio accent (rosso/giallo/ciano/arancio...) e la pagina
+        // finiva con 6-8 colori attivi che non indicavano nessuna priorità.
+        // L'accent resta sul titolo (serve comunque a distinguere i blocchi a
+        // colpo d'occhio) e sul bordo SOLO quando strong=true, riservato al
+        // blocco davvero da ricordare (es. TEMPISMO nel combattimento).
+        // step: numera i box in ordine di lettura. Prima erano una pila di
+        // regole senza sequenza dichiarata — il lettore doveva inferire da
+        // solo "cosa viene prima". Un numero fisso risolve senza aggiungere
+        // altro testo.
+        const Panel = ({ accent, head, children, strong=false, step=null }) => (
+          <div style={{
+            position:"relative",
+            background: strong ? "#0d0f1a" : "#0b0b14",
+            border: strong ? `2px solid ${accent}88` : `1px solid ${C.dimLow}`,
+            boxShadow: strong ? `0 0 14px ${accent}22` : "none",
+            padding: step ? "8px 11px 8px 34px" : "8px 11px", marginBottom:"8px", flexShrink:0,
+          }}>
+            {step && (
+              <div style={{
+                position:"absolute", left:"8px", top:"8px",
+                width:"18px", height:"18px", borderRadius:"50%",
+                background:"#000", border:`1px solid ${accent}88`,
+                color:accent, fontSize:"10px", fontWeight:"bold",
+                display:"flex", alignItems:"center", justifyContent:"center",
+              }}>{step}</div>
+            )}
             <div style={{color:accent, fontSize:"10px", fontWeight:"bold", letterSpacing:"1px", marginBottom:"5px"}}>{head}</div>
             <div style={{color:C.text, fontSize:"11px", lineHeight:"1.65"}}>{children}</div>
           </div>
@@ -1080,7 +1105,7 @@ export default function Grattini() {
             <div style={{color:pg.color, fontFamily:FONT, fontSize:"16px", fontWeight:"bold", letterSpacing:"2px", marginBottom:"2px"}}>
               {pg.emoji} {pg.title}
             </div>
-            <div style={{color:C.dim, fontSize:"10px", letterSpacing:"3px"}}>{pg.sub.toUpperCase()} — {tutorialPage+1}/3</div>
+            <div style={{color:C.dimMid, fontSize:"10px", letterSpacing:"3px"}}>{pg.sub.toUpperCase()} — {tutorialPage+1}/3</div>
             <div style={{display:"flex", justifyContent:"center", gap:"5px", marginTop:"6px"}}>
               {PAGES.map((_, i) => (
                 <div key={i} style={{
@@ -1095,14 +1120,14 @@ export default function Grattini() {
 
           {/* ══ PAGINA 1 — UNGHIE ══ */}
           {tutorialPage === 0 && (<>
-            <div style={{color:C.dim, fontSize:"10px", lineHeight:"1.5", textAlign:"center", marginBottom:"8px"}}>
+            <div style={{color:C.text, fontSize:"10px", lineHeight:"1.5", textAlign:"center", marginBottom:"8px"}}>
               Le tue <strong style={{color:C.bright}}>5 unghie</strong> sono la barra vita: le consumi grattando i biglietti <em>e</em> le perdi quando un nemico ti colpisce in combattimento.
             </div>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"6px", marginBottom:"10px", flexShrink:0 }}>
               {[
                 { label:"Sana",         color:C.green,   badge:"💚 PIENO",   desc:"Intatta. Premio al 100%." },
                 { label:"Graffiata",    color:C.gold,    badge:"💛 PIENO",   desc:"Usura iniziale. Premio pieno." },
-                { label:"Sanguinante",  color:C.orange,  badge:"🩸 −50%",    desc:"Fa male. Premio dimezzato." },
+                { label:"Sanguinante",  color:C.orange,  badge:"🩸 PIENO",   desc:"Fa male, ma il premio resta intero." },
                 { label:"Marcia",       color:C.red,     badge:"🦠 −75%",    desc:"Solo 25% del premio." },
                 { label:"Morta ✝",      color:"#555",    badge:"💀 FUORI",   desc:"Inutilizzabile. Prossima." },
                 { label:"Kawaii ♡",     color:"#ff88cc", badge:"✨ ×2",      desc:"Rara. Premio raddoppiato." },
@@ -1117,7 +1142,9 @@ export default function Grattini() {
                 </div>
               ))}
             </div>
-            <Panel accent={C.gold} head="⚠ COME SI CONSUMANO">
+            {/* strong: è la regola con la condizione di game over, l'equivalente
+                di TEMPISMO a pagina 2 — un blocco critico per pagina, non tutti. */}
+            <Panel accent={C.gold} head="⚠ COME SI CONSUMANO" strong>
               Ogni <strong style={{color:C.bright}}>3 celle grattate</strong> → l'unghia peggiora di uno stato.<br/>
               Quando una muore, passi automaticamente alla prossima.<br/>
               Tutte e 5 morte → <strong style={{color:C.red}}>GAME OVER</strong>. Le unghie <strong style={{color:C.bright}}>non ricrescono</strong> (ma puoi curarle).
@@ -1126,43 +1153,71 @@ export default function Grattini() {
 
           {/* ══ PAGINA 2 — COMBATTIMENTO ══ */}
           {tutorialPage === 1 && (<>
-            <Panel accent={C.red} head="🗡️ È UN DUELLO, NON UNA GARA DI SOLDI">
-              Il nemico ha una barra <strong style={{color:C.red}}>❤️ HP</strong> (rossa) e uno <strong style={{color:C.blue}}>🛡 scudo</strong> (blu). Portalo a <strong style={{color:C.bright}}>0 HP</strong> prima che le tue unghie finiscano.
+            <Panel accent={C.red} head="🗡️ È UN DUELLO, NON UNA GARA DI SOLDI" step={1}>
+              Il nemico ha una barra <span style={{color:C.red}}>❤️ HP</span> (rossa) e uno <span style={{color:C.blue}}>🛡 scudo</span> (blu). Portalo a <strong style={{color:C.bright}}>0 HP</strong> prima che le tue unghie finiscano.
             </Panel>
-            <Panel accent={C.gold} head="🎫 OGNI TURNO: GRATTA 3 DELLE 9 CARTE">
+            <Panel accent={C.gold} head="🎫 OGNI TURNO: GRATTA 3 DELLE 9 CARTE" step={2}>
               <span style={{color:C.red}}>🗡️ ATTACCO</span> → fa danno al nemico.<br/>
               <span style={{color:C.blue}}>🛡 DIFESA</span> → ti prepara a PARARE il prossimo colpo.<br/>
               <span style={{color:C.gold}}>💰 DENARO</span> → bottino in € (non fa danno).<br/>
-              <span style={{color:C.dim}}>Gratti una carta → il nemico risponde subito (vedi <strong style={{color:C.text}}>«IN ARRIVO ▸»</strong>).</span>
+              Gratti una carta → il nemico risponde subito (vedi <strong style={{color:C.bright}}>«IN ARRIVO ▸»</strong>).
             </Panel>
-            <Panel accent={C.cyan} head="🎯 TEMPISMO (la barra col cursore)">
-              Quando <strong style={{color:C.red}}>ATTACCHI</strong>: ferma il cursore nel <strong style={{color:C.green}}>VERDE</strong> = <strong>COLPO PERFETTO</strong> (più danno).<br/>
-              Se hai giocato una <strong style={{color:C.blue}}>DIFESA</strong> e il nemico attacca, parte la <strong>PARATA</strong>: perfetta = <strong style={{color:C.green}}>annulli il colpo e contrattacchi</strong>.<br/>
+            <Panel accent={C.cyan} head="🎯 TEMPISMO (la barra col cursore)" strong step={3}>
+              {/* Mini illustrazione della barra: zona verde al centro, cursore
+                  a metà — un solo elemento visivo spiega TEMPISMO più delle
+                  4 righe di testo sotto, e riempie lo spazio laterale che
+                  altrimenti resta nero. */}
+              <div style={{ position:"relative", height:"14px", margin:"2px 0 10px", background:"#3a1010", border:`1px solid ${C.dimLow}` }}>
+                <div style={{ position:"absolute", left:"38%", width:"24%", top:0, bottom:0, background:C.green, boxShadow:`0 0 6px ${C.green}` }}/>
+                <div style={{ position:"absolute", left:"48%", top:"-4px", width:0, height:0, borderLeft:"5px solid transparent", borderRight:"5px solid transparent", borderTop:`7px solid ${C.bright}`, filter:`drop-shadow(0 0 3px ${C.bright})` }}/>
+              </div>
+              {/* Un solo elemento in risalto per riga invece di 3: se tutto è
+                  grassetto/colorato, niente si distingue davvero. Il colore da
+                  solo (senza bold) basta a richiamare ATTACCO/DIFESA, già
+                  stabiliti nel box sopra — il grassetto resta solo sull'esito. */}
+              Quando attacchi: ferma il cursore nel <span style={{color:C.green}}>VERDE</span> = <strong style={{color:C.green}}>COLPO PERFETTO</strong> (più danno).<br/>
+              Se hai giocato una <span style={{color:C.blue}}>DIFESA</span> e il nemico attacca, parte la PARATA: perfetta = <strong style={{color:C.green}}>annulli il colpo e contrattacchi</strong>.<br/>
               <strong style={{color:C.red}}>Senza difesa, il colpo ti rovina un'unghia.</strong>
             </Panel>
-            <Panel accent={C.orange} head="🔥 FURIA & COMBO">
+            <Panel accent={C.orange} head="🔥 FURIA & COMBO" step={4}>
               3 attacchi di fila in un turno = <strong style={{color:C.magenta}}>COMBO</strong> (danno bonus).<br/>
-              Dal <strong style={{color:C.orange}}>turno 3</strong> il nemico va in <strong style={{color:C.orange}}>FURIA</strong>: non si cura più e picchia sempre più forte. <strong style={{color:C.bright}}>Chiudi in fretta.</strong>
+              Dal <span style={{color:C.orange}}>turno 3</span> il nemico va in <strong style={{color:C.orange}}>FURIA</strong>: non si cura più e picchia sempre più forte. <strong style={{color:C.bright}}>Chiudi in fretta.</strong>
             </Panel>
           </>)}
 
           {/* ══ PAGINA 3 — MAPPA & SOLDI ══ */}
           {tutorialPage === 2 && (<>
-            <Panel accent={C.cyan} head="🗺️ IL PERCORSO">
+            <Panel accent={C.cyan} head="🗺️ IL PERCORSO" step={1}>
               Scegli il cammino a nodi fino al <strong style={{color:C.red}}>👹 BOSS</strong> del bioma. Battilo per sbloccare il bioma successivo.
             </Panel>
-            <Panel accent={C.gold} head="📍 I NODI">
-              <span style={{color:C.red}}>🗡️ 💀</span> combattimenti &nbsp;·&nbsp; <span style={{color:C.cyan}}>🏪 tabaccaio</span> (grattini & grattatori)<br/>
-              <span style={{color:C.magenta}}>🏨 locanda</span> (curi le unghie con €) &nbsp;·&nbsp; <span style={{color:C.text}}>❓ eventi/NPC</span><br/>
-              <span style={{color:"#88ccff"}}>🧤 guantaio</span> (l'unico che vende il <strong style={{color:C.bright}}>Guanto da BOSS</strong>, protezione per la boss-fight)<br/>
-              <span style={{color:C.dim}}>⛪ 👵 🙏 possono aiutarti… o fregarti. Leggi sempre le scelte.</span>
+            <Panel accent={C.gold} head="📍 I NODI" step={2}>
+              {/* Una riga per voce, UNA sola icona ciascuna (prima "combattimenti"
+                  ne aveva due — 🗡️💀 — senza spiegare perché, e l'ultima riga tre:
+                  doppia/tripla emoji senza senso a colpo d'occhio). Colonna icona
+                  allineata a DESTRA invece che a sinistra: prima un'emoji stretta
+                  come ❓ lasciava un vuoto enorme prima del testo; ora l'icona sta
+                  a ridosso del testo e il vuoto residuo, se c'è, resta a sinistra
+                  dove non si nota. */}
+              {[
+                { icon:"🗡️",  body: <span style={{color:C.red}}>combattimenti</span> },
+                { icon:"🏪",  body: <><span style={{color:C.cyan}}>tabaccaio</span> (grattini & grattatori)</> },
+                { icon:"🏨",  body: <><span style={{color:C.magenta}}>locanda</span> (curi le unghie con €)</> },
+                { icon:"❓",  body: <span style={{color:C.text}}>eventi/NPC</span> },
+                { icon:"🧤",  body: <><span style={{color:"#88ccff"}}>guantaio</span> (l'unico che vende il <strong style={{color:C.bright}}>Guanto da BOSS</strong>, protezione per la boss-fight)</> },
+                { icon:"🙏",  body: <span style={{color:C.dimMid}}>sacerdote, anziana, mendicante: possono aiutarti… o fregarti. Leggi sempre le scelte.</span> },
+              ].map((row, i) => (
+                <div key={i} style={{ display:"flex", gap:"8px", marginBottom: i < 5 ? "4px" : 0 }}>
+                  <span style={{flex:"0 0 22px", textAlign:"right"}}>{row.icon}</span>
+                  <span style={{flex:1}}>{row.body}</span>
+                </div>
+              ))}
             </Panel>
-            <Panel accent={C.gold} head="💰 I SOLDI (€)">
+            <Panel accent={C.gold} head="💰 I SOLDI (€)" step={3}>
               Sono il bottino di combattimenti e grattate. Servono per <strong style={{color:C.bright}}>curarti in locanda</strong>, comprare <strong style={{color:C.bright}}>grattatori da combattimento</strong> e consumabili.<br/>
               <span style={{color:C.orange}}>⚠ I boss chiedono un minimo di € per farti entrare: non arrivare al verde.</span>
             </Panel>
             <Panel accent={C.green} head="💡 CONSIGLIO">
-              Cura le unghie <strong style={{color:C.bright}}>prima</strong> che sia tardi. Tieni la <strong style={{color:"#ff88cc"}}>Kawaii</strong> per i colpi grossi, e passa il mouse sugli oggetti dello <strong style={{color:C.magenta}}>zaino</strong> per sapere cosa fanno.
+              Cura le unghie prima che sia tardi. Tieni la <strong style={{color:"#ff88cc"}}>Kawaii</strong> per i colpi grossi, e passa il mouse sugli oggetti dello zaino per sapere cosa fanno.
             </Panel>
           </>)}
 

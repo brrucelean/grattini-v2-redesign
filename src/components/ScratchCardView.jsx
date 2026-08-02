@@ -165,6 +165,20 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
     return Math.round(p);
   };
 
+  // Moltiplicatore-unghia per lo stato corrente. Unica fonte di verità: prima
+  // calcPrize() lo calcolava correttamente (basato su NAIL_INFO, quindi valido
+  // per QUALSIASI stato — marcia, sanguinante, unghiaNera, kawaii, ecc.), ma
+  // gli incassi anticipati (setteemezzo "INCASSA LA VINCITA", collect "INCASSA
+  // ORA") lo reimplementavano da soli con `effMarcia ? 0.15 : 1` — percentuale
+  // sbagliata (0.15 invece di 0.25) e "sanguinante" ignorato del tutto: chi
+  // incassava prima con unghia sanguinante prendeva il 100% invece del 50%.
+  const getNailMult = (usingGrattatore) => {
+    const effMarcia = !usingGrattatore && (nailState === "marcia" || scratchedWhileMarcia.current);
+    const nailInfo = NAIL_INFO[nailState] || NAIL_INFO.sana;
+    const rawMult = usingGrattatore ? Math.max(nailInfo.mult, 1.0) : nailInfo.mult;
+    return effMarcia ? Math.min(rawMult, 0.25) : rawMult;
+  };
+
   // Calculate prize with all modifiers
   const calcPrize = () => {
     let prize = card.prize;
@@ -175,10 +189,8 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
     // IMPORTANTE: se l'unghia era marcia mentre grattavi e poi è guarita,
     // la schedina resta "sporca" — applichiamo comunque il 25% (coerente con isDirty nell'UI).
     const usingGrattatore = !!equippedGrattatore;
-    const effMarcia = !usingGrattatore && (nailState === "marcia" || scratchedWhileMarcia.current);
     const nailInfo = NAIL_INFO[nailState] || NAIL_INFO.sana;
-    const rawMult = usingGrattatore ? Math.max(nailInfo.mult, 1.0) : nailInfo.mult;
-    const nailMult = effMarcia ? Math.min(rawMult, 0.25) : rawMult;
+    const nailMult = getNailMult(usingGrattatore);
     prize = Math.round(prize * nailMult);
     // Implant prize multiplier
     if (nailImplant) {
@@ -217,8 +229,9 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
     if (cells[idx].scratched || finished) return;
     if (!equippedGrattatore && nailState === "marcia") scratchedWhileMarcia.current = true;
     // Macchia visiva: SOLO con unghia marcia (rosso) e senza grattatore.
-    // Sanguinante (arancione) è uno stato "dolore" — ha già il suo penalty al premio,
-    // ma non sporca ancora visivamente la schedina. Solo marcia = sangue vero sulla carta.
+    // Sanguinante (arancione) è uno stato "dolore" — fa male ma il premio resta
+    // intero, e non sporca ancora visivamente la schedina. Solo marcia penalizza
+    // il premio (25%) e macchia davvero la carta.
     if (!equippedGrattatore && nailState === "marcia") {
       setBloodyCells(prev => { if (prev.has(idx)) return prev; const next = new Set(prev); next.add(idx); return next; });
     }
@@ -314,8 +327,13 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
       const nonStopLeft = newCells.filter(c => !c.scratched && !c.isStop).length;
       if (nonStopLeft === 0) {
         const { cancelled: wc } = calcPrize();
-        const boostedCollected = applyGrattatoreBonus(newCollected);
-        setWinFound(true); setWinPrize(wc ? 0 : boostedCollected); setWinPrizeFull(boostedCollected); setCancelled(wc);
+        // Prima qui non veniva applicato nessun moltiplicatore-unghia: finire
+        // la carta con un'unghia danneggiata pagava il 100% come una sana.
+        const nailMult = getNailMult(!!equippedGrattatore);
+        const rawCollected = Math.round(newCollected * nailMult);
+        const boostedCollected = applyGrattatoreBonus(rawCollected);
+        const boostedFull = applyGrattatoreBonus(newCollected);
+        setWinFound(true); setWinPrize(wc ? 0 : boostedCollected); setWinPrizeFull(boostedFull); setCancelled(wc);
         AudioEngine.win();
       }
       return;
@@ -482,9 +500,9 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
     // Ora le carte perdenti sono generate senza prefissi "stand-and-win"
     // (vedi generateCard/setteemezzo) e qui restano comunque una sconfitta.
     if (card.mechanic === "setteemezzo" && claiming && !winFound && card.prize > 0) {
-      const effMarcia = nailState === "marcia" || scratchedWhileMarcia.current;
       const basePrize = card.prize;
-      const p = effMarcia ? Math.round(basePrize * 0.15) : basePrize;
+      const nailMult = getNailMult(!!equippedGrattatore);
+      const p = Math.round(basePrize * nailMult);
       const boostedP = applyGrattatoreBonus(p);
       const boostedFull = applyGrattatoreBonus(basePrize);
       setWinFound(true); setWinPrize(boostedP); setWinPrizeFull(boostedFull); setCancelled(false);
@@ -502,10 +520,14 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
         onDone({ win: false, prize: 0, message: "VINCITA ANNULLATA! L'unghia ha rovinato il biglietto!", cellsScratched: scratched });
         return;
       }
-      const effMarcia = nailState === "marcia" || scratchedWhileMarcia.current;
-      const rawCollected = effMarcia ? Math.round(collectedRef.current * 0.15) : collectedRef.current;
+      // Prima solo "marcia" scontava l'incasso anticipato, e per giunta al
+      // 15% invece del 25% corretto: con unghia sanguinante (-50% previsto)
+      // il cash-out anticipato pagava il 100%, nessuno sconto applicato.
+      const nailMult = getNailMult(!!equippedGrattatore);
+      const rawCollected = Math.round(collectedRef.current * nailMult);
       const effCollected = applyGrattatoreBonus(rawCollected);
-      let collectMsg = effMarcia ? `🩸 INCASSATO €${effCollected} (unghia marcia!)` : `HAI INCASSATO €${effCollected}!`;
+      const discounted = nailMult < 1;
+      let collectMsg = discounted ? `🩸 INCASSATO €${effCollected} (unghia danneggiata!)` : `HAI INCASSATO €${effCollected}!`;
       if (equippedGrattatore && effCollected !== rawCollected) {
         collectMsg += ` ${equippedGrattatore.emoji} ${equippedGrattatore.name}: €${rawCollected} → €${effCollected}!`;
       }
@@ -570,7 +592,12 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
   // ── Tier / accent resolution ──────────────────────────────────
   // Preserves `card.theme?.border` (used by special mechanic cards: labirinto, combina, tesoro).
   const TIER_META = {
-    1: { label: "COMUNE",      color: C.green,   emoji: "🎫" },
+    // COMUNE grigio-blu neutro, non verde: allineato al colore usato per la
+    // stessa rarità in ShopView.jsx (rarityAccent → "#7a8aaa"). Prima erano
+    // due sistemi scollegati — la stessa rarità "comune" cambiava colore a
+    // seconda che la si vedesse nel negozio o sulla carta grattino — e il
+    // verde qui collideva col significato di "vincita/salute" usato altrove.
+    1: { label: "COMUNE",      color: "#7a8aaa", emoji: "🎫" },
     2: { label: "MEDIA",       color: C.cyan,    emoji: "🎟️" },
     3: { label: "RARA",        color: C.magenta, emoji: "💎" },
     4: { label: "LEGGENDARIA", color: C.gold,    emoji: "👑" },
@@ -909,15 +936,15 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
         </div>
       )}
 
-      {/* ⚠ Avviso unghia danneggiata — Vintage */}
-      {(nailState === "sanguinante" || nailState === "marcia") && !finished && scratched === 0 && (() => {
-        const isMarcia = nailState === "marcia";
-        const warnCol = isMarcia ? C.red : C.orange;
-        const pct = isMarcia ? "20%" : "35%";
+      {/* ⚠ Avviso unghia danneggiata — Vintage.
+          Solo "marcia" riduce il premio (25%): sanguinante fa male ma il
+          premio resta intero, quindi non genera più questo avviso. */}
+      {nailState === "marcia" && !finished && scratched === 0 && (() => {
+        const warnCol = C.red;
         return (
           <div style={{
             position: "relative",
-            background: isMarcia ? "#1a0000" : "#1a0a00",
+            background: "#1a0000",
             border: `2px solid ${warnCol}`,
             padding: "10px 14px", marginBottom: "8px",
             boxShadow: `0 0 16px ${warnCol}55, inset 0 0 16px ${warnCol}18`,
@@ -931,11 +958,10 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
               letterSpacing: "2px", marginBottom: "5px",
               boxShadow: `0 0 8px ${warnCol}aa`,
             }}>
-              ★ 🩸 UNGHIA {isMarcia ? "MARCIA" : "SANGUINANTE"} ★
+              ★ 🩸 UNGHIA MARCIA ★
             </div>
             <div style={{color: C.text, fontSize: "10px", lineHeight: 1.5}}>
-              Premi ridotti al <strong style={{color: C.gold}}>{pct}</strong> del valore nominale.
-              {isMarcia && " Cambia unghia o curati prima."}
+              Premi ridotti al <strong style={{color: C.gold}}>25%</strong> del valore nominale. Cambia unghia o curati prima.
             </div>
           </div>
         );
@@ -1260,7 +1286,12 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
 
       {/* WIN FOUND - CLAIM BUTTON — Vintage */}
       {winFound && !finished && (() => {
-        const isDirty = !cancelled && (nailState === "marcia" || scratchedWhileMarcia.current);
+        // Prima guardava solo "marcia": una vincita scontata per unghia
+        // sanguinante (-50%) veniva mostrata come una vincita pulita, senza
+        // il badge "VINCITA SPORCA" né lo strikethrough del prezzo pieno.
+        // winPrize < winPrizeFull è la condizione reale (vale per qualsiasi
+        // stato che scala il moltiplicatore: marcia, sanguinante, unghiaNera).
+        const isDirty = !cancelled && winPrize < winPrizeFull;
         const borderCol = cancelled ? C.red : isDirty ? C.red : C.green;
         const prizeCol  = cancelled ? C.red : isDirty ? C.orange : C.green;
         const badgeLabel = cancelled ? "VINCITA ANNULLATA"
@@ -1339,6 +1370,26 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
                 <span style={{color:C.dim, fontSize:"11px", alignSelf:"center"}}>o continua a grattare →</span>
               )}
             </div>
+          </div>
+        );
+      })()}
+
+      {/* 🩸 Promemoria persistente unghia danneggiata — resta visibile anche dopo
+          la prima grattata, proprio quando compaiono i bottoni di decisione
+          (prima spariva subito dopo scratched===0, nascondendo lo sconto nel
+          momento in cui l'unico dato mostrato era il RITIRA/INCASSA).
+          Solo "marcia" riduce il premio: sanguinante non lo tocca più. */}
+      {!finished && scratched > 0
+        && (nailState === "marcia" || scratchedWhileMarcia.current) && (() => {
+        const warnCol = C.red;
+        return (
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
+            color: warnCol, fontSize: "10px", fontWeight: "bold",
+            background: `${warnCol}14`, border: `1px solid ${warnCol}66`,
+            padding: "3px 10px", marginBottom: "8px", letterSpacing: "0.3px",
+          }}>
+            🩸 Premio ridotto al 25%
           </div>
         );
       })()}
