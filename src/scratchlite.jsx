@@ -1191,19 +1191,23 @@ export default function Grattini() {
               Scegli il cammino a nodi fino al <strong style={{color:C.red}}>👹 BOSS</strong> del bioma. Battilo per sbloccare il bioma successivo.
             </Panel>
             <Panel accent={C.gold} head="📍 I NODI" step={2}>
-              {/* Una riga per voce con gutter icona a larghezza fissa: prima
-                  era prosa con <br/>, e la voce più lunga (guantaio) andava a
-                  capo allineandosi sotto l'icona invece che sotto il testo. */}
+              {/* Una riga per voce, UNA sola icona ciascuna (prima "combattimenti"
+                  ne aveva due — 🗡️💀 — senza spiegare perché, e l'ultima riga tre:
+                  doppia/tripla emoji senza senso a colpo d'occhio). Colonna icona
+                  allineata a DESTRA invece che a sinistra: prima un'emoji stretta
+                  come ❓ lasciava un vuoto enorme prima del testo; ora l'icona sta
+                  a ridosso del testo e il vuoto residuo, se c'è, resta a sinistra
+                  dove non si nota. */}
               {[
-                { icon:"🗡️ 💀", body: <span style={{color:C.red}}>combattimenti</span> },
-                { icon:"🏪",    body: <><span style={{color:C.cyan}}>tabaccaio</span> (grattini & grattatori)</> },
-                { icon:"🏨",    body: <><span style={{color:C.magenta}}>locanda</span> (curi le unghie con €)</> },
-                { icon:"❓",    body: <span style={{color:C.text}}>eventi/NPC</span> },
-                { icon:"🧤",    body: <><span style={{color:"#88ccff"}}>guantaio</span> (l'unico che vende il <strong style={{color:C.bright}}>Guanto da BOSS</strong>, protezione per la boss-fight)</> },
-                { icon:"⛪ 👵 🙏", body: <span style={{color:C.dimMid}}>sacerdote, anziana, mendicante: possono aiutarti… o fregarti. Leggi sempre le scelte.</span> },
+                { icon:"🗡️",  body: <span style={{color:C.red}}>combattimenti</span> },
+                { icon:"🏪",  body: <><span style={{color:C.cyan}}>tabaccaio</span> (grattini & grattatori)</> },
+                { icon:"🏨",  body: <><span style={{color:C.magenta}}>locanda</span> (curi le unghie con €)</> },
+                { icon:"❓",  body: <span style={{color:C.text}}>eventi/NPC</span> },
+                { icon:"🧤",  body: <><span style={{color:"#88ccff"}}>guantaio</span> (l'unico che vende il <strong style={{color:C.bright}}>Guanto da BOSS</strong>, protezione per la boss-fight)</> },
+                { icon:"🙏",  body: <span style={{color:C.dimMid}}>sacerdote, anziana, mendicante: possono aiutarti… o fregarti. Leggi sempre le scelte.</span> },
               ].map((row, i) => (
                 <div key={i} style={{ display:"flex", gap:"8px", marginBottom: i < 5 ? "4px" : 0 }}>
-                  <span style={{flex:"0 0 42px"}}>{row.icon}</span>
+                  <span style={{flex:"0 0 22px", textAlign:"right"}}>{row.icon}</span>
                   <span style={{flex:1}}>{row.body}</span>
                 </div>
               ))}
