@@ -1247,7 +1247,12 @@ export default function Grattini() {
 
       {/* ═══ INTRO SCRATCH (scratch 2 starting cards, pocket 1 prize) ═══ */}
       {screen === "introScratch" && player && (
-        <div style={{width:"100%", maxWidth:W.content, padding:"8px", display:"flex", flexDirection:"column", gap:"10px", height:"100%", minHeight:0, overflow:"hidden"}}>
+        // justifyContent:"center" — prima il dialogo di Nonno Carmelo (unico
+        // figlio che cresceva, flex:1) si allungava a riempire tutta l'altezza
+        // disponibile pur avendo solo 3 righe di testo. Ora il box ha
+        // un'altezza propria e l'intero blocco (dialogo + biglietti) si centra
+        // nello spazio verticale invece di lasciare il vuoto dentro il box.
+        <div style={{width:"100%", maxWidth:W.content, padding:"8px", display:"flex", flexDirection:"column", justifyContent:"center", gap:"10px", height:"100%", minHeight:0, overflow:"hidden"}}>
 
           {/* NPC Dialogue Log */}
           <CarmeloLogBox
@@ -1705,7 +1710,9 @@ export default function Grattini() {
         );
 
         return (
-        <div style={{maxWidth:"760px", width:"100%", margin:"10px auto"}}>
+        // 760px era un quarto valore diverso (Shop/Combat/Event/Locanda usano
+        // tutti W.content, 1280px) per lo stesso tipo di schermata "hub".
+        <div style={{maxWidth:W.content, width:"100%", margin:"10px auto"}}>
 
           {/* ═══ BOSS ENTRY WARNING ═══ */}
           {isBoss && (() => {
@@ -2174,14 +2181,21 @@ export default function Grattini() {
       )}
 
       {/* ═══ LOCANDA ═══ */}
+      {/* Stesso pattern flex-start + fiancata ZAINO di Shop/Event/Combat:
+          coerenza su tutte le schermate "hub" con la sidebar UNGHIE a fianco. */}
       {screen === "locanda" && player && (
-        <div style={{maxWidth:W.content, width:"100%"}}>
+        <div style={{width:"100%", display:"flex", justifyContent: wideDesk ? "flex-start" : "center", gap: wideDesk ? "14px" : "0"}}>
           <Suspense fallback={<LazyFallback />}>
-          <LocandaView
-            player={player}
-            onRest={handleRest}
-            onLeave={() => setScreen("map")}
-          />
+          <div style={{maxWidth:W.content, width:"100%"}}>
+            <LocandaView
+              player={player}
+              onRest={handleRest}
+              onLeave={() => setScreen("map")}
+            />
+          </div>
+          {wideDesk && (
+            <ShopZainoRail player={player} onEquipGrattatore={handleRailEquipGrattatore} onUseItem={useItem} />
+          )}
           </Suspense>
         </div>
       )}
@@ -2193,13 +2207,20 @@ export default function Grattini() {
            prima solo il negozio faceva così, evento e combattimento restavano
            centrati "a isola" con più spazio morto ai lati. */}
       {screen === "event" && player && currentNode && (
-        <div style={{width:"100%", display:"flex", justifyContent: wideDesk ? "flex-start" : "center"}}>
+        <div style={{width:"100%", display:"flex", justifyContent: wideDesk ? "flex-start" : "center", gap: wideDesk ? "14px" : "0"}}>
           <Suspense fallback={<LazyFallback />}>
           <EventView
             node={currentNode}
             player={player}
             onChoice={handleEventChoice}
           />
+          {/* Aganciando il pannello alla sidebar (vedi sopra) resta spazio vuoto
+              a destra su schermo largo — stessa fiancata ZAINO già usata nel
+              negozio, richiesta esplicitamente anche qui. ShopZainoRail è un
+              lazy import: deve restare dentro lo stesso Suspense di EventView. */}
+          {wideDesk && (
+            <ShopZainoRail player={player} onEquipGrattatore={handleRailEquipGrattatore} onUseItem={useItem} />
+          )}
           </Suspense>
         </div>
       )}
@@ -2285,6 +2306,11 @@ export default function Grattini() {
           />
           </Suspense>
         </div>
+        {/* Stessa fiancata ZAINO del negozio/evento — a schermo largo il
+            duello (maxWidth W.content) lascia spazio a destra della sidebar. */}
+        {wideDesk && (
+          <ShopZainoRail player={player} onEquipGrattatore={handleRailEquipGrattatore} onUseItem={useItem} />
+        )}
         </div>
       )}
 

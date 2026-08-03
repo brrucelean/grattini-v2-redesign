@@ -74,7 +74,13 @@ export function CarmeloLogBox({ npc, name, color, messages, footer, height="170p
       border:`2px solid ${color}66`,
       boxShadow:`0 0 30px ${color}22, inset 0 0 60px ${color}08`,
       background:"#04040e", animation:"dialogueIn 0.3s ease-out",
-      flex:"1 1 auto", minHeight:height, minWidth:0,
+      // Prima era flex:"1 1 auto" (cresceva a riempire tutto lo spazio verticale
+      // che il genitore concedeva): su schermo alto il testo restava 3 righe in
+      // cima a un box che continuava fino in fondo, un vuoto enorme e inutile
+      // sotto. Ora il box è alto esattamente `height` (contenuto + un minimo
+      // ragionevole), non di più — lo spazio in eccesso lo gestisce il genitore
+      // (introScratch lo centra verticalmente invece di scaricarlo qui dentro).
+      flex:"0 0 auto", height:height, minWidth:0,
       position:"relative", overflow:"hidden",
     }}>
       <CornerBrackets color={color} size={13} inset={-3} thickness={2} glow />
