@@ -566,8 +566,12 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
       onDone({ win: !cancelled && winPrize > 0, prize: cancelled ? 0 : winPrize, message: msg, cellsScratched: scratched });
     } else {
       let malusPrize = 0;
+      // "Sei andato oltre 13" era corretto solo per sum13 (Tredici): su Sette e
+      // Mezzo (soglia 7.5, "sballare") lo stesso testo veniva mostrato anche
+      // dopo uno sballo a somma 8 o 9 — sembrava un bug perché il numero non
+      // tornava con quello visto sullo schermo.
       let msg = card.mechanic === "doppioOnulla" ? "🎲 DOPPIO O NULLA: Hai perso! ❌ €0." :
-        busted ? "💥 BUST! Sei andato oltre 13!" :
+        busted ? (card.mechanic === "setteemezzo" ? "💥 SBALLATO! Hai superato 7.5!" : "💥 BUST! Sei andato oltre 13!") :
         hitStop ? "🛑 STOP! Hai perso l'accumulato." :
         scratched >= totalCells ? "Niente… prossima volta!" : "Hai abbandonato il gratta.";
       const hasBullone = equippedGrattatore?.effect === "ignoreMalus";
