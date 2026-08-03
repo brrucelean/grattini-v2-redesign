@@ -2180,22 +2180,17 @@ export default function Grattini() {
         </div>
       )}
 
-      {/* ═══ LOCANDA ═══ */}
-      {/* Stesso pattern flex-start + fiancata ZAINO di Shop/Event/Combat:
-          coerenza su tutte le schermate "hub" con la sidebar UNGHIE a fianco. */}
+      {/* ═══ LOCANDA ═══
+          Resta centrata (non flex-start): richiesto esplicitamente
+          dall'utente dopo un tentativo di allinearla come Shop/Event/Combat. */}
       {screen === "locanda" && player && (
-        <div style={{width:"100%", display:"flex", justifyContent: wideDesk ? "flex-start" : "center", gap: wideDesk ? "14px" : "0"}}>
+        <div style={{maxWidth:W.content, width:"100%"}}>
           <Suspense fallback={<LazyFallback />}>
-          <div style={{maxWidth:W.content, width:"100%"}}>
-            <LocandaView
-              player={player}
-              onRest={handleRest}
-              onLeave={() => setScreen("map")}
-            />
-          </div>
-          {wideDesk && (
-            <ShopZainoRail player={player} onEquipGrattatore={handleRailEquipGrattatore} onUseItem={useItem} />
-          )}
+          <LocandaView
+            player={player}
+            onRest={handleRest}
+            onLeave={() => setScreen("map")}
+          />
           </Suspense>
         </div>
       )}
