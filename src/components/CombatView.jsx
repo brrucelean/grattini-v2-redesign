@@ -462,6 +462,11 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
   // ── Deal: inizio turno, pesca 9 carte (griglia 3x3) + prepara il piano nemico ──
   // Come l'originale: gratti 3 delle 9 carte; quelle 3 sono le mosse giocate.
   const dealTurn = () => {
+    // Lo scudo nemico vale per il turno in cui viene giocato. Accumulandosi da un
+    // turno all'altro (+16/+26 a carta DIFESA) i duelli coi boss andavano in
+    // stallo: il Romanaccio arrivava a 83 di scudo al turno 17 e dal boss non si
+    // può scappare, quindi la run restava bloccata.
+    shieldRef.current = 0; setEnemyShield(0);
     setHand(generateCombatHand(9));
     playedRef.current = [];
     setRevealedIdxs([]);

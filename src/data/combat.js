@@ -201,7 +201,7 @@ export const ENEMY_COMBAT_POOLS = {
 // ─── V2 DUELLO HP: statistiche nemico ────────────────────────
 // Il combat non è più "gara a chi fa più soldi": è un duello a HP.
 // Il player usa le unghie come vita; il nemico ha una barra HP (rossa)
-// + uno scudo (blu) che accumula quando gioca carte DIFESA.
+// + uno scudo (blu) che sale quando gioca carte DIFESA e si azzera a ogni turno.
 // I valori sono un punto di partenza da tarare (balance pass successivo).
 // BALANCE PASS (audit 2026-07): il danno del player era troppo alto rispetto
 // agli HP → i nemici morivano al turno 1 e la FURIA (turno 3) non scattava mai.
