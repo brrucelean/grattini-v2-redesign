@@ -254,6 +254,18 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, gra
     return "Hai abbandonato il gratta.";
   };
 
+  // La Ruota a rulli fermi: tris = premio, coppia = consolazione, altrimenti niente
+  const resolveRuota = (newCells) => {
+    const [a, b, c] = newCells.map(cell => cell.symbol);
+    if (a === b && b === c) { declareWin(card.prize, a); AudioEngine.win(); }
+    else if (card.prize > 0 && (a === b || b === c || a === c)) {
+      // Quasi-vincita: consolazione (card.prize = costo × 1.3, vedi card.js)
+      setNearWin(true);
+      AudioEngine.lose();
+      setTimeout(() => { setNearWin(false); declareWin(card.prize); AudioEngine.win(); }, 1200);
+    } else stopWithLoss();
+  };
+
   // Reliquia Occhio di Tigre: il primo danno da trappola è assorbito gratis.
   const shieldTraps = (count) => {
     if (count === 0 || firstHitUsed.current || !relicEffects.includes("firstHitShield")) return count;
@@ -282,8 +294,15 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, gra
       const newCells = [...cells];
       newCells[idx] = {...newCells[idx], scratched: true};
       setCells(newCells);
-      setScratched(s => s + 1);
+      setScratched(scratched + 1);
       onItemFound?.(cells[idx].itemId);
+      // Se l'oggetto era l'ultima cella la carta va chiusa comunque: prima
+      // restava aperta per sempre (niente esito, spazio inerte, solo
+      // "Abbandona" con il malus).
+      if (scratched + 1 >= totalCells && !winFound) {
+        if (card.mechanic === "ruota") resolveRuota(newCells);
+        else stopWithLoss();
+      }
       return;
     }
 
@@ -349,14 +368,7 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, gra
     if (card.mechanic === "ruota") {
       AudioEngine.scratch();
       if (newScratched >= totalCells) {
-        const [a, b, c] = newCells.map(cell => cell.symbol);
-        if (a === b && b === c) { declareWin(card.prize, a); AudioEngine.win(); }
-        else if (a === b || b === c || a === c) {
-          // Quasi-vincita: consolazione (card.prize = costo × 1.3, vedi card.js)
-          setNearWin(true);
-          AudioEngine.lose();
-          setTimeout(() => { setNearWin(false); declareWin(card.prize); AudioEngine.win(); }, 1200);
-        } else stopWithLoss();
+        resolveRuota(newCells);
       } else if (newScratched === 2) {
         const [first, second] = newCells.filter(c => c.scratched);
         if (first.symbol === second.symbol) setNearWin(true);
