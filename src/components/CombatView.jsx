@@ -380,7 +380,7 @@ function TimingBar({ mode = "attack", speed = 1.5, onResult, perfectWiden = 0 })
 
 
 // ─── COMBAT COMPONENT — DUELLO HP ────────────────────────────
-export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onCellScratch, onGrattatoreConsumed, playerWallet = 0, onCombo, onVariantRevealed }) {
+export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onCellScratch, onGrattatoreConsumed, onCombo, onVariantRevealed }) {
   // Nome mostrato all'utente: usa il flavor (displayName) se presente, altrimenti
   // la specie. Le lookup stats/pool/sprite restano su enemy.name (la specie).
   const enemyLabel = enemy.displayName || enemy.name;
@@ -388,10 +388,13 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
   // la grattata quando è morta e avvisare di sceglierne una sana.
   const activeNailState = player.nails?.[player.activeNail]?.state ?? "sana";
   const [deadNailWarn, setDeadNailWarn] = useState(false);
+  // Timer in un ref: come proprietà della funzione (ricreata a ogni render)
+  // il clearTimeout non trovava mai il timer precedente.
+  const deadNailTimer = useRef(null);
   const warnDeadNail = () => {
     setDeadNailWarn(true);
-    clearTimeout(warnDeadNail._t);
-    warnDeadNail._t = setTimeout(() => setDeadNailWarn(false), 2000);
+    clearTimeout(deadNailTimer.current);
+    deadNailTimer.current = setTimeout(() => setDeadNailWarn(false), 2000);
   };
   const grEffect = player.equippedGrattatore?.effect;
   const guaranteedParryLeftRef = useRef(grEffect === "guaranteedParry"); // 1 sola volta a fight
@@ -438,6 +441,13 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
   const logScrollRef = useRef(null);
   const dead = useRef(false);
 
+  // Sconfitta = 0 unghie vive, coerente col parent (che va in gameOver).
+  // Le unghie arrivano aggiornate dal parent DOPO onNailDamage: il vecchio
+  // checkDefeat() leggeva le props del render precedente e non vedeva mai
+  // il colpo appena subito.
+  const aliveNails = player.nails.filter(n => n.state !== "morta").length;
+  useEffect(() => { if (aliveNails <= 0) dead.current = true; }, [aliveNails]);
+
   // Refs per applicazione LIVE degli effetti (accumulo sincrono, poi mirror in state)
   const hpRef = useRef(stats.hp);
   const shieldRef = useRef(0);
@@ -467,7 +477,7 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
 
   // ── Reveal di una carta = uno SCAMBIO: player agisce, poi il nemico risponde ──
   const onCellRevealed = (idx) => {
-    if (phase !== "player" || resolvingRef.current) return;
+    if (phase !== "player" || resolvingRef.current || dead.current || hpRef.current <= 0) return;
     if (playedRef.current.includes(idx) || playedRef.current.length >= 3) return;
     const exchangeIdx = playedRef.current.length; // 0,1,2
     const isLast = exchangeIdx >= 2;
@@ -646,7 +656,6 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
         triggerShake("light"); // anche il colpo attutito si sente addosso
         spawnFloater("−1", C.orange, "player");
         pushLog(`${enemyLabel} 🗡 ${c.name}: parata parziale — 1 danno`, C.gold);
-        checkDefeat();
       }
       return;
     }
@@ -669,20 +678,15 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
       triggerShake(baseSteps >= 2 ? "heavy" : "light");
       spawnFloater(`−${baseSteps}💢`, C.red, "player", true);
       pushLog(`${enemyLabel} 🗡 ${c.name}: COLPITO! ${baseSteps} danno alle unghie`, C.red);
-      checkDefeat();
     }
   };
 
-  const checkDefeat = () => {
-    // Sconfitta = 0 unghie vive, coerente col parent (scratchlite onNailDamage →
-    // gameOver quando !isAlive). Prima usava <= 1: se restavi con 1 unghia,
-    // CombatView si fermava in turnEnd ma il parent non andava in gameOver →
-    // softlock (il bottone PROSSIMO TURNO non faceva nulla).
-    const aliveNow = player.nails.filter(n => n.state !== "morta").length;
-    if (aliveNow <= 0) dead.current = true;
-  };
-
   const finishExchange = (exchangeIdx, isLast) => {
+    // Nemico già al tappeto (contrattacco della parata perfetta): la vittoria è
+    // in arrivo. Prima lo scambio proseguiva: si potevano grattare altre carte,
+    // le carte nemico extra colpivano ancora e col Guanto di Ferro il turnEnd
+    // arrivava dopo la vittoria e la sovrascriveva.
+    if (hpRef.current <= 0) return;
     if (dead.current) { setPhase("turnEnd"); return; }
     if (isLast) {
       // Carte nemico extra (es. 4a del Napoletano) si risolvono senza parata

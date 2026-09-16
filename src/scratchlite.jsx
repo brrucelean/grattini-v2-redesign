@@ -293,6 +293,14 @@ export default function Grattini() {
     if (!isAlive(player.nails)) setScreen("gameOver");
   }, [player?.nails, screen, scratchingCard]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Ultima unghia persa in combattimento: game over dopo un attimo, il tempo di
+  // vedere il colpo (prima il timer partiva dentro l'updater di setPlayer).
+  useEffect(() => {
+    if (screen !== "combat" || !player || isAlive(player.nails)) return;
+    const t = setTimeout(() => setScreen("gameOver"), 800);
+    return () => clearTimeout(t);
+  }, [player?.nails, screen]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ─── HELPER: consumeGrattatore ────────────────────────────
   const consumeGrattatore = useCallback(() => {
     updatePlayer(p => {
@@ -2278,7 +2286,6 @@ export default function Grattini() {
             onEnd={handleCombatEnd}
             onCellScratch={handleCombatCellScratch}
             onGrattatoreConsumed={consumeGrattatoreUse}
-            playerWallet={player.money}
             onCombo={() => { unlockAchievement("combo_master"); setGameStats(s => ({...s, combosFired: (s.combosFired || 0) + 1})); }}
             onVariantRevealed={(variantId) => {
               if (!vintageCollected.includes(variantId)) {
@@ -2288,35 +2295,21 @@ export default function Grattini() {
               }
             }}
             onNailHeal={(count) => updatePlayer(p => ({ ...p, nails: healDamagedNails(p.nails, count) }))}
-            onNailDamage={(count, onExplosiva) => {
+            onNailDamage={(count) => {
               updatePlayer(p => {
                 // Guanto da BOSS (bossShield/guantoBossActive): protegge TUTTE le
                 // dita per l'intera boss-fight, come promette la descrizione.
                 // Attivo SOLO contro il boss (si sgretola a fine fight in handleCombatEnd).
                 if (combatEnemy?.isBoss && (p.equippedGrattatore?.effect === "bossShield" || p.guantoBossActive)) return p;
                 const nails = [...p.nails];
-                let explosivaBonus = 0;
                 // noCombatDegradeMeta (Unghia d'Acciaio): non più immunità totale
                 // (rendeva il duello a HP impossibile da perdere) — assorbe 1 step
                 // per colpo. I colpi leggeri (1) vengono annullati, i pesanti/FURIA passano ridotti.
                 const effCount = p.noCombatDegradeMeta ? Math.max(0, count - 1) : count;
                 for (let d = 0; d < effCount; d++) {
                   const alive = nails.findIndex(n => n.state !== "morta");
-                  if (alive >= 0) {
-                    // Check esplosiva PRIMA di degradare (per verificare se muore)
-                    const hadEsplosiva = nails[alive].implant === "esplosiva";
-                    nails[alive] = degradeNailObj(nails[alive], 1);
-                    if (hadEsplosiva && nails[alive].state === "morta") {
-                      explosivaBonus += 60;
-                      addLog("💥 Unghia Esplosiva esplode! -€60 al nemico!", C.orange);
-                    }
-                  }
+                  if (alive >= 0) nails[alive] = degradeNailObj(nails[alive], 1);
                 }
-                // GAY OVER immediato se tutte le unghie sono morte durante il combattimento
-                if (!isAlive(nails)) {
-                  setTimeout(() => setScreen("gameOver"), 800);
-                }
-                if (explosivaBonus > 0 && onExplosiva) onExplosiva(explosivaBonus);
                 return {...p, nails};
               });
             }}
