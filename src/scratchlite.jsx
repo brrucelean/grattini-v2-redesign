@@ -315,7 +315,7 @@ export default function Grattini() {
   });
 
   // ─── HOOK: useScratchHandlers ───
-  const { doppioONulla, setDoppioONulla, handleScratchDone, handleDoppioDecline, handleDoppioResult } = useScratchHandlers({
+  const { doppioONulla, handleScratchDone, handleDoppioDecline, handleDoppioResult } = useScratchHandlers({
     player, scratchingCard, returnScreen, currentNode, currentRow, currentBiome,
     updatePlayer, addLog, triggerNpcComment, consumeGrattatore, unlockAchievement,
     setGameStats, setScratchingCard, setReturnScreen, setCardSelectMode, setSelectedCardIdx,
@@ -667,7 +667,6 @@ export default function Grattini() {
                 card={scratchingCard}
                 nailState={getActiveNailState()}
                 nailImplant={player.nails[player.activeNail]?.implant || null}
-                fortune={effectiveFortune}
                 grattaMania={player.grattaMania}
                 equippedGrattatore={player.equippedGrattatore}
                 relicEffects={playerRelicEffects}
@@ -1415,6 +1414,7 @@ export default function Grattini() {
           <Suspense fallback={<LazyFallback />}>
           <DoppioONullaView
             prize={doppioONulla.prize}
+            winChance={playerRelicEffects.includes("riggedDice") ? 0.65 : 0.5}
             onDecline={handleDoppioDecline}
             onResult={handleDoppioResult}
           />

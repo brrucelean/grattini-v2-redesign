@@ -7,7 +7,7 @@
 //   &zoom=1.8          ingrandisce solo la resa, per ispezionare i dettagli
 //   &edit=1            editor visuale: trascini i riquadri e salvi su disco
 //   #puzzle / #puzzle@2  cambia carta e zoom via hash (pilotabile da console)
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { C, FONT } from "../data/theme.js";
 import { CARD_TYPES } from "../data/cards.js";
 import { generateCard } from "../utils/card.js";
@@ -20,7 +20,9 @@ export function TicketGallery({ initialId }) {
   const start = ids.includes(hashId) ? hashId : ids.includes(initialId) ? initialId : ids[0];
   const [id, setId] = useState(start);
   const [seed, setSeed] = useState(0);
-  const card = generateCard(id);
+  // Una carta per id+seed: rigenerarla a ogni render (resize, zoom, editor)
+  // azzerava le celle mentre si grattava.
+  const card = useMemo(() => generateCard(id), [id, seed]);
   // ?zoom=N ingrandisce solo la resa (il layout resta quello reale) per ispezione.
   const [zoom, setZoom] = useState(
     Number(new URLSearchParams(window.location.search).get("zoom")) || 1
@@ -73,8 +75,7 @@ export function TicketGallery({ initialId }) {
       key={id + seed}
       card={card}
       nailState="sana"
-      fortune={0}
-      grattaMania={0}
+      grattaMania={false}
       equippedGrattatore={null}
       onCellScratch={() => {}}
       onDone={() => setSeed(s => s + 1)}

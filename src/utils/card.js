@@ -164,6 +164,7 @@ export function generateCard(typeId, fortune=0, relicBonus=0, forceWin=false) {
   const rollPrize = () => Math.max(type.cost, Math.round(pMin + rng() * (pMax - pMin)));
   let cells = [];
   let prize = 0;
+  let extra = {};
 
   // ── setteemezzo mechanic ─────────────────────────────────────
   if (type.mechanic === "setteemezzo") {
@@ -237,10 +238,13 @@ export function generateCard(typeId, fortune=0, relicBonus=0, forceWin=false) {
 
   // ── doppioOnulla mechanic ─────────────────────────────────
   } else if (type.mechanic === "doppioOnulla") {
-    const win = isWinner;
-    cells = [{ symbol: win ? "✅" : "❌", scratched: false, isDoppioWin: win }];
+    cells = [{ symbol: isWinner ? "✅" : "❌", scratched: false, isDoppioWin: isWinner }];
     // Payout calibrato via CARD_BALANCE — niente maxPrize hard-coded a €200.
-    prize = win ? rollPrize() : 0;
+    // Il premio in palio (tetto del raddoppio) esiste anche sulle perdenti:
+    // mostrarlo prima di grattare non deve tradire l'esito.
+    const doppioStake = rollPrize();
+    prize = isWinner ? doppioStake : 0;
+    extra = { doppioStake };
 
   // ── match / jolly / trap mechanics ──────────────────────────
   } else {
@@ -325,5 +329,5 @@ export function generateCard(typeId, fortune=0, relicBonus=0, forceWin=false) {
     if (available.length > 1) cells[pick(available)] = { symbol: itemEmoji, scratched: false, isItem: true, itemId };
   }
 
-  return { ...type, isWinner, prize, cells, symbols: cells.map(c => c.symbol), scratchCount: 0 };
+  return { ...type, ...extra, isWinner, prize, cells, symbols: cells.map(c => c.symbol), scratchCount: 0 };
 }

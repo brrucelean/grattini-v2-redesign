@@ -6,7 +6,8 @@ import { CornerBrackets } from "./Vintage.jsx";
 import { ANIM } from "../styles/animations.js";
 
 // ─── DOPPIO O NULLA COMPONENT ──────────────────────────────────
-export function DoppioONullaView({ prize, onDecline, onResult }) {
+// winChance: 50% di base, 65% con la reliquia Dado Truccato.
+export function DoppioONullaView({ prize, winChance = 0.5, onDecline, onResult }) {
   const [revealed, setRevealed] = useState(false);
   const [won, setWon] = useState(null);
   const [scratching, setScratching] = useState(false);
@@ -15,8 +16,9 @@ export function DoppioONullaView({ prize, onDecline, onResult }) {
   const ctxRef = useRef(null);
   const isDrawing = useRef(false);
 
-  // Determine outcome on mount (50/50)
-  const outcomeRef = useRef(Math.random() < 0.5);
+  // Esito deciso al montaggio
+  const outcomeRef = useRef(Math.random() < winChance);
+  const oddsPct = Math.round(winChance * 100);
 
   // Setup canvas
   useEffect(() => {
@@ -144,7 +146,7 @@ export function DoppioONullaView({ prize, onDecline, onResult }) {
           padding: "2px 10px",
           boxShadow: `0 0 8px ${accent}aa`,
         }}>
-          ≋ EVENTO CASUALE · ODDS 50/50 ≋
+          ≋ EVENTO CASUALE · ODDS {oddsPct}/{100 - oddsPct} ≋
         </div>
       </div>
 

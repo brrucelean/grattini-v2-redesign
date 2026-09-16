@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { C, FONT } from "../data/theme.js";
 import { NAIL_INFO } from "../data/nails.js";
 import { ITEM_DEFS, GRATTATORE_DEFS } from "../data/items.js";
-import { SYMBOLS, CARD_SYMBOLS } from "../data/cards.js";
+import { CARD_SYMBOLS } from "../data/cards.js";
 import { AudioEngine } from "../audio.js";
 import { roll, pick, shuffle } from "../utils/random.js";
 import { S } from "../utils/styles.js";
@@ -13,9 +13,27 @@ import { ticketLayout, inset } from "../data/ticketLayout.js";
 import { TicketHeader } from "./TicketHeader.jsx";
 import { ANIM } from "../styles/animations.js";
 
+const RUOTA_SYMS = CARD_SYMBOLS.ruota;
+const CANCELLED_MSG = "💀 VINCITA ANNULLATA! L'unghia ha rovinato il biglietto.";
+// Meccaniche che non si vincono accoppiando simboli (niente checkWin né "Gratta tutto")
+const NO_MATCH_MECHANICS = new Set(["sum13", "collect", "setteemezzo", "ruota", "doppioOnulla"]);
+// Solo qui la Chiave d'Ottone rivela celle: altrove (somme, accumulo) una cella
+// segnata come grattata senza passare da doScratch andrebbe semplicemente persa.
+const REVEAL_MECHANICS = new Set(["match", "jolly", "trap"]);
+// Moltiplicatore del premio per impianto: Macellaio/Anziana = vincita garantita
+// al moltiplicatore, Chirurgo = slot fissi. Unghia Sacra ×3 (Beta 5 nerf: era ×5).
+const IMPLANT_PRIZE_MULT = {
+  plastica: 0.5, ferro: 1.0, oro: 1.5,
+  neonato: 0.5, marcione: 0.5, baddie: 1.0,
+  sacra: 3.0,
+};
+
 // ─── SCRATCH CARD COMPONENT (per-cell nail damage + early stop) ───
-export function ScratchCardView({ card, onDone, nailState, nailImplant=null, fortune, grattaMania, equippedGrattatore, onCellScratch, onNailDamage=null, onItemFound=null, showFirstWarning, ambidestri=false, onCardActivate=null, lastWonPrize=0, extraTiles=[], onExtraTileUsed=null, relicEffects=[], onAdviceShown=null, layoutOverride=null }) {
-  const cardId = useRef(card.name + card.prize + card.symbols?.join(""));
+export function ScratchCardView({ card, onDone, nailState, nailImplant=null, grattaMania, equippedGrattatore, onCellScratch, onNailDamage=null, onItemFound=null, showFirstWarning, ambidestri=false, onCardActivate=null, lastWonPrize=0, extraTiles=[], onExtraTileUsed=null, relicEffects=[], onAdviceShown=null, layoutOverride=null }) {
+  // null, non l'id della carta montata: la vista si monta a ogni grattino, e con
+  // l'id già impostato l'effetto di preparazione qui sotto non partiva mai
+  // (Malocchio, Chiave d'Ottone e maledizione del Maledetto non si attivavano).
+  const cardId = useRef(null);
   const [cells, setCells] = useState(card.cells.map(c => ({...c})));
   const [scratched, setScratched] = useState(0);
   const [finished, setFinished] = useState(false);
@@ -30,10 +48,11 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
   const [cancelled, setCancelled] = useState(false);
   const [nailAdviceDismissed, setNailAdviceDismissed] = useState(false);
   const [deadNailWarn, setDeadNailWarn] = useState(false);
+  const deadNailTimer = useRef(null);
   const warnDeadNail = () => {
     setDeadNailWarn(true);
-    clearTimeout(warnDeadNail._t);
-    warnDeadNail._t = setTimeout(() => setDeadNailWarn(false), 2000);
+    clearTimeout(deadNailTimer.current);
+    deadNailTimer.current = setTimeout(() => setDeadNailWarn(false), 2000);
   };
   const scratchedWhileMarcia = useRef(false);
   // Celle "sporcate di sangue" — set di indici grattati con unghia marcia/sanguinante.
@@ -51,9 +70,21 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
   const [revealMsg, setRevealMsg] = useState(null); // "🔑 2 celle rivelate!" or "💿 x2!"
   const [nearWin, setNearWin] = useState(false); // quasi-vincita: 1 symbol away from winning
   const winBoxRef = useRef(null); // ref per scroll-into-view al momento della vincita
+  // Premio "nominale" della vincita in sospeso, prima dei moltiplicatori: serve a
+  // ricalcolarla se l'unghia cambia stato mentre si continua a grattare.
+  const winBaseRef = useRef(0);
+  // Carta chiusa: sballo / STOP / nessuna vincita, oppure vincita già decisa su
+  // una carta a somma o accumulo (continuare potrebbe solo farla perdere).
+  const locked = finished || showNoWin || busted || hitStop
+    || (winFound && NO_MATCH_MECHANICS.has(card.mechanic));
+  // Doppio o Nulla (carta): raddoppia l'ultimo premio, ma mai oltre il premio
+  // in palio sul biglietto (CARD_BALANCE). Senza tetto una vincita da €1400
+  // trasformava ogni carta da €20 in €2800, e ogni raddoppio alimentava il
+  // successivo. Senza un premio precedente vale il premio in palio.
+  const doppioStake = card.doppioStake ?? card.prize;
+  const doppioPrize = lastWonPrize > 0 ? Math.min(lastWonPrize * 2, doppioStake) : doppioStake;
 
   // ── La Ruota: rulli in spin prima del click ──────────────────
-  const RUOTA_SYMS = CARD_SYMBOLS.ruota;
   const [reelSpinSyms, setReelSpinSyms] = useState(() =>
     card.mechanic === "ruota"
       ? [pick(RUOTA_SYMS), pick(RUOTA_SYMS), pick(RUOTA_SYMS)]
@@ -76,6 +107,7 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
   scratchSpaceRef.current = () => {
     if (finished) return;
     if (winFound) { handleFinish(true); return; }
+    if (showNoWin) { handleFinish(false); return; }
     const nextIdx = cells.findIndex(c => !c.scratched);
     if (nextIdx >= 0) doScratch(nextIdx);
   };
@@ -87,13 +119,8 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
 
   // Ricalcola winPrize live se nailState cambia mentre c'è una vincita in sospeso
   useEffect(() => {
-    if (winFound && !finished && card.mechanic !== "setteemezzo" && card.mechanic !== "collect" && card.mechanic !== "doppioOnulla") {
-      const { prize, fullPrize, cancelled: c } = calcPrize();
-      setWinPrize(prize);
-      setWinPrizeFull(fullPrize);
-      setCancelled(c);
-    }
-  }, [nailState, winFound, finished]);
+    if (winFound && !finished) declareWin(winBaseRef.current, winSymbol);
+  }, [nailState]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Scrolla la win box in vista quando compare (carte alte come Puzzle la spingono fuori viewport)
   useEffect(() => {
@@ -113,9 +140,10 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
       if (relicEffects.includes("trapToJolly")) {
         newCells.forEach((c, i) => { if (c.isTrap) newCells[i] = {...c, isTrap: false, isJolly: true, symbol: "✨"}; });
       }
-      // Chiave d'Ottone: reveal 2 cells on Puzzle/high-tier cards
-      if (equippedGrattatore?.effect === "revealPath" && card.tier >= 3) {
-        const hidden = newCells.map((c,i) => ({c,i})).filter(x => !x.c.scratched);
+      // Chiave d'Ottone: rivela 2 celle-simbolo sui grattini tier 3+ (mai un
+      // oggetto nascosto: segnato come grattato senza doScratch andrebbe perso)
+      if (equippedGrattatore?.effect === "revealPath" && card.tier >= 3 && REVEAL_MECHANICS.has(card.mechanic)) {
+        const hidden = newCells.map((c,i) => ({c,i})).filter(x => !x.c.scratched && !x.c.isItem);
         const toReveal = shuffle(hidden).slice(0, 2);
         toReveal.forEach(x => { newCells[x.i] = {...newCells[x.i], scratched: true}; });
         if (toReveal.length > 0) {
@@ -136,11 +164,11 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
       runningSumRef.current = 0; setRunningSum(0); setBusted(false);
       collectedRef.current = 0; setCollected(0); setHitStop(false); setShowNoWin(false);
     }
-  }, [card]);
+  }, [card]); // eslint-disable-line react-hooks/exhaustive-deps -- una volta per carta
 
   // Check for winning combo among revealed cells
   const checkWin = (newCells) => {
-    if (card.mechanic === "sum13" || card.mechanic === "collect" || card.mechanic === "setteemezzo" || card.mechanic === "ruota" || card.mechanic === "doppioOnulla") return null;
+    if (NO_MATCH_MECHANICS.has(card.mechanic)) return null;
     const counts = {};
     newCells.filter(c => c.scratched && !c.isTrap && !c.isItem && !c.isJolly && !c.isStop).forEach(c => {
       counts[c.symbol] = (counts[c.symbol] || 0) + 1;
@@ -152,26 +180,9 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
     return null;
   };
 
-  // Apply grattatore multiplier to a raw prize
-  const applyGrattatoreBonus = (raw) => {
-    let p = raw;
-    if (equippedGrattatore) {
-      if (equippedGrattatore.effect === "doublePrize") p *= 2;
-      if (equippedGrattatore.effect === "quadPrize") p *= 4;
-      if (equippedGrattatore.effect === "x5teleport") p *= 5;
-      if (equippedGrattatore.effect === "bonusChance") p = Math.round(p * (1 + (equippedGrattatore.value || 0.1)));
-    }
-    if (grattaMania) p *= 2;
-    return Math.round(p);
-  };
-
-  // Moltiplicatore-unghia per lo stato corrente. Unica fonte di verità: prima
-  // calcPrize() lo calcolava correttamente (basato su NAIL_INFO, quindi valido
-  // per QUALSIASI stato — marcia, sanguinante, unghiaNera, kawaii, ecc.), ma
-  // gli incassi anticipati (setteemezzo "INCASSA LA VINCITA", collect "INCASSA
-  // ORA") lo reimplementavano da soli con `effMarcia ? 0.15 : 1` — percentuale
-  // sbagliata (0.15 invece di 0.25) e "sanguinante" ignorato del tutto: chi
-  // incassava prima con unghia sanguinante prendeva il 100% invece del 50%.
+  // Moltiplicatore-unghia per lo stato corrente (NAIL_INFO: vale per qualsiasi
+  // stato). Se l'unghia era marcia mentre grattavi e poi è guarita, la schedina
+  // resta "sporca": il 25% vale comunque (coerente con isDirty nell'UI).
   const getNailMult = (usingGrattatore) => {
     const effMarcia = !usingGrattatore && (nailState === "marcia" || scratchedWhileMarcia.current);
     const nailInfo = NAIL_INFO[nailState] || NAIL_INFO.sana;
@@ -179,54 +190,81 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
     return effMarcia ? Math.min(rawMult, 0.25) : rawMult;
   };
 
-  // Calculate prize with all modifiers
-  const calcPrize = () => {
-    let prize = card.prize;
-    let fullPrize = card.prize; // premio senza penalità marcia
-    // Cap piede: moltiplicatore x3 ma mai più di €500
-    if (nailState === "piede") prize = Math.min(prize, 500);
-    // Penalità unghia: mult basato sullo stato attuale dell'unghia.
-    // IMPORTANTE: se l'unghia era marcia mentre grattavi e poi è guarita,
-    // la schedina resta "sporca" — applichiamo comunque il 25% (coerente con isDirty nell'UI).
-    const usingGrattatore = !!equippedGrattatore;
+  // Moltiplicatori che valgono su QUALSIASI vincita: impianto, grattatore,
+  // GrattaMania, Maneki Neko. Prima gli incassi anticipati (Sette e Mezzo,
+  // Miliardario) ne applicavano solo una parte: con l'Unghia Sacra un incasso
+  // anticipato pagava ×1 invece di ×3, con la Plastica ×1 invece di ×0,5.
+  const boostPrize = (amount) => {
+    let p = amount * (IMPLANT_PRIZE_MULT[nailImplant] ?? 1);
+    switch (equippedGrattatore?.effect) {
+      case "doublePrize": p *= 2; break;
+      case "quadPrize":   p *= 4; break;
+      case "x5teleport":  p *= 5; break;
+      case "bonusChance": p *= 1 + (equippedGrattatore.value || 0.1); break;
+      default: break;
+    }
+    if (grattaMania) p *= 2;
+    if (relicEffects.includes("globalWinBoost")) p *= 1.10;
+    return Math.round(p);
+  };
+
+  // Premio effettivo (con l'unghia) e pieno (senza) a partire dal premio
+  // nominale. Una vincita vera non scende sotto €1 per arrotondamento.
+  const calcPrize = (base) => {
     const nailInfo = NAIL_INFO[nailState] || NAIL_INFO.sana;
-    const nailMult = getNailMult(usingGrattatore);
-    prize = Math.round(prize * nailMult);
-    // Implant prize multiplier
-    if (nailImplant) {
-      const implantMult = {
-        plastica: 0.5, ferro: 1.0, oro: 1.5,
-        // Macellaio (spec): vincite garantite, prezzo al moltiplicatore
-        neonato: 0.5, marcione: 0.5, baddie: 1.0,
-        // Anziana (spec): unghia sacra = x3 garantito, 1 uso (Beta 5 nerf: era x5)
-        sacra: 3.0,
-      }[nailImplant] ?? 1.0;
-      prize = Math.round(prize * implantMult);
-      fullPrize = Math.round(fullPrize * implantMult);
+    if (base <= 0 || (nailInfo.cancelChance > 0 && roll(nailInfo.cancelChance))) {
+      return { prize: 0, fullPrize: 0, cancelled: base > 0 };
     }
-    // Grattatore effects
-    if (equippedGrattatore) {
-      if (equippedGrattatore.effect === "doublePrize") { prize *= 2; fullPrize *= 2; }
-      if (equippedGrattatore.effect === "quadPrize") { prize *= 4; fullPrize *= 4; }
-      if (equippedGrattatore.effect === "x5teleport") { prize *= 5; fullPrize *= 5; }
-      if (equippedGrattatore.effect === "bonusChance") {
-        prize = Math.round(prize * (1 + (equippedGrattatore.value || 0.1)));
-        fullPrize = Math.round(fullPrize * (1 + (equippedGrattatore.value || 0.1)));
-      }
-    }
-    // GrattaMania doubles
-    if (grattaMania) { prize *= 2; fullPrize *= 2; }
-    // Reliquia Maneki Neko: +10% premio
-    if (relicEffects.includes("globalWinBoost")) { prize = Math.round(prize * 1.10); fullPrize = Math.round(fullPrize * 1.10); }
-    // Cancel check from bad nail
-    if (nailInfo.cancelChance > 0 && roll(nailInfo.cancelChance)) {
-      return { prize: 0, fullPrize: 0, cancelled: true };
-    }
-    return { prize, fullPrize, cancelled: false };
+    // Piede: moltiplicatore ×3 su un premio nominale di al massimo €500
+    const capped = nailState === "piede" ? Math.min(base, 500) : base;
+    const nailMult = getNailMult(!!equippedGrattatore);
+    return {
+      prize: Math.max(1, boostPrize(Math.round(capped * nailMult))),
+      fullPrize: Math.max(1, boostPrize(base)),
+      cancelled: false,
+    };
+  };
+
+  // Dichiara (o ricalcola) la vincita partendo dal premio nominale.
+  const declareWin = (base, symbol = null) => {
+    winBaseRef.current = base;
+    const { prize, fullPrize, cancelled: wc } = calcPrize(base);
+    setWinFound(true); setWinSymbol(symbol);
+    setWinPrize(prize); setWinPrizeFull(fullPrize); setCancelled(wc);
+  };
+
+  // Sconfitta a carta non finita (sballo, STOP, ❌) o carta finita senza
+  // vincita: resta a schermo col motivo e un OK. Prima sballo/STOP/❌ chiudevano
+  // la carta da soli dopo 700ms e il messaggio non arrivava mai al giocatore
+  // ("sette e mezzo dopo due grattate si chiude e bugga").
+  const stopWithLoss = () => {
+    AudioEngine.lose();
+    setNearWin(false);
+    setShowNoWin(true);
+  };
+
+  const lossReason = () => {
+    if (card.mechanic === "doppioOnulla") return "🎲 DOPPIO O NULLA: ❌ niente raddoppio.";
+    if (busted) return card.mechanic === "setteemezzo" ? "💥 SBALLATO! Hai superato 7½." : "💥 BUST! Sei andato oltre 13.";
+    if (hitStop) return "🛑 STOP! Hai perso l'accumulato.";
+    if (scratched >= totalCells) return "Niente… prossima volta!";
+    return "Hai abbandonato il gratta.";
+  };
+
+  // Reliquia Occhio di Tigre: il primo danno da trappola è assorbito gratis.
+  const shieldTraps = (count) => {
+    if (count === 0 || firstHitUsed.current || !relicEffects.includes("firstHitShield")) return count;
+    firstHitUsed.current = true;
+    setRevealMsg("🐯 Occhio di Tigre: danno assorbito!");
+    setTimeout(() => setRevealMsg(null), 1500);
+    return count - 1;
   };
 
   const doScratch = (idx) => {
-    if (cells[idx].scratched || finished) return;
+    if (cells[idx].scratched || locked) return;
+    // Stesso blocco delle celle (ScratchCell `blocked`), che però spazio e
+    // "Gratta tutto" scavalcavano: con l'unghia morta non si gratta.
+    if (nailState === "morta") { warnDeadNail(); return; }
     if (!equippedGrattatore && nailState === "marcia") scratchedWhileMarcia.current = true;
     // Macchia visiva: SOLO con unghia marcia (rosso) e senza grattatore.
     // Sanguinante (arancione) è uno stato "dolore" — fa male ma il premio resta
@@ -246,9 +284,9 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
       return;
     }
 
-    // Disco Rotto: scratch 2 cells at once (non su sum13)
+    // Disco Rotto: 2 celle per click (non su Tredici: la somma esatta va scelta)
     const indicesToScratch = [idx];
-    if (equippedGrattatore?.effect === "doubleCell" && card.mechanic !== "sum13") {
+    if (equippedGrattatore?.effect === "doubleCell" && card.mechanic !== "sum13" && card.mechanic !== "doppioOnulla") {
       const unscratched = cells.map((c,i) => ({c,i})).filter(x => !x.c.scratched && x.i !== idx && !x.c.isItem);
       if (unscratched.length > 0) {
         indicesToScratch.push(pick(unscratched).i);
@@ -262,108 +300,44 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
     setCells(newCells);
     const newScratched = scratched + indicesToScratch.length;
     setScratched(newScratched);
+    const revealedNow = indicesToScratch.map(i => newCells[i]);
 
-    // ── Trappola fuoco (boccaDrago) ──────────────────────────────
-    const hitTraps = indicesToScratch.filter(i => newCells[i].isTrap);
-    const hitNormal = indicesToScratch.filter(i => !newCells[i].isTrap);
-    let trapsToProcess = hitTraps.length;
-    // Reliquia Occhio di Tigre: primo danno assorbito gratis
-    if (relicEffects.includes("firstHitShield") && trapsToProcess > 0 && !firstHitUsed.current) {
-      trapsToProcess = Math.max(0, trapsToProcess - 1);
-      firstHitUsed.current = true;
-      setRevealMsg("🐯 Occhio di Tigre: danno assorbito!");
-      setTimeout(() => setRevealMsg(null), 1500);
-    }
-    for (let t = 0; t < trapsToProcess; t++) { onNailDamage?.(); AudioEngine.scratch(); }
-    hitNormal.forEach(() => onCellScratch(!!equippedGrattatore));
-    // After trap: still check win with non-trap cells
-    if (hitTraps.length > 0) {
-      const sym = checkWin(newCells);
-      if (sym && !winFound) {
-        const { prize: rawP, fullPrize: rawFP, cancelled: wc } = calcPrize();
-        const fallback = Math.max(card.cost, Math.round(card.cost + Math.random() * card.maxPrize * 0.15));
-        const prize = wc ? 0 : (rawP > 0 ? rawP : applyGrattatoreBonus(fallback));
-        const fullPrize = wc ? 0 : (rawFP > 0 ? rawFP : prize);
-        setWinFound(true); setWinSymbol(sym); setWinPrize(prize); setWinPrizeFull(fullPrize); setCancelled(wc);
-        AudioEngine.win();
-      }
-      return;
-    }
+    // ── Trappole fuoco (boccaDrago): danno all'unghia, poi si prosegue come match
+    const trapHits = shieldTraps(revealedNow.filter(c => c.isTrap).length);
+    for (let t = 0; t < trapHits; t++) { onNailDamage?.(); AudioEngine.scratch(); }
+    revealedNow.filter(c => !c.isTrap).forEach(() => onCellScratch(!!equippedGrattatore));
 
     // ── sum13 mechanic ────────────────────────────────────────────
     if (card.mechanic === "sum13") {
-      const cellVal = newCells[idx].value || parseInt(newCells[idx].symbol) || 0;
-      const newSum = runningSumRef.current + cellVal;
+      const newSum = runningSumRef.current + (revealedNow[0].value || parseInt(revealedNow[0].symbol) || 0);
       runningSumRef.current = newSum;
       setRunningSum(newSum);
-      if (newSum === 13) {
-        const { prize: rawP, fullPrize: rawFP, cancelled: wc } = calcPrize();
-        const sum13Fallback = Math.max(card.cost * 2, card.prize || card.cost * 2);
-        const prize = wc ? 0 : (rawP > 0 ? rawP : sum13Fallback);
-        const fullPrize = wc ? 0 : (rawFP > 0 ? rawFP : prize);
-        setWinFound(true); setWinPrize(prize); setWinPrizeFull(fullPrize); setCancelled(wc);
-        AudioEngine.win();
-      } else if (newSum > 13) {
-        setBusted(true);
-        onNailDamage?.();
-        AudioEngine.lose();
-        setTimeout(() => handleFinish(false), 700);
-      }
+      if (newSum === 13) { declareWin(card.prize); AudioEngine.win(); }
+      else if (newSum > 13) { setBusted(true); onNailDamage?.(); stopWithLoss(); }
       return;
     }
 
     // ── collect mechanic ──────────────────────────────────────────
     if (card.mechanic === "collect") {
-      if (newCells[idx].isStop) {
-        setHitStop(true);
-        AudioEngine.lose();
-        setTimeout(() => handleFinish(false, true), 700);
-        return;
-      }
-      const cellVal = newCells[idx].value || 0;
-      const newCollected = collectedRef.current + cellVal;
+      if (revealedNow.some(c => c.isStop)) { setHitStop(true); stopWithLoss(); return; }
+      const newCollected = collectedRef.current + revealedNow.reduce((s, c) => s + (c.value || 0), 0);
       collectedRef.current = newCollected;
       setCollected(newCollected);
-      const nonStopLeft = newCells.filter(c => !c.scratched && !c.isStop).length;
-      if (nonStopLeft === 0) {
-        const { cancelled: wc } = calcPrize();
-        // Prima qui non veniva applicato nessun moltiplicatore-unghia: finire
-        // la carta con un'unghia danneggiata pagava il 100% come una sana.
-        const nailMult = getNailMult(!!equippedGrattatore);
-        const rawCollected = Math.round(newCollected * nailMult);
-        const boostedCollected = applyGrattatoreBonus(rawCollected);
-        const boostedFull = applyGrattatoreBonus(newCollected);
-        setWinFound(true); setWinPrize(wc ? 0 : boostedCollected); setWinPrizeFull(boostedFull); setCancelled(wc);
-        AudioEngine.win();
-      }
+      if (newCells.every(c => c.scratched || c.isStop)) { declareWin(newCollected); AudioEngine.win(); }
       return;
     }
 
     // ── setteemezzo mechanic ──────────────────────────────────────
     if (card.mechanic === "setteemezzo") {
-      const cellVal = newCells[idx].value || 0;
-      const newSum = Math.round((runningSumRef.current + cellVal) * 10) / 10;
+      // Valori tutti positivi: se il totale non sballa, nessun parziale ha sballato
+      const gained = revealedNow.reduce((s, c) => s + (c.value || 0), 0);
+      const newSum = Math.round((runningSumRef.current + gained) * 10) / 10;
       runningSumRef.current = newSum;
       setRunningSum(newSum);
-      if (newSum > 7.5) {
-        setBusted(true);
-        onNailDamage?.();
-        AudioEngine.lose();
-        setTimeout(() => handleFinish(false), 700);
-      } else if (newScratched >= totalCells) {
-        if (newSum > (card.bancoTotal||0)) {
-          const { prize: rawPrize, fullPrize: rawFull, cancelled: wc } = calcPrize();
-          const sm = Math.max(0, newSum - (card.bancoTotal || 0));
-          const smRatio = Math.min(sm / 7.5, 1);
-          const fallback = Math.max(card.cost * 3, Math.round(card.cost + smRatio * (card.maxPrize - card.cost)));
-          const safePrize = wc ? 0 : (rawPrize > 0 ? rawPrize : fallback);
-          const safeFullPrize = wc ? 0 : (rawFull > 0 ? rawFull : safePrize);
-          setWinFound(true); setWinPrize(safePrize); setWinPrizeFull(safeFullPrize); setCancelled(wc);
-          AudioEngine.win();
-        } else {
-          AudioEngine.lose();
-          setShowNoWin(true);
-        }
+      if (newSum > 7.5) { setBusted(true); onNailDamage?.(); stopWithLoss(); }
+      else if (newScratched >= totalCells) {
+        if (newSum > (card.bancoTotal || 0)) { declareWin(card.prize); AudioEngine.win(); }
+        else stopWithLoss();
       }
       return;
     }
@@ -372,71 +346,32 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
     if (card.mechanic === "ruota") {
       AudioEngine.scratch();
       if (newScratched >= totalCells) {
-        const syms = newCells.map(c => c.symbol);
-        const allSame = syms[0] === syms[1] && syms[1] === syms[2];
-        const twoSame = syms[0]===syms[1] || syms[1]===syms[2] || syms[0]===syms[2];
-        if (allSame) {
-          const { prize: rawP, fullPrize: rawFP, cancelled: wc } = calcPrize();
-          const ruotaFallback = Math.max(card.cost * 3, card.prize || card.cost * 3);
-          const prize = wc ? 0 : (rawP > 0 ? rawP : ruotaFallback);
-          const fullPrize = wc ? 0 : (rawFP > 0 ? rawFP : prize);
-          setWinFound(true); setWinSymbol(syms[0]); setWinPrize(prize); setWinPrizeFull(fullPrize); setCancelled(wc);
-          AudioEngine.win();
-        } else if (twoSame) {
-          // Consolazione: quasi-win paga card.prize (generato come type.cost × 1.3 in card.js)
-          const consolePrize = card.prize > 0 ? card.prize : Math.round(card.cost * 1.3);
+        const [a, b, c] = newCells.map(cell => cell.symbol);
+        if (a === b && b === c) { declareWin(card.prize, a); AudioEngine.win(); }
+        else if (a === b || b === c || a === c) {
+          // Quasi-vincita: consolazione (card.prize = costo × 1.3, vedi card.js)
           setNearWin(true);
           AudioEngine.lose();
-          setTimeout(() => {
-            setNearWin(false);
-            setWinFound(true); setWinPrize(consolePrize); setWinPrizeFull(consolePrize); setCancelled(false);
-            AudioEngine.win();
-          }, 1200);
-        } else {
-          AudioEngine.lose();
-          setShowNoWin(true);
-        }
+          setTimeout(() => { setNearWin(false); declareWin(card.prize); AudioEngine.win(); }, 1200);
+        } else stopWithLoss();
       } else if (newScratched === 2) {
-        const revealed = newCells.filter(c => c.scratched);
-        if (revealed.length === 2 && revealed[0].symbol === revealed[1].symbol) {
-          setNearWin(true);
-        }
+        const [first, second] = newCells.filter(c => c.scratched);
+        if (first.symbol === second.symbol) setNearWin(true);
       }
       return;
     }
 
     // ── doppioOnulla mechanic ─────────────────────────────────────
     if (card.mechanic === "doppioOnulla") {
-      const cell = newCells[idx];
-      if (cell.isDoppioWin) {
-        // "Raddoppia l'ultimo premio". Senza un premio precedente si usa il premio
-        // calibrato della carta (CARD_BALANCE: €28-48) invece del vecchio fallback
-        // fisso a €50, che pagava €100 su una carta da €20 a inizio run.
-        const { prize: rawP, cancelled: wc } = calcPrize();
-        const doubledPrize = lastWonPrize > 0
-          ? Math.round(lastWonPrize * 2)
-          : (wc ? 0 : rawP);
-        setWinFound(true); setWinPrize(doubledPrize); setWinPrizeFull(doubledPrize); setCancelled(false);
-        AudioEngine.win();
-      } else {
-        setShowNoWin(true);
-        AudioEngine.lose();
-        setTimeout(() => handleFinish(false), 700);
-      }
+      if (revealedNow[0].isDoppioWin) { declareWin(doppioPrize); AudioEngine.win(); }
+      else stopWithLoss();
       return;
     }
 
-    // ── Normal match / jolly ──────────────────────────────────────
+    // ── Normal match / jolly / trap ───────────────────────────────
     const sym = checkWin(newCells);
     if (sym && !winFound) {
-      const { prize: rawP, fullPrize: rawFP, cancelled: wc } = calcPrize();
-      const matchFallback = Math.max(card.cost, Math.round(card.cost + Math.random() * card.maxPrize * 0.15));
-      // Quando cancellato: premio = 0. Altrimenti usa calcPrize o il fallback se arrotonda a 0.
-      const prize = wc ? 0 : (rawP > 0 ? rawP : matchFallback);
-      // Preserva il "full" (pre-penalità) anche quando prize cade al fallback —
-      // così il display "€X → €Y" mostra davvero due valori diversi se c'è penalità.
-      const fullPrize = wc ? 0 : (rawFP > 0 ? rawFP : (rawP > 0 ? prize : Math.max(prize, card.prize || prize)));
-      setWinFound(true); setWinSymbol(sym); setWinPrize(prize); setWinPrizeFull(fullPrize); setCancelled(wc);
+      declareWin(card.prize, sym);
       setNearWin(false);
       AudioEngine.win();
     } else if (!sym && !winFound && card.matchNeeded) {
@@ -448,16 +383,14 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
       const isNear = Object.values(counts).some(c => c + jollyCount === card.matchNeeded - 1);
       if (isNear && !nearWin) setNearWin(true);
     }
-    if (newScratched >= totalCells && !sym && !winFound) {
-      AudioEngine.lose();
-      setNearWin(false);
-      setShowNoWin(true);
-    }
+    if (newScratched >= totalCells && !sym && !winFound) stopWithLoss();
   };
 
   const scratchAll = () => {
-    if (card.mechanic === "sum13" || card.mechanic === "collect" || card.mechanic === "setteemezzo" || card.mechanic === "ruota" || card.mechanic === "doppioOnulla") return;
+    if (NO_MATCH_MECHANICS.has(card.mechanic) || locked) return;
+    if (nailState === "morta") { warnDeadNail(); return; }
     const newCells = cells.map(c => ({...c, scratched: true}));
+    const fresh = newCells.filter((c, i) => !cells[i].scratched);
     setCells(newCells);
     if (!equippedGrattatore && nailState === "marcia") scratchedWhileMarcia.current = true;
     // Macchia TUTTE le celle appena grattate SOLO se l'unghia è marcia (rosso).
@@ -469,49 +402,24 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
         return next;
       });
     }
-    newCells.forEach((c,i) => { if (!cells[i].scratched && c.isItem) onItemFound?.(c.itemId); });
-    const trapCount = newCells.filter((c,i) => !cells[i].scratched && c.isTrap).length;
-    for (let t=0; t<trapCount; t++) onNailDamage?.();
-    const normalCount = newCells.filter((c,i) => !cells[i].scratched && !c.isTrap && !c.isItem).length;
-    for (let i=0; i<normalCount; i++) { AudioEngine.scratch(); onCellScratch(!!equippedGrattatore); }
+    fresh.filter(c => c.isItem).forEach(c => onItemFound?.(c.itemId));
+    const trapHits = shieldTraps(fresh.filter(c => c.isTrap).length);
+    for (let t = 0; t < trapHits; t++) onNailDamage?.();
+    fresh.filter(c => !c.isTrap && !c.isItem).forEach(() => { AudioEngine.scratch(); onCellScratch(!!equippedGrattatore); });
     setScratched(newCells.length);
     const sym = checkWin(newCells);
-    if (sym && !winFound) {
-      const { prize: rawP, fullPrize: rawFP, cancelled: wc } = calcPrize();
-      const fallback2 = Math.max(card.cost, Math.round(card.cost + Math.random() * card.maxPrize * 0.15));
-      const prize = wc ? 0 : (rawP > 0 ? rawP : applyGrattatoreBonus(fallback2));
-      const fullPrize = wc ? 0 : (rawFP > 0 ? rawFP : prize);
-      setWinFound(true); setWinSymbol(sym); setWinPrize(prize); setWinPrizeFull(fullPrize); setCancelled(wc);
-      AudioEngine.win();
-    } else if (!sym) {
-      AudioEngine.lose();
-      setShowNoWin(true);
-    }
+    if (sym && !winFound) { declareWin(card.prize, sym); AudioEngine.win(); }
+    else if (!sym && !winFound) stopWithLoss();
   };
 
-  const handleFinish = (claiming, stopHit=false) => {
+  const handleFinish = (claiming) => {
     if (finished || finishedRef.current) return;
 
-    // ── setteemezzo incassa anticipato ──
-    // Il bottone "INCASSA LA VINCITA" appare ogni volta che runningSum batte
-    // il banco (vedi condizione di rendering più sotto), indipendentemente da
-    // card.prize. Ma questo blocco pagava SOLO se card.prize > 0: su una carta
-    // generata come "perdente" (card.prize === 0) il giocatore poteva battere
-    // comunque il banco — cosa frequente, i valori delle celle sono indipendenti
-    // dal flag vincente/perdente — cliccare INCASSA non pagava nulla e mostrava
-    // pure il messaggio sbagliato "Hai abbandonato il gratta" nonostante avesse
-    // vinto la mano. Prima di questo fix (RTP 221%, vedi git blame) il fallback
-    // era cost*3 ed era troppo generoso; qui uso lo stesso fallback modesto già
-    // usato ovunque altro nel file per "vinto ma senza premio esplicito"
-    // (cost + fino a ~15% di maxPrize) invece di pagare zero.
+    // Sette e Mezzo, "INCASSA LA VINCITA": il pulsante compare solo quando la
+    // somma batte il banco, e una mano perdente non può mai batterlo (card.js),
+    // quindi card.prize è sempre il premio vero.
     if (card.mechanic === "setteemezzo" && claiming && !winFound) {
-      const basePrize = card.prize > 0 ? card.prize
-        : Math.max(card.cost, Math.round(card.cost + Math.random() * card.maxPrize * 0.15));
-      const nailMult = getNailMult(!!equippedGrattatore);
-      const p = Math.round(basePrize * nailMult);
-      const boostedP = applyGrattatoreBonus(p);
-      const boostedFull = applyGrattatoreBonus(basePrize);
-      setWinFound(true); setWinPrize(boostedP); setWinPrizeFull(boostedFull); setCancelled(false);
+      declareWin(card.prize);
       AudioEngine.win();
       return;
     }
@@ -519,84 +427,42 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
     finishedRef.current = true;
     setFinished(true);
 
-    // ── collect win ────────────────────────
-    if (card.mechanic === "collect" && claiming) {
-      // Cancelled (unghia nera/morta) — nessun premio
-      if (cancelled) {
-        onDone({ win: false, prize: 0, message: "VINCITA ANNULLATA! L'unghia ha rovinato il biglietto!", cellsScratched: scratched });
-        return;
-      }
-      // Prima solo "marcia" scontava l'incasso anticipato, e per giunta al
-      // 15% invece del 25% corretto: con unghia sanguinante (-50% previsto)
-      // il cash-out anticipato pagava il 100%, nessuno sconto applicato.
-      const nailMult = getNailMult(!!equippedGrattatore);
-      const rawCollected = Math.round(collectedRef.current * nailMult);
-      const effCollected = applyGrattatoreBonus(rawCollected);
-      const discounted = nailMult < 1;
-      let collectMsg = discounted ? `🩸 INCASSATO €${effCollected} (unghia danneggiata!)` : `HAI INCASSATO €${effCollected}!`;
-      if (equippedGrattatore && effCollected !== rawCollected) {
-        collectMsg += ` ${equippedGrattatore.emoji} ${equippedGrattatore.name}: €${rawCollected} → €${effCollected}!`;
-      }
-      onDone({ win: effCollected > 0, prize: effCollected,
-        message: collectMsg,
-        cellsScratched: scratched });
+    // Miliardario, "INCASSA ORA" prima di finire la carta: si incassa
+    // l'accumulato con gli stessi moltiplicatori di ogni altra vincita.
+    if (card.mechanic === "collect" && claiming && !winFound) {
+      const { prize, cancelled: wc } = calcPrize(collectedRef.current);
+      onDone({ win: prize > 0, prize, cellsScratched: scratched, message: wc ? CANCELLED_MSG : undefined });
       return;
     }
 
     if (claiming && winFound) {
-      let msg = cancelled
-        ? `VINCITA ANNULLATA! L'unghia ha rovinato il biglietto!`
-        : grattaMania
-          ? `HAI VINTO €${winPrize}! (GrattaMania x2!)`
-          : card.mechanic === "sum13"
-            ? `🎯 TREDICI ESATTO! Hai vinto €${winPrize}!`
-            : card.mechanic === "setteemezzo"
-            ? `🃏 HAI BATTUTO IL BANCO! (${runningSumRef.current.toFixed(1)} vs ${card.bancoTotal}) €${winPrize}!`
-            : card.mechanic === "doppioOnulla"
-            ? `🎲 DOPPIO O NULLA: HAI VINTO! €${winPrize}! (x2!)`
-            : `HAI VINTO €${winPrize}!`;
-      if (equippedGrattatore && !cancelled) {
-        if (equippedGrattatore.effect === "doublePrize") msg += " 🎸 Plettro: premio x2!";
-        if (equippedGrattatore.effect === "quadPrize") msg += " 🥇 Moneta d'Oro: premio x4!";
-        if (equippedGrattatore.effect === "bonusChance") {
-          const baseP = Math.round(winPrize / (1 + (equippedGrattatore.value || 0.1)));
-          msg += ` 🔘 Bottone: €${baseP} +10% → €${winPrize}!`;
-        }
-      }
-      onDone({ win: !cancelled && winPrize > 0, prize: cancelled ? 0 : winPrize, message: msg, cellsScratched: scratched });
-    } else {
-      let malusPrize = 0;
-      // "Sei andato oltre 13" era corretto solo per sum13 (Tredici): su Sette e
-      // Mezzo (soglia 7.5, "sballare") lo stesso testo veniva mostrato anche
-      // dopo uno sballo a somma 8 o 9 — sembrava un bug perché il numero non
-      // tornava con quello visto sullo schermo.
-      let msg = card.mechanic === "doppioOnulla" ? "🎲 DOPPIO O NULLA: Hai perso! ❌ €0." :
-        busted ? (card.mechanic === "setteemezzo" ? "💥 SBALLATO! Hai superato 7.5!" : "💥 BUST! Sei andato oltre 13!") :
-        hitStop ? "🛑 STOP! Hai perso l'accumulato." :
-        scratched >= totalCells ? "Niente… prossima volta!" : "Hai abbandonato il gratta.";
-      const hasBullone = equippedGrattatore?.effect === "ignoreMalus";
-      const bulloneSuccess = hasBullone && roll(0.8);
-      const ignoreMalus = bulloneSuccess || stopHit || busted;
-      if (hasBullone && !stopHit && !busted && card.malus) {
-        if (bulloneSuccess) {
-          msg += " 🔩 Il Bullone ha protetto dal malus!";
-        } else {
-          msg += " 🔩💥 Hai perso persino con un bullone! (20% sfortuna)";
-        }
-      }
-      if (!winFound && card.malus?.type === "payExtra" && !ignoreMalus) {
-        malusPrize = -card.malus.amount;
-        msg += ` ${card.malus.desc}`;
-      }
-      if (!winFound && card.malus?.type === "nailDamage" && !ignoreMalus) {
-        msg += ` ${card.malus.desc}`;
-      }
       onDone({
-        win: false, prize: malusPrize, message: msg, cellsScratched: scratched,
-        applyNailMalus: !winFound && card.malus?.type === "nailDamage" && !ignoreMalus && !busted,
-        malusAmount: card.malus?.amount || 0,
+        win: !cancelled && winPrize > 0, prize: cancelled ? 0 : winPrize,
+        cellsScratched: scratched, message: cancelled ? CANCELLED_MSG : undefined,
       });
+      return;
     }
+
+    // Sconfitta o abbandono. Sballo e STOP hanno già il loro castigo
+    // (danno all'unghia / accumulato perso): niente malus in più.
+    let msg = lossReason();
+    const hasBullone = equippedGrattatore?.effect === "ignoreMalus";
+    const bulloneSuccess = hasBullone && roll(0.8);
+    const ignoreMalus = winFound || bulloneSuccess || hitStop || busted;
+    if (hasBullone && !hitStop && !busted && card.malus) {
+      msg += bulloneSuccess
+        ? " 🔩 Il Bullone ha protetto dal malus!"
+        : " 🔩💥 Hai perso persino con un bullone! (20% sfortuna)";
+    }
+    const malusType = ignoreMalus ? null : card.malus?.type;
+    if (malusType === "payExtra" || malusType === "nailDamage") msg += ` ${card.malus.desc}`;
+    onDone({
+      win: false,
+      prize: malusType === "payExtra" ? -card.malus.amount : 0,
+      message: msg, cellsScratched: scratched,
+      applyNailMalus: malusType === "nailDamage",
+      malusAmount: card.malus?.amount || 0,
+    });
   };
 
   // ── Tier / accent resolution ──────────────────────────────────
@@ -615,8 +481,6 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
   const tier = Math.min(4, Math.max(1, card.tier || 1));
   const tierMeta = TIER_META[tier];
   const accent = card.theme?.border || tierMeta.color;
-  // Legacy: keep catColor name for anywhere else it's referenced
-  const catColor = accent;
 
   // Count matching symbols for highlighting
   const revealedCounts = {};
@@ -743,7 +607,7 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
           const isPartialMatch = cell.scratched && !winFound && matchCount >= 2 && matchCount < card.matchNeeded;
           return (
             <ScratchCell key={idx} cell={cell} idx={idx}
-              onScratch={doScratch} finished={finished}
+              onScratch={doScratch} finished={locked}
               isWinSymbol={isWinSymbol} isPartialMatch={isPartialMatch}
               bloodMode={nailState === "marcia"}
               isBloody={bloodyCells.has(idx)}
@@ -918,7 +782,9 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
             ★ 🎲 DOPPIO O NULLA ★
           </div>
           <div style={{color: C.text, fontSize: "10px", lineHeight: 1.5, marginBottom: lastWonPrize > 0 ? "4px" : 0}}>
-            Gratta e scopri il destino del tuo ultimo premio!
+            {lastWonPrize > 0
+              ? `Gratta e raddoppia il tuo ultimo premio — fino a €${doppioStake}!`
+              : `Nessun premio da raddoppiare: in palio €${doppioStake}.`}
           </div>
           {lastWonPrize > 0 && (
             <div style={{
@@ -927,7 +793,7 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
             }}>
               <span style={{color: C.dim, padding: "1px 6px"}}>€{lastWonPrize}</span>
               <span style={{color: C.magenta}}>→</span>
-              <span style={{color: C.green, background: `${C.green}14`, border: `1px solid ${C.green}66`, padding: "1px 6px"}}>VINCI €{lastWonPrize * 2}</span>
+              <span style={{color: C.green, background: `${C.green}14`, border: `1px solid ${C.green}66`, padding: "1px 6px"}}>VINCI €{doppioPrize}</span>
               <span style={{color: C.dim}}>/</span>
               <span style={{color: C.red, background: `${C.red}14`, border: `1px solid ${C.red}66`, padding: "1px 6px"}}>PERDI €0</span>
             </div>
@@ -1002,7 +868,7 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
             </div>
           </div>
           <div style={{color: C.text, fontSize: "10px", textAlign: "center"}}>
-            Premio <strong style={{color: C.gold}}>x2</strong> · ogni cella grattata danneggia <strong style={{color: C.red}}>TUTTE e 5</strong> le unghie
+            Premio <strong style={{color: C.gold}}>x2</strong> · ogni cella grattata logora <strong style={{color: C.red}}>un'unghia a caso</strong>
           </div>
         </div>
       )}
@@ -1283,9 +1149,7 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
       )}
 
       {/* Gratta tutto */}
-      {!finished && !winFound && scratched < totalCells
-        && card.mechanic !== "sum13" && card.mechanic !== "collect" && card.mechanic !== "setteemezzo"
-        && card.mechanic !== "ruota" && card.mechanic !== "doppioOnulla" && (
+      {!locked && !winFound && scratched < totalCells && !NO_MATCH_MECHANICS.has(card.mechanic) && (
         <div style={{marginBottom:"6px"}}>
           <Btn onClick={scratchAll} style={{fontSize:"11px", background:"#1a1a00", color:C.gold, borderColor:C.dim}}>
             ⚡ Gratta Tutto in Una Volta
@@ -1329,7 +1193,7 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
             </div>
             {isDirty && (
               <div style={{color: C.red, fontSize: "10px", marginBottom: "6px", letterSpacing: "0.5px", fontStyle: "italic"}}>
-                L'unghia insanguinata ha sporcato la schedina — vinci solo il 25%
+                L'unghia rovinata ha sporcato la schedina — vinci solo il {Math.round(winPrize / winPrizeFull * 100)}%
               </div>
             )}
             <div style={{color: prizeCol, fontSize:"20px", fontWeight:"bold", marginBottom:"6px",
@@ -1367,7 +1231,7 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
                   {equippedGrattatore.emoji} {equippedGrattatore.name}: €{basePrize} → €{winPrize}
                   {eff === "doublePrize" && " (x2!)"}
                   {eff === "quadPrize" && " (x4!)"}
-                  {eff === "bonusChance" && " (+10%)"}
+                  {eff === "bonusChance" && ` (+${Math.round((equippedGrattatore.value || 0.1) * 100)}%)`}
                   {eff === "x5teleport" && " (x5!)"}
                 </div>
               );
@@ -1376,7 +1240,7 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
               <Btn variant={isDirty ? "danger" : "gold"} onClick={() => handleFinish(true)} style={{fontSize:"14px"}}>
                 {cancelled ? "Chiudi" : isDirty ? `🩸 RITIRA €${winPrize} (di €${winPrizeFull})` : card.mechanic === "collect" ? `✓ CONFERMA €${winPrize}` : `✓ RITIRA €${winPrize}`}
               </Btn>
-              {!cancelled && scratched < totalCells && (
+              {!cancelled && scratched < totalCells && !locked && (
                 <span style={{color:C.dim, fontSize:"11px", alignSelf:"center"}}>o continua a grattare →</span>
               )}
             </div>
@@ -1487,7 +1351,7 @@ export function ScratchCardView({ card, onDone, nailState, nailImplant=null, for
               ★ NESSUNA VINCITA ★
             </div>
             <div style={{color: C.dim, fontSize: "10px", fontStyle: "italic"}}>
-              Sarà per la prossima...
+              {lossReason()}
             </div>
           </div>
           <Btn variant="default" onClick={() => handleFinish(false)}
