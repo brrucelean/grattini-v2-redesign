@@ -310,7 +310,7 @@ export default function Grattini() {
 
   // ─── HOOK: useShopHandlers ───
   const { handleBuyCard, handleBuyItem, handleBuyGrattatore, handleSlotResult, handleShopScratch } = useShopHandlers({
-    player, updatePlayer, addLog, setGameStats, setCardSelectMode, setScreen, setReturnScreen, effectiveFortune, unlockAchievement,
+    player, gameStats, updatePlayer, addLog, setGameStats, setCardSelectMode, setScreen, setReturnScreen, effectiveFortune, unlockAchievement,
     setItemFoundModal, currentBiome,
   });
 

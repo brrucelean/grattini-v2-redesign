@@ -6,7 +6,7 @@ import { generateCard } from "../utils/card.js";
 import { roundMoney } from "../utils/money.js";
 import { hasRelic } from "../utils/hasRelic.js";
 
-export function useShopHandlers({ player, updatePlayer, addLog, setGameStats, setCardSelectMode, setScreen, setReturnScreen, effectiveFortune, unlockAchievement, setItemFoundModal, currentBiome = 0 }) {
+export function useShopHandlers({ player, gameStats, updatePlayer, addLog, setGameStats, setCardSelectMode, setScreen, setReturnScreen, effectiveFortune, unlockAchievement, setItemFoundModal, currentBiome = 0 }) {
   // Modificatore bioma: shopDiscount additivo a shopDiscountMeta
   const biomeShopDiscount = BIOME_MODIFIERS[currentBiome]?.shopDiscount || 0;
   const handleBuyCard = (cardId) => {
@@ -72,22 +72,18 @@ export function useShopHandlers({ player, updatePlayer, addLog, setGameStats, se
     });
   };
 
-  const handleSlotResult = ({ type, amount, isTriple7 }) => {
+  const handleSlotResult = ({ type, amount, prizeType }) => {
     if (type === "pay") {
-      updatePlayer(p => ({...p, money: p.money - amount}));
+      updatePlayer(p => ({...p, money: roundMoney(p.money - amount)}));
       addLog(`🎰 Inserisci €${amount} nella slot machine...`, C.dim);
-      // Track slot play
-      setGameStats(s => {
-        const newCount = (s.slotPlays || 0) + 1;
-        if (newCount >= 5) unlockAchievement("gambler");
-        return {...s, slotPlays: newCount};
-      });
+      if ((gameStats.slotPlays || 0) + 1 >= 5) unlockAchievement("gambler");
+      setGameStats(s => ({...s, slotPlays: (s.slotPlays || 0) + 1}));
     } else if (type === "win") {
-      updatePlayer(p => ({...p, money: p.money + amount}));
-      if (amount >= 100) {
+      updatePlayer(p => ({...p, money: roundMoney(p.money + amount)}));
+      if (prizeType === "superjackpot") {
         addLog(`🎆 SUPER JACKPOT! +€${amount}! Il tabaccaio impallidisce.`, C.gold);
         unlockAchievement("triple7");
-      } else if (amount >= 50) addLog(`🎉 JACKPOT! +€${amount}! Le monete cascano!`, C.gold);
+      } else if (prizeType === "jackpot") addLog(`🎉 JACKPOT! +€${amount}! Le monete cascano!`, C.gold);
       else addLog(`✨ Piccola vincita: +€${amount}.`, C.green);
     }
   };
