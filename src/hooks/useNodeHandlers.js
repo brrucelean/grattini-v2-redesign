@@ -12,6 +12,9 @@ import { generateMap, generateLabirintoGrid, generateCombinaState, generateTesor
 import { AudioEngine } from "../audio.js";
 import { STORAGE_KEYS, setStored } from "../utils/storage.js";
 
+// Carte con una schermata dedicata al posto del grattino (meccanica → schermata)
+const MINIGAMES = { labirinto: "labirinto", combina: "grattaCombina", tesoro: "mappaTesor0" };
+
 export function useNodeHandlers({
   player, currentNode, currentBiome, currentRow,
   updatePlayer, addLog, triggerNpcComment, unlockAchievement, updateAllTimeStats,
@@ -20,7 +23,7 @@ export function useNodeHandlers({
   setGameStats, setCardSelectMode, setReturnScreen, setScratchingCard, setSelectedCardIdx,
   setCombatEnemy, setCurrentBiome, setMap, setPlayer,
   setItemFoundModal, setDiscoveredRelics,
-  setLabirintoState, setCombinaState, setTesoroState, setSpecialCardRef,
+  setLabirintoState, setCombinaState, setTesoroState,
   effectiveFortune, gameStats, isAlive,
 }) {
   const [dreamModal, setDreamModal] = useState(null);
@@ -168,9 +171,28 @@ export function useNodeHandlers({
       return;
     }
     setSelectedCardIdx(idx);
+    setPreScratchCount(c => c + 1);
+    // returnScreen è già stato impostato dal chiamante (handlePreScratch → "preScratch",
+    // handleShopScratch → "shop"). Non sovrascriverlo qui.
+
+    // Labirinto, Gratta & Combina e Mappa del Tesoro hanno una schermata loro e
+    // NON passano da scratchingCard: quello apre il grattino a tutto schermo, che
+    // copriva il minigioco e, con matchNeeded 0, vinceva alla prima cella.
+    const minigame = MINIGAMES[card.mechanic];
+    if (minigame) {
+      if (card.mechanic === "labirinto") setLabirintoState({ pos: [0, 0], revealed: new Set(), prize: 0, grid: generateLabirintoGrid(), done: false });
+      else if (card.mechanic === "combina") setCombinaState(generateCombinaState());
+      else setTesoroState(generateTesoroState());
+      updatePlayer(p => {
+        const nc = [...p.scratchCards]; nc.splice(idx, 1); return {...p, scratchCards: nc};
+      });
+      setScreen(minigame);
+      return;
+    }
+
     // Impianti a vincita garantita (Anziana: sacra | Macellaio: neonato/marcione/baddie)
     // Se attivi, rigenera la carta come vincente — il moltiplicatore del premio verrà
-    // applicato in ScratchCardView.calcPrize (vedi implantMult).
+    // applicato in ScratchCardView (IMPLANT_PRIZE_MULT).
     const activeNail = player.nails[player.activeNail];
     const guaranteedImplants = ["sacra", "neonato", "marcione", "baddie"];
     if (activeNail && guaranteedImplants.includes(activeNail.implant) && (activeNail.implantUses || 0) > 0 && !card.isWinner) {
@@ -182,40 +204,7 @@ export function useNodeHandlers({
       addLog(`${activeNail.implant === "sacra" ? "✨" : "🔮"} L'impianto garantisce la vincita su questa grattata!`, C.gold);
     }
     setScratchingCard(card);
-    setPreScratchCount(c => c + 1);
-    // returnScreen è già stato impostato dal chiamante (handlePreScratch → "preScratch",
-    // handleShopScratch → "shop"). Non sovrascriverlo qui.
-
-    // Route special mechanic cards to dedicated screens
-    if (card.mechanic === "labirinto") {
-      setSpecialCardRef(card);
-      // Remove from hand immediately
-      updatePlayer(p => {
-        const nc = [...p.scratchCards]; nc.splice(idx, 1); return {...p, scratchCards: nc};
-      });
-      // Generate 4x4 grid
-      const grid = generateLabirintoGrid();
-      setLabirintoState({ pos: [0, 0], revealed: new Set(), prize: 0, grid, done: false });
-      setScreen("labirinto");
-    } else if (card.mechanic === "combina") {
-      setSpecialCardRef(card);
-      updatePlayer(p => {
-        const nc = [...p.scratchCards]; nc.splice(idx, 1); return {...p, scratchCards: nc};
-      });
-      const cs = generateCombinaState();
-      setCombinaState(cs);
-      setScreen("grattaCombina");
-    } else if (card.mechanic === "tesoro") {
-      setSpecialCardRef(card);
-      updatePlayer(p => {
-        const nc = [...p.scratchCards]; nc.splice(idx, 1); return {...p, scratchCards: nc};
-      });
-      const ts = generateTesoroState();
-      setTesoroState(ts);
-      setScreen("mappaTesor0");
-    } else {
-      setScreen("scratch");
-    }
+    setScreen("scratch");
   };
 
   const handleRest = (room) => {

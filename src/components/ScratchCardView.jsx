@@ -15,8 +15,11 @@ import { ANIM } from "../styles/animations.js";
 
 const RUOTA_SYMS = CARD_SYMBOLS.ruota;
 const CANCELLED_MSG = "💀 VINCITA ANNULLATA! L'unghia ha rovinato il biglietto.";
-// Meccaniche che non si vincono accoppiando simboli (niente checkWin né "Gratta tutto")
-const NO_MATCH_MECHANICS = new Set(["sum13", "collect", "setteemezzo", "ruota", "doppioOnulla"]);
+// Meccaniche che non si vincono accoppiando simboli (niente checkWin né "Gratta tutto").
+// Labirinto, Gratta & Combina e Mappa del Tesoro hanno una schermata loro: se
+// questa vista le mostra comunque (galleria dev), con matchNeeded 0 la prima
+// cella sarebbe già una "vincita".
+const NO_MATCH_MECHANICS = new Set(["sum13", "collect", "setteemezzo", "ruota", "doppioOnulla", "labirinto", "combina", "tesoro"]);
 // Solo qui la Chiave d'Ottone rivela celle: altrove (somme, accumulo) una cella
 // segnata come grattata senza passare da doScratch andrebbe semplicemente persa.
 const REVEAL_MECHANICS = new Set(["match", "jolly", "trap"]);
