@@ -27,7 +27,9 @@ export const CARD_SYMBOLS = {
   boccaDrago:      ["🐉","🔥","☄","⚡","💥","🌋"],
   miliardario:     ["🥂","🚢","✈","🏆","💎","🎩"],
   tredici:         ["1","2","3","4","5","6","7","8","9"],
-  maledetto:       ["💀","☠","🔥","👁","🩸","⛧"],
+  // 16 celle e tris vincente: servono almeno 8 simboli validi (🔥 è riservato
+  // alle trappole) perché una carta perdente possa stare senza tris.
+  maledetto:       ["💀","☠","🔥","👁","🩸","⛧","🦇","🐍","🌑","🥀"],
   ruota:           ["🍒","🍋","🔔","💎","7️⃣","🍀"],
   doppioOnulla:    ["✅","❌"],
   mahjong:         ["🀄","🎴","🏮","🧧","🐲","🐉"],

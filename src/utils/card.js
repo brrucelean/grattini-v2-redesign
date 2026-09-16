@@ -2,7 +2,7 @@ import { CARD_TYPES, CARD_BALANCE, CARD_SYMBOLS, CARD_SUITS, CARD_RANKS, CARD_VA
 import { rng, roll, pick, shuffle } from "./random.js";
 
 export function _makePlayingCard(rank) {
-  const suit = CARD_SUITS[Math.floor(Math.random()*4)];
+  const suit = pick(CARD_SUITS);
   return { rank, suit, symbol: rank+suit, value: CARD_VAL_MAP[rank]||0.5,
            isRed: suit==="♥"||suit==="♦", scratched:false };
 }
@@ -58,6 +58,28 @@ export function _isLosingSetteEMezzoHand(cells, bancoTotal) {
     if (sum > bancoTotal) return false; // poteva stare e vincere → non è perdente
   }
   return true; // arrivato in fondo senza mai battere il banco
+}
+
+// Banco di Sette e Mezzo: 2 carte già scoperte, totale tra 2 e maxTotal.
+function _makeBanco(maxTotal) {
+  for (let att = 0; att < 30; att++) {
+    const cards = [pick(CARD_RANKS), pick(CARD_RANKS)].map(_makePlayingCard);
+    const total = cards[0].value + cards[1].value;
+    if (total >= 2 && total <= maxTotal) return { cards, total };
+  }
+  return { cards: ["A", "2"].map(_makePlayingCard), total: 3 };
+}
+
+// Mano vincente per Sette e Mezzo: il totale batte il banco senza sballare,
+// quindi grattando tutto si vince (e anche prima, appena si supera il banco).
+function _makeWinningSetteEMezzoCells(count, bancoTotal) {
+  for (let att = 0; att < 80; att++) {
+    const cells = Array.from({length: count}, () => _makePlayingCard(pick(CARD_RANKS)));
+    const total = cells.reduce((s, c) => s + c.value, 0);
+    if (total > bancoTotal && total <= 7.5) return cells;
+  }
+  // Ripiego deterministico (mano da 4): J+A+2+4 = 7½, batte qualsiasi banco fino a 7.
+  return shuffle(["J", "A", "2", "4"]).map(_makePlayingCard);
 }
 
 // Mano perdente per Sette e Mezzo, garantita da _isLosingSetteEMezzoHand.
@@ -145,55 +167,21 @@ export function generateCard(typeId, fortune=0, relicBonus=0, forceWin=false) {
 
   // ── setteemezzo mechanic ─────────────────────────────────────
   if (type.mechanic === "setteemezzo") {
-    // Genera banco (2 carte, già rivelate) — non sballa mai
-    let bancoCards, bancoTotal;
-    let attempts = 0;
-    do {
-      bancoCards = [pick(CARD_RANKS), pick(CARD_RANKS)].map(r => {
-        const suit = pick(CARD_SUITS); return { rank:r, suit, symbol:r+suit, value:CARD_VAL_MAP[r]||0.5, isRed:suit==="♥"||suit==="♦" };
-      });
-      bancoTotal = bancoCards.reduce((s,c) => s+c.value, 0);
-      attempts++;
-    } while ((bancoTotal > 7.5 || bancoTotal < 2) && attempts < 30);
-    bancoTotal = Math.round(bancoTotal * 10) / 10;
+    // Banco a 7½ imbattibile, a 7 serve esattamente 7½: su una carta VINCENTE
+    // il banco resta sotto, altrimenti l'11% delle vincenti non si poteva vincere.
+    const { cards: bancoCards, total: bancoTotal } = _makeBanco(isWinner ? 7 : 7.5);
 
     // Carte giocatore: 4 da grattare
     const playerCount = 4;
-    let playerCells;
-    if (isWinner) {
-      // Garantisce che le prime N carte (senza sballare) battano il banco
-      let att = 0;
-      let total = 0;
-      do {
-        playerCells = Array.from({length: playerCount}, () => _makePlayingCard(pick(CARD_RANKS)));
-        total = playerCells.reduce((s,c) => s+c.value, 0);
-        att++;
-      } while ((total <= bancoTotal || total > 7.5) && att < 80);
-      // Fallback: force una combo vincente
-      if (att >= 80) {
-        const need = bancoTotal + 0.5; // es. banco=3 → need=3.5
-        const safeRanks = CARD_RANKS.filter(r => CARD_VAL_MAP[r] <= need && CARD_VAL_MAP[r] > 0);
-        playerCells = [_makePlayingCard(pick(safeRanks))];
-        let cur = playerCells[0].value;
-        while (playerCells.length < playerCount) {
-          const remaining = 7.5 - cur;
-          const fill = CARD_RANKS.filter(r => CARD_VAL_MAP[r] <= Math.max(remaining, 0.5));
-          const r = fill.length > 0 ? pick(fill) : "J";
-          playerCells.push(_makePlayingCard(r));
-          cur += CARD_VAL_MAP[r]||0.5;
-          if (cur > 7.5) { cur -= CARD_VAL_MAP[r]||0.5; playerCells.pop(); break; }
-        }
-        while (playerCells.length < playerCount) playerCells.push(_makePlayingCard("J"));
-      }
-    } else {
-      // Perdente: NESSUN prefisso deve poter "stare" battendo il banco.
-      // Il vecchio pool 5/6/7 sballava solo sulla somma totale, ma la PRIMA carta
-      // (es. 7) supera già un banco basso: il giocatore poteva incassare in
-      // anticipo su una carta perdente (60% dei casi → RTP 221%).
-      // Ora si valida direttamente la proprietà: per ogni prefisso, o si è già
-      // sballato (>7.5) oppure non si è ancora superato il banco.
-      playerCells = _makeLosingSetteEMezzoCells(playerCount, bancoTotal);
-    }
+    // Perdente: NESSUN prefisso deve poter "stare" battendo il banco.
+    // Il vecchio pool 5/6/7 sballava solo sulla somma totale, ma la PRIMA carta
+    // (es. 7) supera già un banco basso: il giocatore poteva incassare in
+    // anticipo su una carta perdente (60% dei casi → RTP 221%).
+    // Ora si valida direttamente la proprietà: per ogni prefisso, o si è già
+    // sballato (>7.5) oppure non si è ancora superato il banco.
+    const playerCells = isWinner
+      ? _makeWinningSetteEMezzoCells(playerCount, bancoTotal)
+      : _makeLosingSetteEMezzoCells(playerCount, bancoTotal);
     prize = isWinner ? Math.max(type.cost*2, rollPrize()) : 0;
     cells = playerCells.map(c => ({...c, scratched:false}));
     return { ...type, isWinner, prize, cells, symbols:cells.map(c=>c.symbol), scratchCount:0, bancoCards, bancoTotal };
@@ -266,32 +254,22 @@ export function generateCard(typeId, fortune=0, relicBonus=0, forceWin=false) {
         else { let s; do { s = pick(safeSymbols); } while (s === winSymbol); symbols.push(s); }
       }
     } else {
-      const available = shuffle([...safeSymbols]).slice(0, Math.min(totalCells, safeSymbols.length));
+      // Perdente: nessun simbolo deve arrivare a matchNeeded. Distribuendo a
+      // rotazione k simboli, ognuno compare al massimo ⌈celle/k⌉ volte, quindi
+      // basta che k·(matchNeeded−1) copra tutte le celle. Il Maledetto (16 celle,
+      // tris) aveva solo 5 simboli validi: ogni carta perdente mostrava comunque
+      // un tris e ScratchCardView la pagava col premio di ripiego (€100-400 su
+      // una carta da €100). Se i simboli a tema non bastano si aggiungono quelli
+      // generici. Il mescolamento finale nasconde la rotazione, che altrimenti
+      // tradirebbe la carta perdente dalla disposizione.
+      const perSymbol = Math.max(1, type.matchNeeded - 1);
+      const pool = safeSymbols.length * perSymbol >= totalCells
+        ? safeSymbols
+        : [...safeSymbols, ...SYMBOLS.filter(s => !safeSymbols.includes(s))];
+      const available = shuffle(pool).slice(0, Math.min(totalCells, pool.length));
       for (let i = 0; i < totalCells; i++) symbols.push(available[i % available.length]);
-      // Ripeti dedup finché nessun simbolo raggiunge matchNeeded
-      // (le sostituzioni possono creare nuove combo accidentali)
-      // Guardia matchNeeded >= 2: labirinto e mappaTesor0 hanno matchNeeded 0 e
-      // finivano in un loop degenere (`counts[s] >= 0` sempre vero finché il
-      // contatore non andava in negativo, con `symbols[-1] = ...` per giunta).
-      // Quelle carte hanno schermate dedicate e non usano queste celle.
-      let safe = type.matchNeeded < 2;
-      let guard = 0;
-      while (!safe && guard < 50) {
-        safe = true;
-        guard++;
-        const counts = {};
-        symbols.forEach(s => counts[s] = (counts[s]||0)+1);
-        for (const s in counts) {
-          while (counts[s] >= type.matchNeeded) {
-            safe = false;
-            const idx = symbols.lastIndexOf(s);
-            let rep; do { rep = pick(safeSymbols); } while (rep === s);
-            symbols[idx] = rep; counts[s]--; counts[rep] = (counts[rep]||0)+1;
-          }
-        }
-      }
     }
-    cells = symbols.map(s => ({ symbol: s, scratched: false }));
+    cells = shuffle(symbols).map(s => ({ symbol: s, scratched: false }));
 
     // Trappole fuoco (boccaDrago)
     if (type.mechanic === "trap") {
