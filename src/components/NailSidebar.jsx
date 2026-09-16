@@ -1,8 +1,8 @@
-import { useState, memo } from "react";
-import { C, FONT } from "../data/theme.js";
-import { NAIL_INFO, NAIL_ORDER } from "../data/nails.js";
-import { GRATTATORE_DEFS, ALL_IMPLANTS_META, CHIRURGO_IMPLANT_IDS } from "../data/items.js";
-import { makeNailCursor, NAIL_CURSOR, getNailVisual } from "../utils/nail.js";
+import { memo } from "react";
+import { C } from "../data/theme.js";
+import { NAIL_INFO } from "../data/nails.js";
+import { ALL_IMPLANTS_META, CHIRURGO_IMPLANT_IDS } from "../data/items.js";
+import { getNailVisual } from "../utils/nail.js";
 import { Tooltip } from "./Tooltip.jsx";
 import { VintageBadge } from "./Vintage.jsx";
 import { Asset } from "./Asset.jsx";
@@ -15,7 +15,7 @@ const CHIRURGO_SLOTS = {
   oro:      { max: CHIRURGO_SLOT_MAX.oro,      color: "#ffd700", label: "ORO" },
 };
 
-function NailSidebarImpl({ nails, activeNail, onSelectNail, locked=false, grattatori=[], equippedGrattatore=null, onEquipGrattatore=null, horizontal=false }) {
+function NailSidebarImpl({ nails, activeNail, onSelectNail, locked=false, equippedGrattatore=null, horizontal=false }) {
   // Tier/pip/tacche vivono in NailMeter.jsx — stesso linguaggio visivo dell'HUD
   // e del combattimento (vedi NailTierBar / NailScratchBar / NailSlotBar).
   return (

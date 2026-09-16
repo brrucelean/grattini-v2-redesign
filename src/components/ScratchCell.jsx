@@ -1,8 +1,5 @@
 import { useState, useRef, useEffect } from "react";
 import { C, FONT, T } from "../data/theme.js";
-import { SYMBOLS } from "../data/cards.js";
-import { NAIL_INFO } from "../data/nails.js";
-import { makeNailCursor } from "../utils/nail.js";
 import { AudioEngine, ParticleSystem } from "../audio.js";
 import { Haptics } from "../utils/haptics.js";
 

@@ -157,7 +157,7 @@ export function useItemHandlers({ player, updatePlayer, addLog }) {
     addLog(itemType === "sigarettaErba" ? "🌿 Canna conservata nello zaino." : "🚬 Sigaretta conservata nello zaino.", C.dim);
   }, [updatePlayer, addLog]);
 
-  const useItem = (itemIdx) => {
+  const handleUseItem = (itemIdx) => {
     const itemId = player.items[itemIdx];
     const item = ITEM_DEFS[itemId];
     if (!item) return;
@@ -279,6 +279,6 @@ export function useItemHandlers({ player, updatePlayer, addLog }) {
     handleCardItemFound,
     handleSmoke,
     handleSaveSmoke,
-    useItem,
+    handleUseItem,
   };
 }

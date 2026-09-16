@@ -7,18 +7,6 @@ export function _makePlayingCard(rank) {
            isRed: suit==="♥"||suit==="♦", scratched:false };
 }
 
-// EV stimato: P(win) * prize_medio - costo
-export function estimateCardEV(cardTypeId, playerState = {}) {
-  const cb = CARD_BALANCE[cardTypeId];
-  const ct = CARD_TYPES.find(t => t.id === cardTypeId);
-  if (!cb || !ct) return null;
-  const fortune = playerState.fortune || 0;
-  const winP = Math.min(cb.winChance + Math.min(Math.max(fortune, 0), 5) * 0.06, 0.95); // cap fortune bonus
-  const avgPrize = (cb.prizeMin + cb.prizeMax) / 2;
-  const ev = winP * avgPrize - ct.cost;
-  return { winP: Math.round(winP * 100), ev: Math.round(ev * 10) / 10 };
-}
-
 // Simulazione EV — usabile in console dev: window.simEV("maledetto", 10000)
 // Esposto solo in dev mode (Vite tree-shakes questo blocco in build production)
 if (import.meta.env?.DEV && typeof window !== "undefined") {

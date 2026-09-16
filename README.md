@@ -29,7 +29,7 @@ npm run build     # produce dist/
 npm run preview   # serve dist/ localmente
 ```
 
-Per saltare dritto in un combattimento senza giocare l'intro: `?combat=miniboss` (o `boss` / `ladro`) come query string.
+Solo in sviluppo: `?ticket=<idCarta>` apre la galleria dei biglietti (es. `?ticket=labirinto`) per rivederne l'impaginazione.
 
 ## Architettura
 

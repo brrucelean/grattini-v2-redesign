@@ -827,7 +827,6 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
   // FURIA: suono drammatico quando il nemico entra in enrage
   useEffect(() => {
     if (turn === FURY_TURN) { AudioEngine.bossEntrance?.(); triggerShake(); }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [turn]);
 
   const inFury = turn >= FURY_TURN;

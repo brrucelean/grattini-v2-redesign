@@ -1,10 +1,10 @@
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { C } from "../data/theme.js";
 import { NAIL_ORDER } from "../data/nails.js";
 import { NODE_ICONS } from "../data/map.js";
-import { ITEM_DEFS, GRATTATORE_DEFS, MACELLAIO_IMPLANTS } from "../data/items.js";
+import { ITEM_DEFS } from "../data/items.js";
 import { BIOMES, BIOME_MODIFIERS, BOSS_MIN_MONEY, CEDOLE } from "../data/biomes.js";
-import { CARD_TYPES, CARD_BALANCE } from "../data/cards.js";
+import { CARD_TYPES } from "../data/cards.js";
 import { degradeNailObj, healNail, healDamagedNails, isDamagedNail } from "../utils/nail.js";
 import { roundMoney, fmtMoney } from "../utils/money.js";
 import { roll, pick, shuffle } from "../utils/random.js";
@@ -17,9 +17,9 @@ import { pickNewRelic } from "../utils/hasRelic.js";
 const MINIGAMES = { labirinto: "labirinto", combina: "grattaCombina", tesoro: "mappaTesor0" };
 
 export function useNodeHandlers({
-  player, currentNode, currentBiome, currentRow,
-  updatePlayer, addLog, triggerNpcComment, unlockAchievement, updateAllTimeStats,
-  consumeGrattatore, handleNailDamage, showItemFound,
+  player, currentNode, currentBiome,
+  updatePlayer, addLog, unlockAchievement, updateAllTimeStats,
+  consumeGrattatore,
   setScreen, setCurrentNode, setVisitedNodes, setCurrentRow, setPreScratchCount,
   setGameStats, setCardSelectMode, setReturnScreen, setScratchingCard, setSelectedCardIdx,
   setCombatEnemy, setCurrentBiome, setMap, setPlayer,
@@ -504,13 +504,8 @@ export function useNodeHandlers({
           }
           // Victory! unlock achievements
           unlockAchievement("first_win");
-          setPlayer(p => {
-            if (p && p.nails.every(n => n.state !== "morta" || p.nails.filter(x => x.state !== "morta").length === p.nails.length)) {
-              // Check untouchable: no nails are dead
-              if (p.nails.every(n => n.state !== "morta")) unlockAchievement("untouchable");
-            }
-            return p;
-          });
+          // Intoccabile: nessuna unghia morta a fine run
+          if (player.nails.every(n => n.state !== "morta")) unlockAchievement("untouchable");
           updateAllTimeStats({...gameStats, _isWin: true});
           // Il Broker offre 3 cedole per la prossima run (la schermata esisteva
           // ma non veniva mai aperta: la meta-progressione era irraggiungibile)

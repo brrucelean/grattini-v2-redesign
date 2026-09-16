@@ -12,6 +12,7 @@ import { Tooltip } from "./Tooltip.jsx";
 import { Asset } from "./Asset.jsx";
 import { VintageBadge } from "./Vintage.jsx";
 import { ANIM } from "../styles/animations.js";
+import { useIsMobile } from "../hooks/useIsMobile.js";
 
 // ─── SLOT MACHINE ────────────────────────────────────────────
 // 6 simboli su 3 rulli: 777 esce 1 volta su 216, un altro tris 5, una coppia 90.
@@ -264,13 +265,7 @@ function SectionHeader({ icon, label, count, accent = C.gold, subtitle, scrollHi
 
 export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeave, onScratch, onSlotResult, currentRow=0, currentBiome=0, wideDesk=false }) {
   const punchline = useRef(TABACCAIO_LINES[Math.floor(rng() * TABACCAIO_LINES.length)]);
-  const [vw, setVw] = useState(window.innerWidth);
-  useEffect(() => {
-    const h = () => setVw(window.innerWidth);
-    window.addEventListener("resize", h);
-    return () => window.removeEventListener("resize", h);
-  }, []);
-  const mobile = vw < 600;
+  const { isMobile: mobile } = useIsMobile(600);
 
   // ─── SLOT MACHINE STATE ────────────────────────────────────────
   const [slotReels, setSlotReels] = useState(["🎰","🎰","🎰"]);
@@ -360,8 +355,7 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
 
   const shopItems = ["cerotto","disinfettante","sigaretta"];
   const shopGrattatori = ["bottone","bullone"];
-  const mediumItemsPool = ["sigarettaErba","cremaRinforzante"].filter(() => true);
-  const mediumItems = player.money >= 8 ? stock(mediumItemsPool, 0.50, 2) : [];
+  const mediumItems = player.money >= 8 ? stock(["sigarettaErba","cremaRinforzante"], 0.50, 2) : [];
   const mediumGrattatori = player.money >= 10 ? stock(["unghiaFinta","coltelloAffilato"], 0.55, 2) : [];
   const sottoBanco = player.money >= 15 ? stock(["giornalettoPorno"], 0.30, 1) : [];
   const rareItems = player.money >= 15 ? stock(["cappelloSbirro","smalto"], 0.30, 1) : [];

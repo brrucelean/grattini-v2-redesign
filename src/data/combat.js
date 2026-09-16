@@ -231,21 +231,3 @@ export const EFFECT_DAMAGE = {
   stealMoney:  16,  // Furto! — danno + rubi soldi
 };
 
-// ─── TAUNTS ─────────────────────────────────────────────────
-export const TAUNTS = [
-  { text:"\"Quelle unghie fanno schifo, nemmeno mia nonna gratta così male!\"",
-    respond:"\"Le mie unghie ti STRAPPERANNO la faccia!\"",
-    rewardMoney:15, riskDamage:1, winChance:0.55 },
-  { text:"\"Hai la faccia di uno che perde sempre alla lotteria!\"",
-    respond:"\"Stavolta vinco IO, stronzo!\"",
-    rewardMoney:20, riskDamage:1, winChance:0.5 },
-  { text:"\"Scommetto che non hai neanche i soldi per un Poveraccio!\"",
-    respond:"\"Ho più soldi di quanti ne vedrai MAI!\"",
-    rewardMoney:25, riskDamage:1, winChance:0.45 },
-  { text:"\"Guarda quelle unghie... sembrano i denti di mio nonno!\"",
-    respond:"\"Queste unghie ti faranno PIANGERE!\"",
-    rewardMoney:10, riskDamage:0, winChance:0.6 },
-  { text:"\"Ancora qui? Pensavo fossi già scappato col culo tra le gambe!\"",
-    respond:"\"Io non scappo MAI! Adesso paghi!\"",
-    rewardMoney:30, riskDamage:2, winChance:0.4 },
-];

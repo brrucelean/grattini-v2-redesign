@@ -20,12 +20,11 @@ import { useReducedMotion } from "./hooks/useReducedMotion.js";
 import { NODE_ICONS } from "./data/map.js";
 import { ITEM_DEFS, RELIC_DEFS, GRATTATORE_DEFS } from "./data/items.js";
 import { BIOMES, CEDOLE, BIOME_PALETTE, BOSS_MIN_MONEY } from "./data/biomes.js";
-import { MECH_RULES, CARD_TYPES } from "./data/cards.js";
+import { MECH_RULES } from "./data/cards.js";
 import { ASCII_TITLE } from "./data/art.js";
 import { AudioEngine } from "./audio.js";
-import { clamp } from "./utils/random.js";
 import { Haptics } from "./utils/haptics.js";
-import { degradeNailObj, healDamagedNails, makeNailCursor, nailCursor, grattatoreCursor } from "./utils/nail.js";
+import { degradeNailObj, healDamagedNails, nailCursor, grattatoreCursor } from "./utils/nail.js";
 import { generateCard, generateIntroCards } from "./utils/card.js";
 import {
   generateMap,
@@ -38,12 +37,11 @@ import { S } from "./utils/styles.js";
 import { Tooltip } from "./components/Tooltip.jsx";
 import { Btn } from "./components/Btn.jsx";
 import { Asset } from "./components/Asset.jsx";
-import { hasAsset } from "./assets/registry.js";
 import { TicketThumb } from "./components/TicketThumb.jsx";
 import { assetIdByName } from "./assets/nameIndex.js";
 import { assetUrl } from "./assets/registry.js";
 import { CarmeloLogBox, CarmeloScratchStrip } from "./components/DialogueBox.jsx";
-import { NewsTicker, NpcCommentStrip } from "./components/NewsTicker.jsx";
+import { NewsTicker } from "./components/NewsTicker.jsx";
 import { HUD } from "./components/HUD.jsx";
 import { NailSidebar } from "./components/NailSidebar.jsx";
 import { RunStatsRail, ScratchLogRail } from "./components/ScratchSideRails.jsx";
@@ -82,16 +80,9 @@ function LazyFallback() {
 }
 
 // ─── UTILITY FUNCTIONS ───────────────────────────────────────
-const hasRelic = (player, effectId) => player?.relics?.some(r => r.effect === effectId);
-// Riferimento stabile per il fallback "nessun grattatore" — `player.grattatori || []`
-// creava un nuovo array (nuova identità) ad ogni render, vanificando il memo su NailSidebar.
-const EMPTY_GRATTATORI = [];
 // Schermate "ferme" in cui una run senza unghie va chiusa subito (grattino,
 // combattimento e cella gestiscono da sé la propria sconfitta)
 const IDLE_SCREENS = new Set(["map", "event", "preScratch", "shop", "locanda", "selectCard", "node", "labirinto", "grattaCombina", "mappaTesor0"]);
-
-
-
 
 // ═══════════════════════════════════════════════════════════════
 //  MAIN GAME COMPONENT
@@ -114,16 +105,15 @@ export default function Grattini() {
   const [preScratchCount, setPreScratchCount] = useState(0);
   const [scratchingCard, setScratchingCard] = useState(null);
   const [combatEnemy, setCombatEnemy] = useState(null);
-  const [introCardsLeft, setIntroCardsLeft] = useState(3);
+  const [, setIntroCardsLeft] = useState(3);
   const [introPrizes, setIntroPrizes] = useState([]); // prizes from both intro cards, not yet pocketed
-  const [cardSelectMode, setCardSelectMode] = useState(false);
-  const [selectedCardIdx, setSelectedCardIdx] = useState(null);
+  const [, setCardSelectMode] = useState(false);
+  const [, setSelectedCardIdx] = useState(null);
   const [returnScreen, setReturnScreen] = useState(null); // where to go back after scratch
   const [currentBiome, setCurrentBiome] = useState(0);
   const [gameStats, setGameStats] = useState({ nodesVisited:0, moneyEarned:0, cardsScratched:0, scratchWins:0, scratchLosses:0 });
   const [firstScratchShown, setFirstScratchShown] = useState(false);
   const [hoveredIntroIdx, setHoveredIntroIdx] = useState(-1);
-  const [nailSanguinanteModal, setNailSanguinanteModal] = useState(false);
   const [cellaProgress, setCellaProgress] = useState(0); // graffi al muro in cella (0-8 = evaso)
   const [tutorialPage, setTutorialPage] = useState(0); // 0 = unghie, 1 = meccaniche
   // ─── HOOK: useMeta ───
@@ -131,7 +121,7 @@ export default function Grattini() {
     achievements, setAchievements,
     activeCedola, setActiveCedola,
     pendingCedoleOffer, setPendingCedoleOffer,
-    achievementToast, setAchievementToast,
+    achievementToast,
     showTrophies, setShowTrophies,
     showReliquie, setShowReliquie,
     discoveredRelics, discoverRelic,
@@ -166,7 +156,7 @@ export default function Grattini() {
     if (screen === "victory")   Haptics.victory();
     if (screen === "combat")    Haptics.tap();
     if (screen === "map")       Haptics.tap();
-  }, [screen]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [screen]);
 
   const updatePlayer = useCallback((updates) => {
     setPlayer(p => {
@@ -261,7 +251,7 @@ export default function Grattini() {
   };
 
   // ─── HOOK: useNailEffects ───
-  const { globalPainFlash, nailDeathFlash, setNailDeathFlash, screenShake, setScreenShake, moneyBling } = useNailEffects({ player, screen, gameStats, unlockAchievement, updateAllTimeStats, addLog });
+  const { globalPainFlash, nailDeathFlash, setNailDeathFlash, screenShake, moneyBling } = useNailEffects({ player, screen, gameStats, unlockAchievement, updateAllTimeStats, addLog });
 
   // ─── HOOK: useVictoryCanvas ───
   const { victoryRevealed, setVictoryRevealed, victoryCanvasRef, victoryDrawing, handleVictoryScratch } = useVictoryCanvas({ screen });
@@ -301,29 +291,9 @@ export default function Grattini() {
     return () => clearTimeout(t);
   }, [player?.nails, screen]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ─── HELPER: consumeGrattatore ────────────────────────────
-  const consumeGrattatore = useCallback(() => {
-    updatePlayer(p => {
-      if (!p.equippedGrattatore) return p;
-      const idx = p.equippedGrattatore.inventoryIdx;
-      const grattatori = [...p.grattatori];
-      const g = {...grattatori[idx]};
-      g.usesLeft -= 1;
-      if (g.usesLeft <= 0) {
-        grattatori.splice(idx, 1);
-        addLog(`${g.name} consumato!`, C.dim);
-        return {...p, grattatori, equippedGrattatore: null};
-      } else {
-        grattatori[idx] = g;
-        const newEquipped = {...p.equippedGrattatore, usesLeft: g.usesLeft};
-        return {...p, grattatori, equippedGrattatore: newEquipped};
-      }
-    });
-  }, [updatePlayer, addLog]);
-
   // ─── HOOK: useNailHandlers ───
-  const { playerRelicEffects, effectiveFortune, getActiveNailState, handleCellScratch, handleNailDamage, handleCombatCellScratch, consumeGrattatoreUse } = useNailHandlers({
-    player, updatePlayer, triggerNpcComment, scratchingCard, setScreen, addLog,
+  const { playerRelicEffects, effectiveFortune, getActiveNailState, handleCellScratch, handleNailDamage, handleCombatCellScratch, consumeGrattatore } = useNailHandlers({
+    player, updatePlayer, triggerNpcComment, scratchingCard, addLog,
   });
 
   // ─── HOOK: useItemHandlers ───
@@ -340,7 +310,7 @@ export default function Grattini() {
     handleCardItemFound,
     handleSmoke,
     handleSaveSmoke,
-    useItem,
+    handleUseItem,
   } = useItemHandlers({ player, updatePlayer, addLog });
   // Riferimento stabile per HUD (memoizzato) — un'arrow function inline nel JSX
   // sarebbe una nuova identità ad ogni render, vanificando il memo.
@@ -364,9 +334,9 @@ export default function Grattini() {
 
   // ─── HOOK: useNodeHandlers ───
   const { dreamModal, setDreamModal, selectNode, enterNode, handlePreScratch, handleSelectCard, handleRest, handleCombatEnd } = useNodeHandlers({
-    player, currentNode, currentBiome, currentRow,
-    updatePlayer, addLog, triggerNpcComment, unlockAchievement, updateAllTimeStats,
-    consumeGrattatore, handleNailDamage, showItemFound,
+    player, currentNode, currentBiome,
+    updatePlayer, addLog, unlockAchievement, updateAllTimeStats,
+    consumeGrattatore,
     setScreen, setCurrentNode, setVisitedNodes, setCurrentRow, setPreScratchCount,
     setGameStats, setCardSelectMode, setReturnScreen, setScratchingCard, setSelectedCardIdx,
     setCombatEnemy, setCurrentBiome, setMap, setPlayer,
@@ -792,7 +762,7 @@ export default function Grattini() {
           padding:"8px 6px",
           transition:"border-color 0.6s, background 0.6s",
         }}>
-          <NailSidebar nails={player.nails} activeNail={player.activeNail} onSelectNail={handleSelectNail} locked={!!scratchingCard} grattatori={player.grattatori || EMPTY_GRATTATORI} equippedGrattatore={player.equippedGrattatore} onEquipGrattatore={equipGrattatore} horizontal={isMobile} />
+          <NailSidebar nails={player.nails} activeNail={player.activeNail} onSelectNail={handleSelectNail} locked={!!scratchingCard} equippedGrattatore={player.equippedGrattatore} horizontal={isMobile} />
         </div>
       )}
 
@@ -1035,7 +1005,7 @@ export default function Grattini() {
                         fontSize:"32px", position:"relative", zIndex:2,
                         textShadow:`0 0 16px ${c.accent}`,
                         filter: c.hasProgress ? "none" : "grayscale(0.4) brightness(0.85)",
-                      }}><Asset id={`card-${c.id}`} emoji={c.emoji} size={40} /></div>
+                      }}><Asset emoji={c.emoji} size={40} /></div>
                       {/* Foil shimmer diagonale animato (solo se ha progresso) */}
                       {c.shimmer && (
                         <div style={{
@@ -1354,8 +1324,6 @@ export default function Grattini() {
                 {(() => {
                   const c = hoveredIntroIdx >= 0 ? player.scratchCards[hoveredIntroIdx] : null;
                   const borderColor = c?.theme?.border || C.gold;
-                  const cols = c?.cols || 3;
-                  const rows = c?.mechanic === "setteemezzo" ? 1 : (c?.rows || 3);
                   return (
                     <div style={{
                       width:"100%", marginTop:"4px",
@@ -2079,7 +2047,7 @@ export default function Grattini() {
                   const item = ITEM_DEFS[itemId];
                   return item ? (
                     <Tooltip key={idx} text={item.desc}>
-                      <Btn onClick={() => useItem(idx)} style={{fontSize: "11px"}}>
+                      <Btn onClick={() => handleUseItem(idx)} style={{fontSize: "11px"}}>
                         {item.emoji} {item.name}
                       </Btn>
                     </Tooltip>
@@ -2167,7 +2135,7 @@ export default function Grattini() {
                 return item ? (
                   <Tooltip key={idx} text={item.desc}>
                     <Btn
-                      onClick={() => useItem(idx)}
+                      onClick={() => handleUseItem(idx)}
                       style={{
                         flexShrink:0,
                         display:"flex", alignItems:"center", gap:"3px",
@@ -2216,7 +2184,7 @@ export default function Grattini() {
             onSlotResult={handleSlotResult}
           />
           {wideDesk && (
-            <ShopZainoRail player={player} onEquipGrattatore={handleRailEquipGrattatore} onUseItem={useItem} />
+            <ShopZainoRail player={player} onEquipGrattatore={handleRailEquipGrattatore} onUseItem={handleUseItem} />
           )}
           </Suspense>
         </div>
@@ -2256,7 +2224,7 @@ export default function Grattini() {
               negozio, richiesta esplicitamente anche qui. ShopZainoRail è un
               lazy import: deve restare dentro lo stesso Suspense di EventView. */}
           {wideDesk && (
-            <ShopZainoRail player={player} onEquipGrattatore={handleRailEquipGrattatore} onUseItem={useItem} />
+            <ShopZainoRail player={player} onEquipGrattatore={handleRailEquipGrattatore} onUseItem={handleUseItem} />
           )}
           </Suspense>
         </div>
@@ -2285,7 +2253,7 @@ export default function Grattini() {
             player={player}
             onEnd={handleCombatEnd}
             onCellScratch={handleCombatCellScratch}
-            onGrattatoreConsumed={consumeGrattatoreUse}
+            onGrattatoreConsumed={consumeGrattatore}
             onCombo={() => { unlockAchievement("combo_master"); setGameStats(s => ({...s, combosFired: (s.combosFired || 0) + 1})); }}
             onVariantRevealed={(variantId) => {
               if (!vintageCollected.includes(variantId)) {
@@ -2319,7 +2287,7 @@ export default function Grattini() {
         {/* Stessa fiancata ZAINO del negozio/evento — a schermo largo il
             duello (maxWidth W.content) lascia spazio a destra della sidebar. */}
         {wideDesk && (
-          <ShopZainoRail player={player} onEquipGrattatore={handleRailEquipGrattatore} onUseItem={useItem} />
+          <ShopZainoRail player={player} onEquipGrattatore={handleRailEquipGrattatore} onUseItem={handleUseItem} />
         )}
         </div>
       )}
@@ -2327,9 +2295,6 @@ export default function Grattini() {
       {/* ═══ CELLA ═══ */}
       {screen === "cella" && player && (() => {
         const WALL_NEEDED = 8;
-        const allNailsMax = player.nails.every(n =>
-          n.state === "sana" || n.state === "kawaii" || n.state === "piede" || n.state === "morta" && player.nails.filter(x=>x.state!=="morta").every(x=>x.state==="sana"||x.state==="kawaii"||x.state==="piede")
-        );
         // Check reale: nessuna unghia VIVA sotto-max
         const anyAliveBelowMax = player.nails.some(n =>
           n.state !== "morta" && n.state !== "sana" && n.state !== "kawaii" && n.state !== "piede"
@@ -3519,7 +3484,7 @@ export default function Grattini() {
                   return (
                     <Tooltip key={idx} text={item.desc}>
                       <div
-                        onClick={() => { useItem(idx); if (itemId !== "cappelloSbirro") setShowInventoryPanel(false); }}
+                        onClick={() => { handleUseItem(idx); if (itemId !== "cappelloSbirro") setShowInventoryPanel(false); }}
                         style={{display:"flex", flexDirection:"column", alignItems:"center", gap:"2px",
                           padding:"7px 9px", background:`${rc}11`, border:`1px solid ${rc}55`,
                           cursor:"pointer", minWidth:"62px", fontFamily:FONT, userSelect:"none"}}
@@ -4029,7 +3994,6 @@ export default function Grattini() {
                 const unlocked = achievements[ach.id];
                 const isSecret = ach.secret;
                 const hidden = isSecret && !unlocked;
-                const accent = unlocked ? C.gold : isSecret ? "#6a5a2a" : "#3a3a52";
                 return (
                   <div key={ach.id} style={{
                     background: unlocked ? "#0d0d14" : "#0a0a10",

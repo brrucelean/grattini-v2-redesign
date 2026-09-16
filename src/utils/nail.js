@@ -88,8 +88,6 @@ export const IMPLANT_VISUALS = {
   baddie:    { emoji:"💋", color:"#ff4477", glow:"0 0 12px #ff447799, inset 0 0 10px #aa224466", bg:"linear-gradient(145deg,#2a0811 0%,#55112a 50%,#2a0811 100%)" },
   neonato:   { emoji:"👶", color:"#ffc0cb", glow:"0 0 8px #ffc0cb88", bg:"linear-gradient(145deg,#2a1016 0%,#55202c 50%,#2a1016 100%)" },
   marcione:  { emoji:"🧟", color:"#6b8e23", glow:"0 0 8px #6b8e2388, inset 0 0 8px #44551144", bg:"linear-gradient(145deg,#111808 0%,#223010 50%,#111808 100%)" },
-  velenosa:  { emoji:"☠️", color:"#88ff44", glow:"0 0 10px #88ff4488, inset 0 0 8px #449922", bg:"linear-gradient(145deg,#0a1f08 0%,#15401a 50%,#0a1f08 100%)" },
-  parassita: { emoji:"🪱", color:"#ff6fae", glow:"0 0 10px #ff6fae88, inset 0 0 8px #cc447755", bg:"linear-gradient(145deg,#220a16 0%,#4a1430 50%,#220a16 100%)" },
 };
 
 // Emoji default per stato "base" (quando non c'è impianto)
@@ -342,8 +340,6 @@ export function makeNailCursor(nailState = "sana") {
   const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${GW*P}' height='${GH*P}' viewBox='0 0 ${GW*P} ${GH*P}' shape-rendering='crispEdges'>${rects}</svg>`;
   return `url("data:image/svg+xml,${encodeURIComponent(svg)}") 10 0, pointer`;
 }
-
-export const NAIL_CURSOR = makeNailCursor("sana");
 
 // ─── CURSORE = SPRITE DEL DITO ───────────────────────────────
 // Usa lo sprite PNG (cursor-<stato>) come cursore del mouse, con hotspot

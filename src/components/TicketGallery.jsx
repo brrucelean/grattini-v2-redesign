@@ -22,7 +22,7 @@ export function TicketGallery({ initialId }) {
   const [seed, setSeed] = useState(0);
   // Una carta per id+seed: rigenerarla a ogni render (resize, zoom, editor)
   // azzerava le celle mentre si grattava.
-  const card = useMemo(() => generateCard(id), [id, seed]);
+  const card = useMemo(() => generateCard(id), [id, seed]); // eslint-disable-line react-hooks/exhaustive-deps -- seed = "rigenera"
   // ?zoom=N ingrandisce solo la resa (il layout resta quello reale) per ispezione.
   const [zoom, setZoom] = useState(
     Number(new URLSearchParams(window.location.search).get("zoom")) || 1

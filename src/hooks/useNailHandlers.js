@@ -2,8 +2,9 @@ import { useMemo, useCallback } from "react";
 import { C } from "../data/theme.js";
 import { degradeNailObj } from "../utils/nail.js";
 import { hasRelic } from "../utils/hasRelic.js";
+import { spendGrattatoreUse, grattatoreAtLastUse, COMBAT_ONLY_EFFECTS } from "../utils/grattatore.js";
 
-export function useNailHandlers({ player, updatePlayer, triggerNpcComment, scratchingCard, setScreen, addLog }) {
+export function useNailHandlers({ player, updatePlayer, triggerNpcComment, scratchingCard, addLog }) {
   // Reliquie: lista effetti attivi per passare ai componenti figli
   const playerRelicEffects = useMemo(() => (player?.relics || []).map(r => r.effect), [player?.relics]);
   const effectiveFortune = useMemo(() => {
@@ -100,39 +101,29 @@ export function useNailHandlers({ player, updatePlayer, triggerNpcComment, scrat
     triggerNpcComment("nail_sanguinante");
   }, [updatePlayer, addLog, triggerNpcComment]);
 
+  // Consuma 1 uso del grattatore equipaggiato (grattini, fine boss-fight, e
+  // CombatView quando l'effetto di un grattatore da combattimento scatta)
+  const consumeGrattatore = useCallback(() => {
+    const spent = grattatoreAtLastUse(player);
+    if (spent) addLog(`${spent.name} consumato!`, C.dim);
+    updatePlayer(spendGrattatoreUse);
+  }, [player, updatePlayer, addLog]);
+
   const handleCombatCellScratch = useCallback(() => {
+    // ── GRATTATORE EQUIPAGGIATO: gratti con l'attrezzo, non con l'unghia ──
+    // L'unghia non si logora, il grattatore "normale" (Bullone/Moneta/Unghia
+    // Finta/...) perde 1 uso per carta come sui grattini. Quelli da combattimento
+    // e il Guanto da BOSS no: il loro uso si spende quando l'effetto scatta
+    // (onGrattatoreConsumed) o a fine boss-fight, altrimenti un Coltello da 1 uso
+    // sparirebbe sulla prima carta, prima ancora di colpire.
+    const eq = player?.equippedGrattatore;
+    if (eq && !COMBAT_ONLY_EFFECTS.has(eq.effect)) {
+      const spent = grattatoreAtLastUse(player);
+      if (spent) addLog(`${spent.name} consumato!`, C.dim);
+    }
     updatePlayer(p => {
-      // ── GRATTATORE EQUIPAGGIATO: gratti con l'attrezzo, non con l'unghia ──
-      // Con un grattatore equipaggiato l'unghia attiva NON si logora — MA il grattatore
-      // non è infinito: si consuma come sui grattini veri.
-      const eff = p.equippedGrattatore?.effect;
       if (p.equippedGrattatore) {
-        // Grattatori da COMBATTIMENTO (atkBoost/widePerfect/guaranteedParry) e Guanto
-        // da BOSS (bossShield): proteggono l'unghia ma NON si consumano per-cella —
-        // il loro uso si spende quando l'effetto scatta (onGrattatoreConsumed in
-        // CombatView) o a fine boss-fight (handleCombatEnd). Altrimenti un Coltello da
-        // 1 uso sparirebbe sulla prima cella, prima ancora di colpire.
-        const isPureCombatGrattatore = eff === "atkBoost" || eff === "widePerfect" || eff === "guaranteedParry";
-        if (isPureCombatGrattatore || eff === "bossShield") {
-          return p;
-        }
-        // Grattatore "normale" (Bullone/Moneta/Unghia Finta/...): protegge l'unghia e
-        // consuma 1 uso per cella grattata, esattamente come sui grattini. A esaurimento
-        // viene rimosso: da lì in poi l'unghia torna a logorarsi.
-        const idx = p.equippedGrattatore.inventoryIdx;
-        const grattatori = [...(p.grattatori || [])];
-        if (grattatori[idx]) {
-          const g = {...grattatori[idx]};
-          g.usesLeft -= 1;
-          if (g.usesLeft <= 0) {
-            grattatori.splice(idx, 1);
-            setTimeout(() => addLog(`${g.name} consumato!`, C.dim), 0);
-            return {...p, grattatori, equippedGrattatore: null};
-          }
-          grattatori[idx] = g;
-          return {...p, grattatori, equippedGrattatore: {...p.equippedGrattatore, usesLeft: g.usesLeft}};
-        }
-        return p; // indice non valido: niente logorio comunque
+        return COMBAT_ONLY_EFFECTS.has(p.equippedGrattatore.effect) ? p : spendGrattatoreUse(p);
       }
 
       // ── Nessun grattatore: danno normale all'unghia attiva ──
@@ -150,34 +141,10 @@ export function useNailHandlers({ player, updatePlayer, triggerNpcComment, scrat
         const next = nails.findIndex((n, i) => i !== active && n.state !== "morta");
         if (next >= 0) newActive = next;
       }
-      // GAY OVER immediato se tutte le unghie finiscono durante il combattimento
-      if (!nails.some(n => n.state !== "morta")) {
-        setTimeout(() => setScreen("gameOver"), 600);
-      }
+      // Il game over in combattimento lo decide un effect in scratchlite
       return {...p, nails, activeNail: newActive};
     });
-  }, [updatePlayer, setScreen, addLog]);
-
-  // Consuma esplicitamente 1 uso del grattatore da combattimento equipaggiato,
-  // chiamato da CombatView SOLO quando il suo effetto scatta davvero (non ad
-  // ogni carta grattata). Rimuove il grattatore se esaurisce gli usi.
-  const consumeGrattatoreUse = useCallback(() => {
-    updatePlayer(p => {
-      if (!p.equippedGrattatore) return p;
-      const idx = p.equippedGrattatore.inventoryIdx;
-      const grattatori = [...(p.grattatori || [])];
-      if (!grattatori[idx]) return p;
-      const g = {...grattatori[idx]};
-      g.usesLeft -= 1;
-      if (g.usesLeft <= 0) {
-        grattatori.splice(idx, 1);
-        setTimeout(() => addLog(`${g.name} consumato!`, C.dim), 0);
-        return {...p, grattatori, equippedGrattatore: null};
-      }
-      grattatori[idx] = g;
-      return {...p, grattatori, equippedGrattatore: {...p.equippedGrattatore, usesLeft: g.usesLeft}};
-    });
-  }, [updatePlayer, addLog]);
+  }, [player, updatePlayer, addLog]);
 
   return {
     playerRelicEffects,
@@ -186,6 +153,6 @@ export function useNailHandlers({ player, updatePlayer, triggerNpcComment, scrat
     handleCellScratch,
     handleNailDamage,
     handleCombatCellScratch,
-    consumeGrattatoreUse,
+    consumeGrattatore,
   };
 }
