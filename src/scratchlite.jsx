@@ -134,7 +134,7 @@ export default function Grattini() {
     achievementToast, setAchievementToast,
     showTrophies, setShowTrophies,
     showReliquie, setShowReliquie,
-    discoveredRelics, setDiscoveredRelics,
+    discoveredRelics, discoverRelic,
     enabledRelics, setEnabledRelics,
     showAllTimeStats, setShowAllTimeStats,
     unlockAchievement,
@@ -354,7 +354,7 @@ export default function Grattini() {
     setScreen, setCurrentNode, setVisitedNodes, setCurrentRow, setPreScratchCount,
     setGameStats, setCardSelectMode, setReturnScreen, setScratchingCard, setSelectedCardIdx,
     setCombatEnemy, setCurrentBiome, setMap, setPlayer,
-    setItemFoundModal, setDiscoveredRelics,
+    setItemFoundModal, discoverRelic,
     setLabirintoState, setCombinaState, setTesoroState,
     effectiveFortune, gameStats, isAlive,
   });
@@ -362,7 +362,7 @@ export default function Grattini() {
   // ─── HOOK: useEventHandlers ───
   const { handleEventChoice } = useEventHandlers({
     player, currentNode, currentBiome, effectiveFortune,
-    updatePlayer, addLog, unlockAchievement, showItemFound,
+    updatePlayer, addLog, unlockAchievement, showItemFound, discoverRelic,
     setScreen, setCombatEnemy, setGameStats, setCellaProgress,
     setItemFoundModal, setSmokeChoiceModal,
     setScratchingCard, setReturnScreen,
@@ -1715,8 +1715,8 @@ export default function Grattini() {
           maestroTe: "MAESTRO DEL TÈ", guantaio: "GUANTAIO", start: "INIZIO",
         };
         const accent = NODE_ACCENT[currentNode.type] || C.cyan;
-        const nodeName = NODE_NAMES[currentNode.type] || currentNode.type.toUpperCase();
-        const nodeIcon = NODE_ICONS[currentNode.type] || "?";
+        const nodeName = currentNode.secret ? "NODO SEGRETO" : NODE_NAMES[currentNode.type] || currentNode.type.toUpperCase();
+        const nodeIcon = currentNode.secret ? "🔮" : NODE_ICONS[currentNode.type] || "?";
         const isBoss = currentNode.type === "boss";
         const isElite = !!currentNode.elite;
 

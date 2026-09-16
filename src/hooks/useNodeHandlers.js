@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import { C } from "../data/theme.js";
 import { NAIL_ORDER } from "../data/nails.js";
 import { NODE_ICONS } from "../data/map.js";
-import { ITEM_DEFS, RELIC_DEFS, GRATTATORE_DEFS, MACELLAIO_IMPLANTS } from "../data/items.js";
+import { ITEM_DEFS, GRATTATORE_DEFS, MACELLAIO_IMPLANTS } from "../data/items.js";
 import { BIOMES, BIOME_MODIFIERS, BOSS_MIN_MONEY } from "../data/biomes.js";
 import { CARD_TYPES, CARD_BALANCE } from "../data/cards.js";
 import { degradeNailObj, healNail, healDamagedNails, isDamagedNail } from "../utils/nail.js";
@@ -11,7 +11,7 @@ import { rng, roll, pick } from "../utils/random.js";
 import { generateCard } from "../utils/card.js";
 import { generateMap, generateLabirintoGrid, generateCombinaState, generateTesoroState } from "../utils/map.js";
 import { AudioEngine } from "../audio.js";
-import { STORAGE_KEYS, setStored } from "../utils/storage.js";
+import { pickNewRelic } from "../utils/hasRelic.js";
 
 // Carte con una schermata dedicata al posto del grattino (meccanica → schermata)
 const MINIGAMES = { labirinto: "labirinto", combina: "grattaCombina", tesoro: "mappaTesor0" };
@@ -23,7 +23,7 @@ export function useNodeHandlers({
   setScreen, setCurrentNode, setVisitedNodes, setCurrentRow, setPreScratchCount,
   setGameStats, setCardSelectMode, setReturnScreen, setScratchingCard, setSelectedCardIdx,
   setCombatEnemy, setCurrentBiome, setMap, setPlayer,
-  setItemFoundModal, setDiscoveredRelics,
+  setItemFoundModal, discoverRelic,
   setLabirintoState, setCombinaState, setTesoroState,
   effectiveFortune, gameStats, isAlive,
 }) {
@@ -63,18 +63,20 @@ export function useNodeHandlers({
 
     // Cappello Sbirro attira ladri/spacciatori: 30% chance di intercettazione
     // Plettro (silent) annulla l'intercettazione
-    if (player.cappelloSbirroWorn && !player.equippedGrattatore?.silent && !["ladro","spacciatore","poliziotto","boss","miniboss"].includes(node.type) && roll(0.3)) {
+    const interceptable = !node.secret && !["ladro","spacciatore","poliziotto","boss","miniboss"].includes(node.type);
+    if (player.cappelloSbirroWorn && !player.equippedGrattatore?.silent && interceptable && roll(0.3)) {
       const interceptor = roll(0.5) ? "ladro" : "spacciatore";
       addLog(`🎩 Il cappello sbirro attira attenzione! ${interceptor === "ladro" ? "Un ladro" : "Uno spacciatore"} ti intercetta!`, C.red);
       node._originalType = node._originalType || node.type;
       node.type = interceptor;
     }
-    if (player.cappelloSbirroWorn && player.equippedGrattatore?.silent && !["ladro","spacciatore","poliziotto","boss","miniboss"].includes(node.type) && roll(0.3)) {
+    if (player.cappelloSbirroWorn && player.equippedGrattatore?.silent && interceptable && roll(0.3)) {
       addLog("🎸 Il Plettro ti rende silenzioso — il ladro non ti ha visto!", C.cyan);
     }
 
     setScreen("preScratch");
-    addLog(`Vai verso: ${NODE_ICONS[node.type] || ""} ${node.type}${node.elite ? " ★ELITE" : ""}`, node.elite ? C.orange : C.cyan);
+    const nodeLabel = node.secret ? "🔮 nodo segreto" : `${NODE_ICONS[node.type] || ""} ${node.type}`;
+    addLog(`Vai verso: ${nodeLabel}${node.elite ? " ★ELITE" : ""}`, node.elite ? C.orange : C.cyan);
   };
 
   const enterNode = () => {
@@ -432,18 +434,10 @@ export function useNodeHandlers({
       // nuovo bioma), li uniamo in un solo popup invece di farli gareggiare.
       let foundRelic = null;
       if (currentNode?.type === "boss" || (currentNode?.type === "miniboss" && roll(0.25))) {
-        const owned = new Set((player?.relics || []).map(r => r.id));
-        const available = Object.entries(RELIC_DEFS).filter(([id]) => !owned.has(id));
-        if (available.length > 0) {
-          const [relicId, relicDef] = pick(available);
-          updatePlayer(p => ({...p, relics: [...(p.relics || []), {id: relicId, ...relicDef}]}));
-          // Salva come scoperta nella collezione meta
-          setDiscoveredRelics(prev => {
-            if (prev.includes(relicId)) return prev;
-            const next = [...prev, relicId];
-            setStored(STORAGE_KEYS.relicsDiscovered, next);
-            return next;
-          });
+        const relicDef = pickNewRelic(player);
+        if (relicDef) {
+          updatePlayer(p => ({...p, relics: [...(p.relics || []), relicDef]}));
+          discoverRelic(relicDef.id);  // collezione meta
           foundRelic = relicDef;
           addLog(`${relicDef.emoji} RELIQUIA TROVATA: ${relicDef.name}! ${relicDef.desc}`, C.gold);
           // Miniboss: nessun bioma da sbloccare dopo, quindi il popup della

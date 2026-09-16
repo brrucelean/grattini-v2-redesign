@@ -4,6 +4,7 @@ import { CARD_TYPES } from "../data/cards.js";
 import { degradeNailObj, healNail, healAliveNails, healDamagedNails, isDamagedNail, findWorstNailIdx, findWorstAliveIdx } from "../utils/nail.js";
 import { rng, roll, pick } from "../utils/random.js";
 import { generateCard } from "../utils/card.js";
+import { pickNewRelic } from "../utils/hasRelic.js";
 import { AudioEngine } from "../audio.js";
 
 // Toglie UNA copia dell'oggetto: il Cappello si consuma uno alla volta
@@ -12,12 +13,17 @@ const withoutOne = (items, itemId) => {
   return idx < 0 ? items : [...items.slice(0, idx), ...items.slice(idx + 1)];
 };
 
+// Premi del nodo segreto: grattini tier 3 dal grattino classico (niente
+// minigiochi) e i grattatori più forti del tabaccaio
+const SECRET_CARD_IDS = ["puzzle", "boccaDrago", "miliardario", "mahjong"];
+const SECRET_GRATTATORI = ["moneta_oro", "plettro", "moneta_argento"];
+
 // Specchio e Zia Carmela riportano a Graffiata le unghie messe peggio
 const isBelowGraffiata = (n) => n.state === "sanguinante" || n.state === "marcia";
 
 export function useEventHandlers({
   player, currentNode, currentBiome = 0, effectiveFortune = 0,
-  updatePlayer, addLog, unlockAchievement, showItemFound,
+  updatePlayer, addLog, unlockAchievement, showItemFound, discoverRelic,
   setScreen, setCombatEnemy, setGameStats, setCellaProgress,
   setItemFoundModal, setSmokeChoiceModal,
   setScratchingCard, setReturnScreen,
@@ -415,6 +421,35 @@ export function useEventHandlers({
           addLog("🧘 Un monaco silenzioso ti tocca la mano. L'unghia attiva diventa Sana. +3 Fortuna 6 turni.", C.cyan);
           setItemFoundModal({ emoji: "🧘", name: "Il Monaco Shaolin", desc: "Unghia attiva → Sana\n+3 Fortuna per 6 turni\n\n\"对 — il dito che gratta è il dito che ascolta.\"", subtitle: "Quartiere Cinese" });
         }
+        setScreen("map"); break;
+      }
+      // ── NODO SEGRETO 🔮: si apre solo con la Fortuna, un premio a scelta ──
+      // Prima era un "Evento Misterioso" qualsiasi: le ricompense uniche
+      // promesse dal tooltip della mappa non esistevano.
+      case "segreto_reliquia": {
+        const relic = pickNewRelic(player);
+        if (relic) {
+          updatePlayer(p => ({...p, relics: [...(p.relics || []), relic]}));
+          discoverRelic(relic.id);
+          addLog(`🔮 ${relic.emoji} RELIQUIA TROVATA: ${relic.name}! ${relic.desc}`, C.gold);
+          setItemFoundModal({ emoji: relic.emoji, name: `RELIQUIA: ${relic.name}`, desc: `${relic.desc}\n\nEffetto permanente per tutta la run!`, subtitle: "Nodo Segreto", rarity: relic.rarity });
+        }
+        setScreen("map"); break;
+      }
+      case "segreto_biglietto": {
+        const type = CARD_TYPES.find(t => t.id === pick(SECRET_CARD_IDS));
+        const card = {...generateCard(type.id, 0, 0, true), owned: true};
+        updatePlayer(p => ({...p, scratchCards: [...p.scratchCards, card]}));
+        addLog(`🔮 ${type.emoji} ${type.name} con l'angolo già grattato: è VINCENTE.`, C.gold);
+        setItemFoundModal({ emoji: type.emoji, name: type.name, desc: `Grattino vincente sicuro.\n${type.desc}`, subtitle: "Nodo Segreto" });
+        setScreen("map"); break;
+      }
+      case "segreto_grattatore": {
+        const gratId = pick(SECRET_GRATTATORI);
+        const def = GRATTATORE_DEFS[gratId];
+        updatePlayer(p => ({...p, grattatori: [...p.grattatori, makeGrattatore(gratId)]}));
+        addLog(`🔮 Sotto il bancone: ${def.emoji} ${def.name}!`, C.cyan);
+        setItemFoundModal({ emoji: def.emoji, name: def.name, desc: def.desc, subtitle: "Nodo Segreto", rarity: def.rarity });
         setScreen("map"); break;
       }
       case "acceptEventPaid": {

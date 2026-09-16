@@ -619,6 +619,7 @@ export function MapView({ map, currentRow, visitedNodes, onSelectNode, reachable
             const label = node.type === "boss"
               ? (node.bossName || "BOSS")
               : effectivelyHidden ? "???"
+              : isSecret ? "segreto"
               : node.type;
 
             const tooltip = effectivelyHidden

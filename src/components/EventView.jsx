@@ -4,6 +4,7 @@ import { NPC_ART, SPR_BIG, NPC_PALETTE, VECCHIO_DIALOGHI } from "../data/art.js"
 import { MACELLAIO_IMPLANTS, CHIRURGO_OSCURO_IMPLANTS, GRATTATORE_DEFS } from "../data/items.js";
 import { S } from "../utils/styles.js";
 import { normalizePortrait } from "../utils/nail.js";
+import { pickNewRelic } from "../utils/hasRelic.js";
 import { Asset } from "./Asset.jsx";
 import { hasAsset } from "../assets/registry.js";
 import { Tooltip } from "./Tooltip.jsx";
@@ -36,6 +37,7 @@ const MENDICANTE_WARES = { bottone: "Bottone Magico", bullone: "Bullone Sacro", 
 function actionMeta(action, label) {
   const a = action || "";
   const l = label  || "";
+  if (a.startsWith("segreto_"))                return { icon:"🔮",  badge:"SEGRETO",     col:"#ff9ec4" };
   if (a === "fight" || a.includes("defy"))     return { icon:"⚔️",  badge:"COMBATTI",   col:"#ff3355" };
   if (a.includes("bribe"))                     return { icon:"🕊️",  badge:"CALMA",       col:"#66dd88" };
   if (a.includes("flee") || a.includes("fintotonto")) return { icon:"🏃",  badge:"SCAPPA",     col:"#ff8800" };
@@ -500,7 +502,20 @@ export function EventView({ node, player, onChoice }) {
     })(),
   };
 
-  const ev = events[node.type] || events.evento;
+  // Nodo segreto 🔮 (aperto con la Fortuna): una stanza con tre premi, se ne prende uno
+  const segreto = {
+    title: "🔮 Il Retrobottega",
+    art: NPC_ART.evento,
+    text: "\"Pochi trovano questa porta. Sul bancone ci sono tre cose: prendine UNA, e non tornare.\"",
+    choices: [
+      { label: "🧿 La teca di vetro — una reliquia per tutta la run", action: "segreto_reliquia",
+        condition: !!pickNewRelic(player), disabledNote: "hai già tutte le reliquie" },
+      { label: "🎫 Il biglietto con l'angolo grattato — vincente sicuro", action: "segreto_biglietto" },
+      { label: "🥇 L'attrezzo sotto il bancone — un grattatore raro", action: "segreto_grattatore" },
+      { label: "Esci senza toccare niente", action: "leave" },
+    ],
+  };
+  const ev = node.secret ? segreto : events[node.type] || events.evento;
   const bigArt = SPR_BIG[node.type];
   const pal = NPC_PALETTE[node.type] || [C.text, C.dim, C.gold];
   const cat = NPC_CAT[node.type] || NPC_CAT.evento;
