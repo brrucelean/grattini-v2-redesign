@@ -605,7 +605,9 @@ export function useEventHandlers({
         });
         addLog("⛪ +FORTUNA + unghia attiva protetta da 3 danni! \"La fede protegge, figliolo.\"", C.magenta);
         showItemFound("⛪", "Benedizione", "FORTUNA +1 per 3 turni + unghia protetta da 3 danni.", "Sacerdote della Fortuna");
-        break;
+        // Una donazione per visita: restando nell'evento si poteva donare
+        // all'infinito, accumulando Fortuna e smalto per €5 alla volta.
+        setScreen("map"); break;
       }
       case "dona15": {
         updatePlayer(p => {
@@ -620,7 +622,7 @@ export function useEventHandlers({
         });
         addLog("⛪ +2 FORTUNA + 2 unghie protette! \"La Provvidenza ti guarda.\"", C.magenta);
         showItemFound("⛪", "Grande Benedizione", "FORTUNA +2 per 5 turni + 2 unghie protette da 3 danni.", "Sacerdote della Fortuna");
-        break;
+        setScreen("map"); break;
       }
       case "dona30": {
         updatePlayer(p => {
@@ -632,7 +634,7 @@ export function useEventHandlers({
         });
         addLog("⛪ +3 FORTUNA + TUTTE le unghie protette! \"La grazia scende su di te!\"", C.gold);
         showItemFound("⛪", "Grazia Divina", "FORTUNA +3 per 8 turni + TUTTE le unghie protette da 3 danni!", "Sacerdote della Fortuna");
-        break;
+        setScreen("map"); break;
       }
       case "teVerde": {
         updatePlayer(p => {
