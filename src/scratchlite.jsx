@@ -25,7 +25,7 @@ import { ASCII_TITLE } from "./data/art.js";
 import { AudioEngine } from "./audio.js";
 import { clamp } from "./utils/random.js";
 import { Haptics } from "./utils/haptics.js";
-import { degradeNailObj, healNail, makeNailCursor, nailCursor, grattatoreCursor } from "./utils/nail.js";
+import { degradeNailObj, healDamagedNails, makeNailCursor, nailCursor, grattatoreCursor } from "./utils/nail.js";
 import { generateCard, generateIntroCards } from "./utils/card.js";
 import {
   generateMap,
@@ -85,6 +85,9 @@ const hasRelic = (player, effectId) => player?.relics?.some(r => r.effect === ef
 // Riferimento stabile per il fallback "nessun grattatore" — `player.grattatori || []`
 // creava un nuovo array (nuova identità) ad ogni render, vanificando il memo su NailSidebar.
 const EMPTY_GRATTATORI = [];
+// Schermate "ferme" in cui una run senza unghie va chiusa subito (grattino,
+// combattimento e cella gestiscono da sé la propria sconfitta)
+const IDLE_SCREENS = new Set(["map", "event", "preScratch", "shop", "locanda", "selectCard", "node", "labirinto", "grattaCombina", "mappaTesor0"]);
 
 
 
@@ -261,6 +264,26 @@ export default function Grattini() {
     return n.some(nail => nail.state !== "morta");
   };
 
+  // ─── RETE DI SICUREZZA UNGHIE ─────────────────────────────
+  // "Quando una muore, passi automaticamente alla prossima" (tutorial): eventi,
+  // combattimento e sogni uccidevano un'unghia senza spostare quella attiva,
+  // che restava morta e bloccava la grattata finché non la si cambiava a mano.
+  useEffect(() => {
+    if (!player || player.nails[player.activeNail]?.state !== "morta") return;
+    updatePlayer(p => {
+      if (p.nails[p.activeNail]?.state !== "morta") return p;
+      const alive = p.nails.findIndex(n => n.state !== "morta");
+      return alive >= 0 ? {...p, activeNail: alive} : p;
+    });
+  }, [player?.nails, player?.activeNail, updatePlayer]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Zero unghie fuori da grattini e combattimenti (eventi, sogni, minigiochi):
+  // prima la run restava in piedi senza vita.
+  useEffect(() => {
+    if (!player || scratchingCard || !IDLE_SCREENS.has(screen)) return;
+    if (!isAlive(player.nails)) setScreen("gameOver");
+  }, [player?.nails, screen, scratchingCard]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ─── HELPER: consumeGrattatore ────────────────────────────
   const consumeGrattatore = useCallback(() => {
     updatePlayer(p => {
@@ -293,11 +316,10 @@ export default function Grattini() {
     nailEquipCallbackRef,
     nailEquipResult, setNailEquipResult,
     smokeChoiceModal, setSmokeChoiceModal,
-    showSmokeEffect, setShowSmokeEffect,
+    showSmokeEffect,
     showInventoryPanel, setShowInventoryPanel,
-    stampOverlay, setStampOverlay,
+    stampOverlay,
     showItemFound,
-    equipItemOnNail,
     handleCardItemFound,
     handleSmoke,
     handleSaveSmoke,
@@ -2262,19 +2284,7 @@ export default function Grattini() {
                 if (vintageCollected.length + 1 >= 5) unlockAchievement("vintage_collector");
               }
             }}
-            onNailHeal={(count) => {
-              updatePlayer(p => {
-                const nails = [...p.nails];
-                let healed = 0;
-                for (let i = 0; i < nails.length && healed < count; i++) {
-                  if (nails[i].state !== "sana" && nails[i].state !== "kawaii" && nails[i].state !== "morta") {
-                    nails[i] = { ...nails[i], state: healNail(nails[i].state, "sana"), scratchCount: 0 };
-                    healed++;
-                  }
-                }
-                return { ...p, nails };
-              });
-            }}
+            onNailHeal={(count) => updatePlayer(p => ({ ...p, nails: healDamagedNails(p.nails, count) }))}
             onNailDamage={(count, onExplosiva) => {
               updatePlayer(p => {
                 // Guanto da BOSS (bossShield/guantoBossActive): protegge TUTTE le
@@ -3311,20 +3321,8 @@ export default function Grattini() {
             <div style={{color:C.text, fontSize:"11px", lineHeight:"1.6", marginBottom:"16px"}}>
               {nailEquipModal.desc}
             </div>
-            {/* Stat boost preview */}
-            {(() => {
-              const def = ITEM_DEFS[nailEquipModal.itemId];
-              const boost = def?.statBoost || {};
-              return Object.keys(boost).length > 0 && (
-                <div style={{color:C.dim, fontSize:"10px", marginBottom:"14px", display:"flex", gap:"8px", justifyContent:"center"}}>
-                  {boost.fortuna && <span style={{color:C.green}}>🍀+{boost.fortuna}</span>}
-                  {boost.potenza && <span style={{color:C.red}}>⚔️+{boost.potenza}</span>}
-                  {boost.resilienza && <span style={{color:C.cyan}}>🛡️+{boost.resilienza}</span>}
-                </div>
-              );
-            })()}
             <div style={{color:C.gold, fontSize:"12px", letterSpacing:"1px", marginBottom:"12px", fontWeight:"bold"}}>
-              📎 Su quale unghia lo equipaggi?
+              📎 Su quale unghia lo usi?
             </div>
             {/* 5 nail buttons */}
             <div style={{display:"flex", gap:"6px", justifyContent:"center", flexWrap:"wrap", marginBottom:"14px"}}>
@@ -3340,19 +3338,13 @@ export default function Grattini() {
                 const pipStateModal = SPECIAL_TIER_MAP[n.state] || n.state;
                 const aliveTiersModal = TIER_ORDER.indexOf(pipStateModal);
                 const cbRef = nailEquipCallbackRef.current;
-                const canSelect = cbRef?.nailFilter ? cbRef.nailFilter(n) : !isDead;
+                const canSelect = !!cbRef?.nailFilter(n);
                 return (
                   <div key={i}
                     onClick={!canSelect ? undefined : () => {
-                      const resultText = cbRef?.resultText?.(i, n);
-                      if (cbRef?.onNailSelect) { cbRef.onNailSelect(i); }
-                      else { equipItemOnNail(nailEquipModal.itemId, i); }
+                      setNailEquipResult({ emoji: nailEquipModal.emoji, text: cbRef.resultText(i, n) });
+                      cbRef.onNailSelect(i);
                       nailEquipCallbackRef.current = null;
-                      if (nailEquipModal.fromZaino && resultText) {
-                        setNailEquipResult({ emoji: nailEquipModal.emoji, text: resultText });
-                      } else {
-                        setNailEquipModal(null);
-                      }
                     }}
                     style={{
                       width:"68px", padding:"8px 4px",
@@ -3385,8 +3377,12 @@ export default function Grattini() {
             {/* Metti in inventario instead (solo quando trovato, non da zaino) */}
             {!nailEquipModal.fromZaino && (
               <Btn variant="normal" onClick={() => {
-                updatePlayer(p => p.items.length >= MAX_ITEMS ? p : ({...p, items: [...p.items, nailEquipModal.itemId]}));
-                addLog(`🎒 ${nailEquipModal.emoji} ${nailEquipModal.name} messo nello zaino`, C.dim);
+                if (player.items.length >= MAX_ITEMS) {
+                  addLog(`🎒 Zaino pieno: ${nailEquipModal.emoji} ${nailEquipModal.name} resta per terra.`, C.red);
+                } else {
+                  updatePlayer(p => ({...p, items: [...p.items, nailEquipModal.itemId]}));
+                  addLog(`🎒 ${nailEquipModal.emoji} ${nailEquipModal.name} messo nello zaino`, C.dim);
+                }
                 nailEquipCallbackRef.current = null;
                 setNailEquipModal(null);
               }} style={{fontSize:"10px", padding:"6px 16px", color:C.dim}}>

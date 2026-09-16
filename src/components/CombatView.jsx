@@ -5,7 +5,7 @@ import {
   ENEMY_STATS, DEFAULT_ENEMY_STATS, EFFECT_DAMAGE,
 } from "../data/combat.js";
 import { roll, pick } from "../utils/random.js";
-import { makeNailCursor, nailCursor } from "../utils/nail.js";
+import { nailCursor, isDamagedNail } from "../utils/nail.js";
 import { generateCombatHand, generateCombatCard, CARD_VARIANTS } from "../utils/combat.js";
 import { SPR_BIG } from "../data/art.js";
 import { BOSS_SPRITE } from "../data/biomes.js";
@@ -769,7 +769,7 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
   // Applica gli effetti NON-danno di una carta player (bottino/cura/difesa/self).
   // Il danno d'attacco è gestito a parte da applyAttackDamage (dopo il minigioco).
   const applyPlayerImmediate = (c, r) => {
-    const damaged = player.nails.some(n => n.state !== "sana" && n.state !== "kawaii" && n.state !== "morta" && n.state !== "piede");
+    const damaged = player.nails.some(isDamagedNail);
     if (r.loot) {
       lootRef.current = Math.max(0, lootRef.current + r.loot);
       setLoot(lootRef.current);

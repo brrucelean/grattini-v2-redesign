@@ -5,7 +5,8 @@ import { NODE_ICONS } from "../data/map.js";
 import { ITEM_DEFS, RELIC_DEFS, GRATTATORE_DEFS, MACELLAIO_IMPLANTS } from "../data/items.js";
 import { BIOMES, BIOME_MODIFIERS } from "../data/biomes.js";
 import { CARD_TYPES, CARD_BALANCE } from "../data/cards.js";
-import { degradeNailObj, healNail } from "../utils/nail.js";
+import { degradeNailObj, healNail, healDamagedNails, isDamagedNail } from "../utils/nail.js";
+import { roundMoney } from "../utils/money.js";
 import { rng, roll, pick } from "../utils/random.js";
 import { generateCard } from "../utils/card.js";
 import { generateMap, generateLabirintoGrid, generateCombinaState, generateTesoroState } from "../utils/map.js";
@@ -211,16 +212,16 @@ export function useNodeHandlers({
     if (player.money < room.cost) return;
     // Floor option: half-heal nails, 50% thief fight
     if (room.isFloor) {
+      const sanaIdx = NAIL_ORDER.indexOf("sana");
       updatePlayer(p => {
         const nails = p.nails.map(n => {
-          if (n.state === "morta") return n; // dead stays dead on floor
           const idx = NAIL_ORDER.indexOf(n.state);
-          if (idx < 0) return n;
-          // Move halfway toward "sana" (index 4)
-          const sanaIdx = NAIL_ORDER.indexOf("sana");
+          // Le morte restano morte; Sana, Kawaii e gli stati fuori catena restano
+          // com'erano (prima una Kawaii dormendo per terra tornava Sana).
+          if (n.state === "morta" || idx < 0 || idx >= sanaIdx) return n;
+          // A metà strada verso Sana
           const steps = Math.max(1, Math.floor((sanaIdx - idx) / 2));
-          const newIdx = Math.min(idx + steps, sanaIdx);
-          return {...n, state: NAIL_ORDER[newIdx], scratchCount: Math.floor(n.scratchCount / 2)};
+          return {...n, state: NAIL_ORDER[Math.min(idx + steps, sanaIdx)], scratchCount: Math.floor(n.scratchCount / 2)};
         });
         return {...p, nails, grattaMania: false, grattaManiaTurns: 0};
       });
@@ -239,37 +240,22 @@ export function useNodeHandlers({
       return;
     }
     updatePlayer(p => {
-      const nails = [...p.nails];
-      // Suite: heal ALL nails (including dead) first, then kawaii
+      let nails;
       if (room.kawaii) {
-        nails.forEach((n, i) => {
-          nails[i] = {...n, state: "kawaii", scratchCount: 0};
-        });
+        // Manicure: tutte (anche le morte) almeno Kawaii — Piede e Pollice Verde valgono di più e restano
+        nails = p.nails.map(n => ({...n, state: n.state === "morta" ? "kawaii" : healNail(n.state, "kawaii"), scratchCount: 0}));
       } else {
-        // Non-suite: heal damaged nails first (priority: damaged > dead)
-        let healed = 0;
-        // First pass: heal damaged non-dead nails
-        for (let i = 0; i < nails.length && healed < room.heals; i++) {
-          if (nails[i].state !== "sana" && nails[i].state !== "kawaii" && nails[i].state !== "morta") {
-            nails[i] = {...nails[i], state: "sana", scratchCount: 0};
-            healed++;
-          }
-        }
-        // Second pass: heal dead nails with remaining slots
-        for (let i = 0; i < nails.length && healed < room.heals; i++) {
-          if (nails[i].state === "morta") {
-            nails[i] = {...nails[i], state: "sana", scratchCount: 0};
-            healed++;
-          }
-        }
-        // Always reset scratchCount on alive nails (so you don't degrade right after resting)
-        for (let i = 0; i < nails.length; i++) {
-          if (nails[i].state !== "morta") {
-            nails[i] = {...nails[i], scratchCount: 0};
-          }
-        }
+        // Prima le danneggiate, poi con gli slot rimasti le morte
+        const damaged = p.nails.filter(isDamagedNail).length;
+        let revives = Math.max(0, room.heals - damaged);
+        nails = healDamagedNails(p.nails, room.heals).map(n => {
+          if (n.state !== "morta") return {...n, scratchCount: 0}; // appena riposate: niente degrado immediato
+          if (revives <= 0) return n;
+          revives--;
+          return {...n, state: "sana", scratchCount: 0};
+        });
       }
-      return {...p, money: p.money - room.cost, nails, grattaMania: false, grattaManiaTurns: 0};
+      return {...p, money: roundMoney(p.money - room.cost), nails, grattaMania: false, grattaManiaTurns: 0};
     });
 
     addLog(`Hai riposato nella ${room.name}. Unghie curate!`, C.green);
@@ -422,15 +408,7 @@ export function useNodeHandlers({
     if (result.won) {
       setGameStats(s => ({...s, combatsWon: (s.combatsWon || 0) + 1}));
       updatePlayer(p => {
-        const nails = [...p.nails];
-        // Apply heals from combat
-        let healed = 0;
-        for (let i = 0; i < nails.length && healed < (result.nailHeals || 0); i++) {
-          if (nails[i].state !== "sana" && nails[i].state !== "kawaii" && nails[i].state !== "morta") {
-            nails[i] = {...nails[i], state: healNail(nails[i].state, "sana"), scratchCount: 0};
-            healed++;
-          }
-        }
+        const nails = healDamagedNails(p.nails, result.nailHeals || 0);
         // WIN: guadagna un'unghia dal nemico (ripristina la prima morta)
         if (result.winNail) {
           const deadIdx = nails.findIndex(n => n.state === "morta");

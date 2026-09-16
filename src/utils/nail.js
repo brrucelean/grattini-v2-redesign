@@ -1,5 +1,6 @@
 import { NAIL_ORDER, NAIL_INFO } from "../data/nails.js";
 import { CHIRURGO_IMPLANT_IDS } from "../data/items.js";
+import { assetUrl } from "../assets/registry.js";
 
 export function nailStateIndex(state) { return NAIL_ORDER.indexOf(state); }
 
@@ -202,6 +203,28 @@ export function healNail(state, target) {
   return nailRank(target) > nailRank(state) ? target : state;
 }
 
+// Unghia viva peggiore di Sana: è quella che una cura deve sistemare.
+// Kawaii, Piede e Pollice Verde valgono PIÙ di Sana: contarle come
+// "danneggiate" sprecava la cura su di loro o le riportava a Sana.
+export function isDamagedNail(nail) {
+  return !!nail && nail.state !== "morta" && nailRank(nail.state) < nailRank("sana");
+}
+
+// Cura verso `target` tutte le unghie vive, senza declassare quelle migliori.
+export function healAliveNails(nails, target = "sana") {
+  return nails.map(n => n.state === "morta" ? n : {...n, state: healNail(n.state, target), scratchCount: 0});
+}
+
+// Cura verso `target` le prime `count` unghie danneggiate.
+export function healDamagedNails(nails, count, target = "sana") {
+  let left = count;
+  return nails.map(n => {
+    if (left <= 0 || !isDamagedNail(n)) return n;
+    left--;
+    return {...n, state: healNail(n.state, target), scratchCount: 0};
+  });
+}
+
 // Trova l'indice dell'unghia più degradata (rank più basso).
 // Include "morta" nel confronto. Per escludere morte usa findWorstAliveIdx.
 export function findWorstNailIdx(nails) {
@@ -325,7 +348,6 @@ export const NAIL_CURSOR = makeNailCursor("sana");
 // ─── CURSORE = SPRITE DEL DITO ───────────────────────────────
 // Usa lo sprite PNG (cursor-<stato>) come cursore del mouse, con hotspot
 // sulla punta dell'unghia. Fallback all'hand SVG se lo sprite manca.
-import { assetUrl } from "../assets/registry.js";
 const CURSOR_STATE_ALIAS = { scheletro: "morta" };
 export function nailCursor(nailState = "sana") {
   const key = CURSOR_STATE_ALIAS[nailState] || nailState;
