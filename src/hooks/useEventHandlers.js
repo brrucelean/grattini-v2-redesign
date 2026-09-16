@@ -1,5 +1,5 @@
 import { C, MAX_ITEMS } from "../data/theme.js";
-import { ITEM_DEFS, MACELLAIO_IMPLANTS, CHIRURGO_OSCURO_IMPLANTS, GRATTATORE_DEFS } from "../data/items.js";
+import { ITEM_DEFS, MACELLAIO_IMPLANTS, CHIRURGO_OSCURO_IMPLANTS, GRATTATORE_DEFS, makeGrattatore } from "../data/items.js";
 import { CARD_TYPES } from "../data/cards.js";
 import { degradeNailObj, healNail, healAliveNails, healDamagedNails, isDamagedNail, findWorstNailIdx, findWorstAliveIdx } from "../utils/nail.js";
 import { rng, roll, pick } from "../utils/random.js";
@@ -209,9 +209,7 @@ export function useEventHandlers({
           const nails = [...p.nails];
           const idx = nails.findIndex(n => n.state !== "morta");
           if (idx >= 0) nails[idx] = {...nails[idx], state: "morta", scratchCount: 0};
-          const def = GRATTATORE_DEFS["bottone"];
-          const newGrat = { id:"bottone", name:def.name, emoji:def.emoji, effect:def.effect, value:def.value, usesLeft:def.maxUses };
-          return {...p, nails, grattatori:[...p.grattatori, newGrat]};
+          return {...p, nails, grattatori:[...p.grattatori, makeGrattatore("bottone")]};
         });
         addLog("🦴 Hai pagato con un'unghia. Il Mendicante ti consegna il Bottone Magico.", C.cyan);
         {
@@ -230,8 +228,7 @@ export function useEventHandlers({
         const gratId = action.replace("buyGrat_", "");
         const def = GRATTATORE_DEFS[gratId];
         if (def && player.money >= def.cost) {
-          const newGrat = { id: gratId, name: def.name, emoji: def.emoji, effect: def.effect, value: def.value, usesLeft: def.maxUses };
-          updatePlayer(p => ({...p, money: p.money - def.cost, grattatori: [...p.grattatori, newGrat]}));
+          updatePlayer(p => ({...p, money: p.money - def.cost, grattatori: [...p.grattatori, makeGrattatore(gratId)]}));
           addLog(`Comprato grattatore: ${def.emoji} ${def.name}!`, C.cyan);
           setItemFoundModal({
             emoji: def.emoji, name: def.name,
@@ -250,8 +247,7 @@ export function useEventHandlers({
         } else if (roll(0.4)) {
           const gratId = pick(["bottone","bullone","unghiaFinta"]);
           const def = GRATTATORE_DEFS[gratId];
-          const newGrat = { id: gratId, name: def.name, emoji: def.emoji, effect: def.effect, value: def.value, usesLeft: def.maxUses };
-          updatePlayer(p => ({...p, grattatori: [...p.grattatori, newGrat]}));
+          updatePlayer(p => ({...p, grattatori: [...p.grattatori, makeGrattatore(gratId)]}));
           addLog(`Hai trovato un grattatore: ${def.emoji} ${def.name}!`, C.cyan);
           setItemFoundModal({ emoji: def.emoji, name: def.name, desc: def.desc, subtitle: "Grattatore trovato", rarity: def.rarity });
           setScreen("map");
@@ -380,8 +376,7 @@ export function useEventHandlers({
           const sgrats = ["bottone","bullone","unghiaFinta"];
           const gratId = pick(sgrats);
           const def = GRATTATORE_DEFS[gratId];
-          const newGrat = { id: gratId, name: def.name, emoji: def.emoji, effect: def.effect, value: def.value, usesLeft: def.maxUses };
-          updatePlayer(p => ({...p, money: p.money + 30, grattatori: [...p.grattatori, newGrat]}));
+          updatePlayer(p => ({...p, money: p.money + 30, grattatori: [...p.grattatori, makeGrattatore(gratId)]}));
           addLog(`⌚ Un tipo in giacca lurida ti afferra la mano: "Senti che bel Rolex?". È un fake. Ma ti lascia €30 e ${def.emoji} ${def.name}.`, C.gold);
           setItemFoundModal({ emoji: "⌚", name: "Il Tipo coi Rolex Falsi", desc: `+€30 in tasca\n+${def.emoji} ${def.name} (grattatore)\n\n"Te lo dico io, fratè: di sti tempi solo i fake sono onesti."`, subtitle: "Periferia Nord" });
         } else if (outcome === "tassista") {
@@ -804,8 +799,7 @@ export function useEventHandlers({
       case "buyGuantoBoss": {
         const def = GRATTATORE_DEFS["guantoBoss"];
         if (!def || player.money < 60) { setScreen("map"); break; }
-        const newGrat = { id: "guantoBoss", name: def.name, emoji: def.emoji, effect: def.effect, usesLeft: def.maxUses };
-        updatePlayer(p => ({...p, money: p.money - 60, grattatori: [...p.grattatori, newGrat]}));
+        updatePlayer(p => ({...p, money: p.money - 60, grattatori: [...p.grattatori, makeGrattatore("guantoBoss")]}));
         addLog(`🧤 Hai comprato il ${def.name}! Protezione garantita contro il boss del bioma.`, C.gold);
         setItemFoundModal({
           emoji: def.emoji, name: def.name,
@@ -821,8 +815,7 @@ export function useEventHandlers({
           const nails = [...p.nails];
           const idx = nails.findIndex(n => n.state !== "morta");
           if (idx >= 0) nails[idx] = {...nails[idx], state: "morta", scratchCount: 0};
-          const newGrat = { id: "guantoBoss", name: def.name, emoji: def.emoji, effect: def.effect, usesLeft: def.maxUses };
-          return {...p, money: p.money - 20, nails, grattatori: [...p.grattatori, newGrat]};
+          return {...p, money: p.money - 20, nails, grattatori: [...p.grattatori, makeGrattatore("guantoBoss")]};
         });
         addLog(`🦴 Hai ceduto un'unghia + €20. Il Guantaio ti consegna il ${def.name}.`, C.cyan);
         setItemFoundModal({

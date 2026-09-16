@@ -1,32 +1,39 @@
 import { C, MAX_ITEMS } from "../data/theme.js";
-import { CARD_TYPES, CARD_BALANCE } from "../data/cards.js";
-import { ITEM_DEFS, GRATTATORE_DEFS } from "../data/items.js";
-import { BIOME_MODIFIERS } from "../data/biomes.js";
+import { CARD_TYPES } from "../data/cards.js";
+import { ITEM_DEFS, GRATTATORE_DEFS, makeGrattatore } from "../data/items.js";
 import { generateCard } from "../utils/card.js";
-import { roundMoney } from "../utils/money.js";
+import { roundMoney, fmtMoney } from "../utils/money.js";
+import { shopDiscount, monopolioMult, cardPrice, itemPrice } from "../utils/shop.js";
 import { hasRelic } from "../utils/hasRelic.js";
 
 export function useShopHandlers({ player, gameStats, updatePlayer, addLog, setGameStats, setCardSelectMode, setScreen, setReturnScreen, effectiveFortune, unlockAchievement, setItemFoundModal, currentBiome = 0 }) {
-  // Modificatore bioma: shopDiscount additivo a shopDiscountMeta
-  const biomeShopDiscount = BIOME_MODIFIERS[currentBiome]?.shopDiscount || 0;
+  // Etichette dello sconto per log e riepilogo ("" se non c'è sconto)
+  const discountLabels = () => {
+    const pct = Math.round(shopDiscount(player, currentBiome) * 100);
+    return pct > 0 ? { tag: ` [-${pct}%]`, note: ` (sconto -${pct}%)` } : { tag: "", note: "" };
+  };
+
+  const pay = (cost) => {
+    updatePlayer(p => ({...p, money: roundMoney(p.money - cost)}));
+    setGameStats(s => ({...s, moneySpent: roundMoney((s.moneySpent || 0) + cost)}));
+  };
+
   const handleBuyCard = (cardId) => {
     const type = CARD_TYPES.find(t => t.id === cardId);
     if (!type) return;
-    const discount = (player.shopDiscountMeta || 0) + biomeShopDiscount;
-    // Cedola Monopolio: carte tier 3+ costano ×highCardCostMeta
-    const cardTier = CARD_BALANCE[cardId]?.tier || 1;
-    const highCostMult = ((player.highCardCostMeta || 1) > 1 && cardTier >= 3) ? (player.highCardCostMeta || 1) : 1;
-    const finalCost = Math.max(0, Math.round(type.cost * (1 - discount) * highCostMult * 100) / 100);
+    const finalCost = cardPrice(player, currentBiome, type);
     if (player.money < finalCost) return;
     const riggedBonus = (cardId === "doppioOnulla" && hasRelic(player, "riggedDice")) ? 0.15 : 0;
     const card = {...generateCard(cardId, effectiveFortune, riggedBonus), owned: true};
-    updatePlayer(p => ({...p, money: roundMoney(p.money - finalCost), scratchCards: [...p.scratchCards, card]}));
-    setGameStats(s => ({...s, moneySpent: (s.moneySpent || 0) + finalCost}));
-    const monopolioSuffix = highCostMult > 1 ? ` [×${highCostMult} MONOPOLIO]` : "";
-    addLog(`Comprato: ${type.name} (€${finalCost}${discount > 0 ? ` [-${Math.round(discount*100)}%]` : ""}${monopolioSuffix})`, C.green);
+    pay(finalCost);
+    updatePlayer(p => ({...p, scratchCards: [...p.scratchCards, card]}));
+    const { tag, note } = discountLabels();
+    const mult = monopolioMult(player, type);
+    const monopolioSuffix = mult > 1 ? ` [×${mult} MONOPOLIO]` : "";
+    addLog(`Comprato: ${type.name} (€${fmtMoney(finalCost)}${tag}${monopolioSuffix})`, C.green);
     if (setItemFoundModal) setItemFoundModal({
       emoji: type.emoji || "🎟️", name: type.name,
-      desc: `${type.desc}\nPagato €${finalCost}${discount > 0 ? ` (sconto -${Math.round(discount*100)}%)` : ""} · Max vincita: €${type.maxPrize}`,
+      desc: `${type.desc}\nPagato €${fmtMoney(finalCost)}${note} · Max vincita: €${type.maxPrize}`,
       subtitle: "Acquistato dal Tabaccaio",
     });
   };
@@ -40,16 +47,16 @@ export function useShopHandlers({ player, gameStats, updatePlayer, addLog, setGa
     }
     const item = ITEM_DEFS[itemId];
     if (!item) return;
-    const discount = (player.shopDiscountMeta || 0) + biomeShopDiscount;
-    const finalCost = Math.max(0, Math.round(item.cost * (1 - discount)));
+    const finalCost = itemPrice(player, currentBiome, item.cost);
     if (player.money < finalCost) return;
     if (player.items.length >= MAX_ITEMS) { addLog("Zaino pieno! Usa o butta un oggetto.", C.red); return; }
-    updatePlayer(p => ({...p, money: roundMoney(p.money - finalCost), items: [...p.items, itemId]}));
-    setGameStats(s => ({...s, moneySpent: (s.moneySpent || 0) + finalCost}));
-    addLog(`Comprato: ${item.emoji} ${item.name} (€${finalCost}${discount>0?` [-${Math.round(discount*100)}%]`:""})`, C.green);
+    pay(finalCost);
+    updatePlayer(p => ({...p, items: [...p.items, itemId]}));
+    const { tag, note } = discountLabels();
+    addLog(`Comprato: ${item.emoji} ${item.name} (€${finalCost}${tag})`, C.green);
     if (setItemFoundModal) setItemFoundModal({
       emoji: item.emoji, name: item.name,
-      desc: `${item.desc}\nPagato €${finalCost}${discount>0?` (sconto -${Math.round(discount*100)}%)`:""}.`,
+      desc: `${item.desc}\nPagato €${finalCost}${note}.`,
       subtitle: "Acquistato dal Tabaccaio",
       rarity: item.rarity,
     });
@@ -58,15 +65,15 @@ export function useShopHandlers({ player, gameStats, updatePlayer, addLog, setGa
   const handleBuyGrattatore = (gratId) => {
     const def = GRATTATORE_DEFS[gratId];
     if (!def) return;
-    const discount = (player.shopDiscountMeta || 0) + biomeShopDiscount;
-    const finalCost = Math.max(0, Math.round(def.cost * (1 - discount)));
+    const finalCost = itemPrice(player, currentBiome, def.cost);
     if (player.money < finalCost) return;
-    const newGrat = { id: gratId, name: def.name, emoji: def.emoji, effect: def.effect, value: def.value, usesLeft: def.maxUses };
-    updatePlayer(p => ({...p, money: roundMoney(p.money - finalCost), grattatori: [...p.grattatori, newGrat]}));
-    addLog(`Comprato grattatore: ${def.emoji} ${def.name} (€${finalCost}${discount > 0 ? ` [-${Math.round(discount*100)}%]` : ""})`, C.cyan);
+    pay(finalCost);
+    updatePlayer(p => ({...p, grattatori: [...p.grattatori, makeGrattatore(gratId)]}));
+    const { tag, note } = discountLabels();
+    addLog(`Comprato grattatore: ${def.emoji} ${def.name} (€${finalCost}${tag})`, C.cyan);
     if (setItemFoundModal) setItemFoundModal({
       emoji: def.emoji, name: def.name,
-      desc: `${def.desc}\nPagato €${finalCost}${discount > 0 ? ` (sconto -${Math.round(discount*100)}%)` : ""}.`,
+      desc: `${def.desc}\nPagato €${finalCost}${note}.`,
       subtitle: "Grattatore acquistato",
       rarity: def.rarity,
     });

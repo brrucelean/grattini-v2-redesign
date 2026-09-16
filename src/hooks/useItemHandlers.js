@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from "react";
 import { C, MAX_ITEMS } from "../data/theme.js";
 import { NAIL_ORDER, NAIL_INFO } from "../data/nails.js";
-import { ITEM_DEFS, GRATTATORE_DEFS } from "../data/items.js";
+import { ITEM_DEFS, GRATTATORE_DEFS, makeGrattatore } from "../data/items.js";
 import { healNail, healAliveNails } from "../utils/nail.js";
 import { generateCard } from "../utils/card.js";
 
@@ -106,7 +106,7 @@ export function useItemHandlers({ player, updatePlayer, addLog }) {
     const itemDef = ITEM_DEFS[itemId];
     if (grDef) {
       // Grattatori → inventario grattatori
-      updatePlayer(p => ({...p, grattatori: [...(p.grattatori||[]), { id:itemId, ...grDef, usesLeft:grDef.maxUses||1 }]}));
+      updatePlayer(p => ({...p, grattatori: [...(p.grattatori||[]), makeGrattatore(itemId)]}));
       setItemFoundModal({ emoji: grDef.emoji, name: grDef.name, desc: grDef.desc, subtitle: "TROVATO NEL GRATTINO!" });
     } else if (NAIL_ITEMS[itemId]) {
       // Oggetti per-unghia → scelta dell'unghia (o zaino)

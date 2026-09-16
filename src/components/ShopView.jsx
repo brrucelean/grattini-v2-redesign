@@ -4,6 +4,8 @@ import { ITEM_DEFS, GRATTATORE_DEFS } from "../data/items.js";
 import { CARD_TYPES } from "../data/cards.js";
 import { TABACCAIO_LINES } from "../data/art.js";
 import { rng } from "../utils/random.js";
+import { fmtMoney } from "../utils/money.js";
+import { cardPrice, itemPrice } from "../utils/shop.js";
 import { S } from "../utils/styles.js";
 import { Btn } from "./Btn.jsx";
 import { Tooltip } from "./Tooltip.jsx";
@@ -194,7 +196,7 @@ function ProductTile({ emoji, assetId, name, subtitle, cost, maxPrize, accent, c
               background: canAfford ? `${C.gold}18` : `${C.red}18`,
               border: `1px solid ${canAfford ? C.gold : C.red}55`,
               padding: "1px 5px",
-            }}>€{cost}</span>
+            }}>€{fmtMoney(cost)}</span>
             {subtitle && (
               <span style={{color: accent.c, fontSize: FS.xs, letterSpacing: "0.5px"}}>
                 {subtitle}
@@ -385,6 +387,10 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
   const allGrattatoriIds = [...shopGrattatori, ...mediumGrattatori, ...rareGrattatori, ...legendaryGrattatori, ...vipGrattatori];
   const allConsumabili = [...shopItems, ...mediumItems, ...rareItems, ...sottoBanco];
 
+  // Prezzo mostrato = prezzo pagato (sconti e cedola Monopolio inclusi)
+  const priceOfCard = (c) => cardPrice(player, currentBiome, c);
+  const priceOfItem = (def) => itemPrice(player, currentBiome, def.cost);
+
   return (
     <div style={{
       ...S.panel,
@@ -496,6 +502,7 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
           {shopCards.map(c => {
             const rar = cardRarity(c);
             const accent = rarityAccent(rar);
+            const price = priceOfCard(c);
             return (
               <ProductTile
                 key={c.id}
@@ -503,10 +510,10 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
                 assetId={`card-${c.id}`}
                 name={c.name}
                 subtitle={accent.label}
-                cost={c.cost}
+                cost={price}
                 maxPrize={c.maxPrize}
                 accent={accent}
-                canAfford={player.money >= c.cost}
+                canAfford={player.money >= price}
                 onClick={() => onBuyCard(c.id)}
                 tooltip={`${c.desc} · Max: €${c.maxPrize}${c.malus ? ` · ⚠ ${c.malus.desc}` : ""}`}
                 shimmer={rar === "leggendaria" || rar === "rarissimo"}
@@ -527,6 +534,7 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
             if (!g) return null;
             const isVip = id === "portaChiavi";
             const accent = rarityAccent(g.rarity, isVip);
+            const price = priceOfItem(g);
             return (
               <ProductTile
                 key={id}
@@ -534,9 +542,9 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
                 assetId={`item-${id}`}
                 name={g.name}
                 subtitle={`${g.maxUses === 99 ? "∞" : g.maxUses} usi`}
-                cost={g.cost}
+                cost={price}
                 accent={accent}
-                canAfford={player.money >= g.cost}
+                canAfford={player.money >= price}
                 onClick={() => onBuyGrattatore(id)}
                 tooltip={`${g.desc} · ${g.maxUses === 99 ? "∞" : g.maxUses} uso/i · Rarità: ${g.rarity}`}
                 badgeLabel={accent.label}
@@ -559,6 +567,7 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
                 const item = ITEM_DEFS[id];
                 if (!item) return null;
                 const accent = rarityAccent(item.rarity);
+                const price = priceOfItem(item);
                 return (
                   <ProductTile
                     key={id}
@@ -566,9 +575,9 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
                     assetId={`item-${id}`}
                     name={item.name}
                     subtitle={accent.label}
-                    cost={item.cost}
+                    cost={price}
                     accent={accent}
-                    canAfford={player.money >= item.cost}
+                    canAfford={player.money >= price}
                     onClick={() => onBuyItem(id)}
                     tooltip={`${item.desc} · Rarità: ${item.rarity}`}
                     shimmer={item.rarity === "leggendaria"}
@@ -598,6 +607,7 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
               <ScrollRow bg="#030200">
                 {vipCards.map(c => {
                   const accent = rarityAccent("leggendaria", true);
+                  const price = priceOfCard(c);
                   return (
                     <ProductTile
                       key={c.id}
@@ -605,10 +615,10 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
                       assetId={`card-${c.id}`}
                       name={c.name}
                       subtitle="VIP"
-                      cost={c.cost}
+                      cost={price}
                       maxPrize={c.maxPrize}
                       accent={accent}
-                      canAfford={player.money >= c.cost}
+                      canAfford={player.money >= price}
                       onClick={() => onBuyCard(c.id)}
                       tooltip={`${c.desc} · Max €${c.maxPrize}`}
                       badgeLabel="VIP"
@@ -617,19 +627,22 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
                   );
                 })}
                 {vipItems.map(id => {
-                  const item = ITEM_DEFS[id];
+                  const isGrattatore = !ITEM_DEFS[id];
+                  const item = ITEM_DEFS[id] || GRATTATORE_DEFS[id];
                   if (!item) return null;
                   const accent = rarityAccent("leggendaria", true);
+                  const price = priceOfItem(item);
                   return (
                     <ProductTile
                       key={id}
                       emoji={item.emoji}
+                      assetId={`item-${id}`}
                       name={item.name}
                       subtitle="VIP"
-                      cost={item.cost}
+                      cost={price}
                       accent={accent}
-                      canAfford={player.money >= item.cost}
-                      onClick={() => onBuyItem(id)}
+                      canAfford={player.money >= price}
+                      onClick={() => (isGrattatore ? onBuyGrattatore(id) : onBuyItem(id))}
                       tooltip={`${item.desc} · Rarità: ${item.rarity}`}
                       badgeLabel="VIP"
                       shimmer

@@ -106,3 +106,9 @@ export const GRATTATORE_DEFS = {
   guantoFerro:    { name:"Guanto di Ferro", desc:"COMBAT: la prima parata della fight è automaticamente PERFETTA, qualunque sia il tempismo", cost:35, rarity:"rara", emoji:"🧤",
                     effect:"guaranteedParry", maxUses:1 },
 };
+
+// Un grattatore nell'inventario è la sua definizione completa più gli usi
+// rimasti. Prima ogni punto del codice ne copiava a mano solo alcuni campi:
+// il Plettro comprato perdeva "silent" (e con lui il passaggio inosservato) e
+// i tooltip restavano senza descrizione.
+export const makeGrattatore = (id) => ({ id, ...GRATTATORE_DEFS[id], usesLeft: GRATTATORE_DEFS[id].maxUses });
