@@ -109,6 +109,8 @@ export const AudioEngine = (() => {
       [330,220,150].forEach((f,i) => setTimeout(()=>playTone(f,0.25,"sawtooth",0.1), i*120));
     },
     click: () => playTone(600, 0.04, "square", 0.06),
+    // "Voce" a blip degli NPC mentre il testo si scrive
+    talkBlip: (freq) => playTone(freq, 0.04, "square", 0.05),
     // Scatto meccanico della mappa — "slot reel stop"
     mapTick: () => {
       playTone(300, 0.022, "square", 0.11);

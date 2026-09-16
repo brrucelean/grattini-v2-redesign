@@ -8,6 +8,7 @@ import { pickNewRelic } from "../utils/hasRelic.js";
 import { Asset } from "./Asset.jsx";
 import { hasAsset } from "../assets/registry.js";
 import { Tooltip } from "./Tooltip.jsx";
+import { AudioEngine } from "../audio.js";
 
 // ─── NPC CATEGORIES ─────────────────────────────────────────────
 // Ogni tipo NPC ha categoria, icona e colore primario per UI
@@ -29,6 +30,9 @@ const NPC_CAT = {
   evento:     { label:"EVENTO",     icon:"✦",   color:"#ff9ec4", danger:0 },
   zaino:      { label:"OGGETTO",    icon:"🎒",  color:"#888899", danger:0 },
 };
+
+// Tono base della "voce" a blip, per NPC (gli altri 220 Hz)
+const TALK_PITCH = { mendicante: 140, spacciatore: 180, bambino: 320, anziana: 160, boss: 100 };
 
 // Grattatori del Mendicante (id → nome da bancarella)
 const MENDICANTE_WARES = { bottone: "Bottone Magico", bullone: "Bullone Sacro", discoRotto: "Disco Rotto" };
@@ -543,29 +547,14 @@ export function EventView({ node, player, onChoice }) {
     return () => clearInterval(id);
   }, []);
 
-  // Talk sound
-  const talkSoundRef = useRef(null);
+  // Voce a blip mentre il testo si scrive. Passa dall'AudioEngine: prima ogni
+  // evento apriva un AudioContext suo (mai chiuso) che ignorava volume e muto.
   useEffect(() => {
-    if (typedChars >= fullText.length) return;
-    if (typedChars % 2 !== 0) return;
+    if (typedChars >= fullText.length || typedChars % 2 !== 0) return;
     const ch = fullText[typedChars];
     if (ch === " " || ch === "\n") return;
-    try {
-      const ctx = talkSoundRef.current || new (window.AudioContext || window.webkitAudioContext)();
-      talkSoundRef.current = ctx;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      const basePitch = node.type === "mendicante" ? 140 : node.type === "spacciatore" ? 180
-        : node.type === "bambino" ? 320 : node.type === "anziana" ? 160
-        : node.type === "boss" ? 100 : 220;
-      osc.frequency.value = basePitch + (ch.charCodeAt(0) % 8) * 15;
-      osc.type = "square";
-      gain.gain.value = 0.05;
-      osc.connect(gain).connect(ctx.destination);
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 0.04);
-    } catch {}
-  }, [typedChars]);
+    AudioEngine.talkBlip((TALK_PITCH[node.type] || 220) + (ch.charCodeAt(0) % 8) * 15);
+  }, [typedChars]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const cb = cornerBrackets(accent, 13, -3, 2);
   const cbInner = cornerBrackets(pal[1], 8, -2, 1);
