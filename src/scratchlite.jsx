@@ -48,7 +48,7 @@ import { RunStatsRail, ScratchLogRail } from "./components/ScratchSideRails.jsx"
 // ScratchCell usato solo dentro ScratchCardView — non serve importarlo qui
 import { CARD_VARIANTS } from "./utils/combat.js";
 import { STORAGE_KEYS, getStored, setStored, removeStored } from "./utils/storage.js";
-import { fmtMoney } from "./utils/money.js";
+import { fmtMoney, roundMoney } from "./utils/money.js";
 
 // ─── LAZY CHUNKS — ogni schermata scaricata on-demand ─────────────────────────
 const ScratchCardView  = lazy(() => import("./components/ScratchCardView.jsx").then(m => ({ default: m.ScratchCardView })));
@@ -160,7 +160,12 @@ export default function Grattini() {
 
   const updatePlayer = useCallback((updates) => {
     setPlayer(p => {
-      const next = typeof updates === "function" ? updates(p) : {...p, ...updates};
+      let next = typeof updates === "function" ? updates(p) : {...p, ...updates};
+      // Soldi sempre al centesimo: tanti gestori fanno p.money - X su importi con
+      // i decimali (sconti, Poveraccio a €0,45) e lasciavano €31.200000000000003.
+      if (next !== p && typeof next?.money === "number" && next.money !== p?.money) {
+        next = {...next, money: roundMoney(next.money)};
+      }
       // Ka-ching! quando il money aumenta
       if (next.money > p.money) AudioEngine.cash();
       return next;
