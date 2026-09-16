@@ -224,12 +224,8 @@ export default function Grattini() {
     if (cedolaId) {
       const cedolaDef = CEDOLE.find(c => c.id === cedolaId);
       if (cedolaDef) {
+        // bonusStartCard (Tacchino) resta in sospeso fino alla fine dell'intro: vedi leaveIntro
         finalPlayer = cedolaDef.apply(newPlayer);
-        // bonusStartCard: aggiungi carta gratis al mazzo di partenza
-        if (finalPlayer.bonusStartCard) {
-          const bonusCard = {...generateCard(finalPlayer.bonusStartCard), owned: true};
-          finalPlayer = {...finalPlayer, scratchCards: [...finalPlayer.scratchCards, bonusCard], bonusStartCard: null};
-        }
         addLog(`🃏 Cedola attiva: ${cedolaDef.icon} ${cedolaDef.name}`, C.gold);
       }
     }
@@ -250,6 +246,18 @@ export default function Grattini() {
     setScreen("tutorialNails");
     addLog(`Benvenuto a ${BIOMES[0].name}!`, C.cyan);
     addLog("Nonno Carmelo ti ferma al bancone. Ha tre biglietti e mani che tremano. Gratti tu, scegli tu.", C.gold);
+  };
+
+  // Fine dell'intro di Nonno Carmelo. Il grattino del Tacchino di Natale arriva
+  // qui: messo subito nel mazzo diventava un quarto biglietto dell'intro (di cui
+  // si intasca un solo premio) e "Rifiuta" lo buttava via.
+  const leaveIntro = () => {
+    if (player.bonusStartCard) {
+      const bonusCard = {...generateCard(player.bonusStartCard), owned: true};
+      updatePlayer(p => ({...p, scratchCards: [...p.scratchCards, bonusCard], bonusStartCard: null}));
+      addLog(`🦃 Il Tacchino di Natale: ${bonusCard.name} gratis nel mazzo!`, C.gold);
+    }
+    setScreen("map");
   };
 
   // ─── HOOK: useNailEffects ───
@@ -354,7 +362,7 @@ export default function Grattini() {
     setScreen, setCurrentNode, setVisitedNodes, setCurrentRow, setPreScratchCount,
     setGameStats, setCardSelectMode, setReturnScreen, setScratchingCard, setSelectedCardIdx,
     setCombatEnemy, setCurrentBiome, setMap, setPlayer,
-    setItemFoundModal, discoverRelic,
+    setItemFoundModal, discoverRelic, activeCedola, setPendingCedoleOffer,
     setLabirintoState, setCombinaState, setTesoroState,
     effectiveFortune, gameStats, isAlive,
   });
@@ -920,7 +928,7 @@ export default function Grattini() {
             ░░░ INIZIA LA RUN ░░░
           </Btn>
           <div style={{color:C.dim, fontSize:"clamp(10px, 0.9vw, 11px)", marginTop:"20px", letterSpacing:"1px", lineHeight:"1.9", opacity:0.7}}>
-            5 unghie · 3 biomi · 1 destino<br/>
+            5 unghie · {BIOMES.length} biomi · 1 destino<br/>
             Gratta con saggezza. Le unghie non ricrescono.
           </div>
           {activeCedola && (() => {
@@ -1298,7 +1306,7 @@ export default function Grattini() {
                   addLog("Tieni le mani in tasca e vai.", C.dim);
                   updatePlayer(p => ({...p, scratchCards: []}));
                   setIntroPrizes([{prize:0, cardName:"(rifiutato)"}]);
-                  setScreen("map");
+                  leaveIntro();
                 }} style={{fontSize:"10px", color:C.dim, borderColor:"#333", padding:"3px 10px"}}>
                   😶 Rifiuta — non guadagni niente ma non rovini le unghie
                 </Btn>
@@ -1413,7 +1421,7 @@ export default function Grattini() {
                       updatePlayer(p => ({...p, money: p.money + ip.prize}));
                       setGameStats(s => ({...s, moneyEarned: s.moneyEarned + ip.prize}));
                       addLog(`Intaschi €${ip.prize} dal "${ip.cardName}". Il vecchio annuisce.`, C.green);
-                      setScreen("map");
+                      leaveIntro();
                     }}
                   >
                     <div style={{color:C.dim, fontSize:"10px", marginBottom:"4px", letterSpacing:"1px"}}>{ip.cardName}</div>
@@ -1457,7 +1465,7 @@ export default function Grattini() {
       {/* ═══ SELECT CARD TO SCRATCH ═══ */}
       {screen === "selectCard" && player && (() => {
         const TIER_META = {
-          1: { label: "COMUNE",       accent: C.green,   emoji: "🎫" },
+          1: { label: "COMUNE",       accent: "#7a8aaa", emoji: "🎫" },
           2: { label: "MEDIA",        accent: C.cyan,    emoji: "🎟️" },
           3: { label: "RARA",         accent: C.magenta, emoji: "💎" },
           4: { label: "LEGGENDARIA",  accent: C.gold,    emoji: "👑" },
@@ -1908,7 +1916,7 @@ export default function Grattini() {
                 fontSize: "11px", color: C.text, letterSpacing: "0.5px",
               }}>
                 🎫 Puoi grattare fino a <strong style={{color: C.gold}}>
-                {3 - preScratchCount}</strong> biglietto{(3 - preScratchCount) === 1 ? "" : "i"} prima di entrare
+                {3 - preScratchCount}</strong> bigliett{(3 - preScratchCount) === 1 ? "o" : "i"} prima di entrare
               </div>
             ) : (
               <div style={{
@@ -3099,12 +3107,12 @@ export default function Grattini() {
               Hai sconfitto {BIOMES[BIOMES.length-1].boss}!
             </div>
             <div style={{color:C.bright, marginBottom:"12px", fontSize:"11px"}}>
-              Hai conquistato tutti e 3 i biomi. Sei il Re dei Grattini — 'o capo d'Italia!
+              Hai conquistato tutti e {BIOMES.length} i biomi. Sei il Re dei Grattini — 'o capo d'Italia!
             </div>
             <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:"5px", marginBottom:"16px", textAlign:"left", maxWidth:"380px", margin:"0 auto 16px"}}>
               {[
                 ["💰 Soldi finali", `€${fmtMoney(player.money)}`, C.gold],
-                ["🖐️ Unghie vive", `${player.nails.filter(n=>n.state!=="morta").length}/5`, C.green],
+                ["🖐️ Unghie vive", `${player.nails.filter(n=>n.state!=="morta").length}/${player.nails.length}`, C.green],
                 ["🖐️ Carte grattate", gameStats.cardsScratched, C.magenta],
                 ["✅ Grattate vincenti", gameStats.scratchWins||0, C.green],
                 ["❌ Grattate perdenti", gameStats.scratchLosses||0, C.red],
@@ -3441,7 +3449,7 @@ export default function Grattini() {
             <div style={{color:C.dim, fontSize:"12px", marginBottom:"20px", lineHeight:"1.7"}}>
               {smokeChoiceModal.itemType === "sigarettaErba"
                 ? "+2 Fortuna per 4 turni · cura l'unghia attiva\nLa fumi o la tieni?"
-                : "+1 Fortuna per 3 turni\nLa fumi subito o la conservi?"}
+                : "+1 Fortuna per 4 turni · tra 3 grattate l'unghia attiva diventa 🖤 Unghia Nera\nLa fumi subito o la conservi?"}
             </div>
             {player && (player.smokesTotal || 0) >= 4 && !player.tumore && (
               <div style={{color:C.red, fontSize:"11px", marginBottom:"12px", padding:"6px", border:`1px solid ${C.red}`, borderRadius:"0"}}>
@@ -3454,8 +3462,9 @@ export default function Grattini() {
                 🔥 Fuma subito
               </Btn>
               <Btn variant="default" onClick={() => handleSaveSmoke(smokeChoiceModal.itemType)}
+                disabled={!player || player.items.length >= MAX_ITEMS}
                 style={{fontSize:"12px", padding:"10px 20px"}}>
-                🎒 Zaino →
+                {player && player.items.length >= MAX_ITEMS ? "🎒 Zaino pieno" : "🎒 Zaino →"}
               </Btn>
             </div>
           </div>
@@ -4283,11 +4292,14 @@ export default function Grattini() {
               maskImage:"linear-gradient(to right, transparent 0%, black 4%, black 96%, transparent 100%)",
               WebkitMaskImage:"linear-gradient(to right, transparent 0%, black 4%, black 96%, transparent 100%)",
             }}>
-              <div key={log.length} style={{
-                position:"absolute", left:"100%", top:0,
+              <div key={latest.id} style={{
+                position:"absolute", top:0,
                 whiteSpace:"nowrap", lineHeight:"30px",
-                animation:`newsTicker ${duration}s linear forwards`,
-                willChange:"transform",
+                // Movimento ridotto: testo fermo. Con la sola regola CSS
+                // l'animazione saltava alla fine e il testo restava fuori schermo.
+                ...(reducedMotion
+                  ? { left:"12px", right:"12px", overflow:"hidden", textOverflow:"ellipsis" }
+                  : { left:"100%", animation:`newsTicker ${duration}s linear forwards`, willChange:"transform" }),
                 color: latest.color || C.dim,
                 fontSize:"10px",
                 letterSpacing:"0.2px",

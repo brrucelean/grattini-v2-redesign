@@ -185,7 +185,7 @@ function HUDImpl({ player, onOpenInventory, inventoryOpen = false, moneyBling = 
             {/* Stessa pip del combattimento (NailMeter): mostra lo stato REALE di
                 ogni unghia, non 5 tacche anonime tutte dello stesso colore. */}
             <NailPipRow nails={player.nails} size="sm" gap={2} />
-            <span style={{color:viteColor, fontSize:`${u.fsValue}px`, fontWeight:"bold"}}>{aliveNails}/5</span>
+            <span style={{color:viteColor, fontSize:`${u.fsValue}px`, fontWeight:"bold"}}>{aliveNails}/{player.nails.length}</span>
           </HudPill>
           {/* Volume icona (no slider) */}
           <HudPill u={u} color={C.dim}
@@ -288,7 +288,7 @@ function HUDImpl({ player, onOpenInventory, inventoryOpen = false, moneyBling = 
                 e HUD mobile: colore = stato dell'unghia, riempimento = grattate
                 rimaste, ✕ tratteggiato = morta, ◆ = unghia nera. */}
             <NailPipRow nails={player.nails} size="md" gap={3} />
-            <span style={{color:viteColor, fontSize:`${u.fsValue}px`, fontWeight:"bold"}}>{aliveNails}/5</span>
+            <span style={{color:viteColor, fontSize:`${u.fsValue}px`, fontWeight:"bold"}}>{aliveNails}/{player.nails.length}</span>
           </HudPill>
         </Tooltip>
         <Tooltip text={`🔊 volume musicale — alzalo e GODITI l'8-bit bro`}>

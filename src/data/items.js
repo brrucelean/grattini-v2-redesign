@@ -6,7 +6,7 @@ export const ITEM_DEFS = {
   disinfettante:{ name:"Disinfettante", desc:"Cura 1 unghia di 2 stati (scegli quale)", cost:8, rarity:"comune", emoji:"💧", nailEquip:true },
   sigaretta:     { name:"Sigaretta", desc:"+1 Fortuna (4 turni). Dopo 3 grattate l'unghia attiva diventa 🖤 UNGHIA NERA (×0.4, rischio annullo)", cost:5, rarity:"comune", emoji:"🚬", global:true },
   sigarettaErba: { name:"Sigaretta con Erba", desc:"+2 Fortuna (4 turni) + cura unghia attiva. Dopo 4 grattate l'unghia attiva diventa 🌿 POLLICE VERDE (×2.5 premi)", cost:15, rarity:"media", emoji:"🌿", global:true },
-  cremaRinforzante:{ name:"Crema Rinforzante", desc:"+1 HP bianco sull'unghia (assorbe 3 danni)", cost:10, rarity:"media", emoji:"🧴", nailEquip:true, cremaEquip:true },
+  cremaRinforzante:{ name:"Crema Rinforzante", desc:"+3 HP bianco sull'unghia (assorbe 3 danni)", cost:10, rarity:"media", emoji:"🧴", nailEquip:true, cremaEquip:true },
   cappelloSbirro:{ name:"Cappello Sbirro", desc:"Ignora poliziotto 1 volta (attira ladri e spacciatori!)", cost:15, rarity:"rara", emoji:"🎩", global:true },
   sieroRicrescita:{ name:"Siero Ricrescita", desc:"Ricresce 1 unghia morta → Sana", cost:25, rarity:"rara", emoji:"💉", nailEquip:true },
 

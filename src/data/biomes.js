@@ -1,4 +1,5 @@
 import { C } from "./theme.js";
+import { makeGrattatore } from "./items.js";
 
 // ─── BIOME DEFINITIONS ──────────────────────────────────────
 export const BIOMES = [
@@ -134,11 +135,13 @@ export const CEDOLE = [
     id: "grattarapido",
     name: "Il Grattatore Rapido",
     icon: "⚡",
-    pro: "parti con un Bullone gratis nell'inventario",
+    pro: "parti con un Bullone gratis tra i grattatori",
     contro: "le unghie degradano ogni 2 celle invece di 3",
+    // Il Bullone è un grattatore: messo tra gli oggetti dello zaino era
+    // un id sconosciuto, invisibile e inutilizzabile.
     apply: p => ({
       ...p, fastNailDegradeMeta: true,
-      items: [...p.items, "bullone"],
+      grattatori: [...p.grattatori, makeGrattatore("bullone")],
     }),
   },
   {

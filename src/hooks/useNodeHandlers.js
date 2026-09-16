@@ -3,11 +3,11 @@ import { C } from "../data/theme.js";
 import { NAIL_ORDER } from "../data/nails.js";
 import { NODE_ICONS } from "../data/map.js";
 import { ITEM_DEFS, GRATTATORE_DEFS, MACELLAIO_IMPLANTS } from "../data/items.js";
-import { BIOMES, BIOME_MODIFIERS, BOSS_MIN_MONEY } from "../data/biomes.js";
+import { BIOMES, BIOME_MODIFIERS, BOSS_MIN_MONEY, CEDOLE } from "../data/biomes.js";
 import { CARD_TYPES, CARD_BALANCE } from "../data/cards.js";
 import { degradeNailObj, healNail, healDamagedNails, isDamagedNail } from "../utils/nail.js";
 import { roundMoney, fmtMoney } from "../utils/money.js";
-import { rng, roll, pick } from "../utils/random.js";
+import { roll, pick, shuffle } from "../utils/random.js";
 import { generateCard } from "../utils/card.js";
 import { generateMap, generateLabirintoGrid, generateCombinaState, generateTesoroState } from "../utils/map.js";
 import { AudioEngine } from "../audio.js";
@@ -23,7 +23,7 @@ export function useNodeHandlers({
   setScreen, setCurrentNode, setVisitedNodes, setCurrentRow, setPreScratchCount,
   setGameStats, setCardSelectMode, setReturnScreen, setScratchingCard, setSelectedCardIdx,
   setCombatEnemy, setCurrentBiome, setMap, setPlayer,
-  setItemFoundModal, discoverRelic,
+  setItemFoundModal, discoverRelic, activeCedola, setPendingCedoleOffer,
   setLabirintoState, setCombinaState, setTesoroState,
   effectiveFortune, gameStats, isAlive,
 }) {
@@ -266,14 +266,16 @@ export function useNodeHandlers({
     // Bettola thief risk
     if (room.risk === "ladri" && roll(0.25)) {
       addLog("Un ladro ti deruba nel sonno!", C.red);
-      updatePlayer(p => {
-        const items = [...p.items];
-        if (items.length > 0) {
-          const stolen = items.splice(Math.floor(rng()*items.length), 1)[0];
-          addLog(`Ti ha rubato: ${ITEM_DEFS[stolen]?.name || "qualcosa"}!`, C.red);
-        }
-        return {...p, items};
-      });
+      if (player.items.length > 0) {
+        const stolen = pick(player.items);
+        updatePlayer(p => {
+          const items = [...p.items];
+          const idx = items.indexOf(stolen);
+          if (idx >= 0) items.splice(idx, 1);
+          return {...p, items};
+        });
+        addLog(`Ti ha rubato: ${ITEM_DEFS[stolen]?.name || "qualcosa"}!`, C.red);
+      }
     }
 
     // ─── SOGNI ALLA LOCANDA (20% chance) ─────────────────────────
@@ -510,7 +512,10 @@ export function useNodeHandlers({
             return p;
           });
           updateAllTimeStats({...gameStats, _isWin: true});
-          setScreen("victory");
+          // Il Broker offre 3 cedole per la prossima run (la schermata esisteva
+          // ma non veniva mai aperta: la meta-progressione era irraggiungibile)
+          setPendingCedoleOffer(shuffle(CEDOLE.filter(c => c.id !== activeCedola)).slice(0, 3));
+          setScreen("cedole");
         }
         return;
       }

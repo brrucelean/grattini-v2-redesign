@@ -640,14 +640,14 @@ export function useEventHandlers({
           if (nails[worst].state !== "morta") nails[worst] = {...nails[worst], state: healNail(nails[worst].state, "sana")};
           return {...p, money: p.money - 5, fortune: p.fortune + 1, fortuneTurns: Math.max(p.fortuneTurns || 0, 3), nails};
         });
-        addLog("🍵 Tè Verde! Unghia curata + Fortune +1 per 3 turni.", C.green);
-        showItemFound("🍵", "Tè Verde", "Una tazza calma e rigenerante.\nCura 1 unghia + Fortune +1 (3 turni)", "Maestro del Tè");
+        addLog("🍵 Tè Verde! Unghia curata + Fortuna +1 per 3 turni.", C.green);
+        showItemFound("🍵", "Tè Verde", "Una tazza calma e rigenerante.\nCura 1 unghia + Fortuna +1 (3 turni)", "Maestro del Tè");
         setScreen("map"); break;
       }
       case "teDrago": {
         updatePlayer(p => ({...p, money: p.money - 15, fortune: p.fortune + 2, fortuneTurns: Math.max(p.fortuneTurns || 0, 5), nails: healDamagedNails(p.nails, 2)}));
-        addLog("🍵🐲 Tè del Drago! 2 unghie curate + Fortune +2 per 5 turni!", C.gold);
-        showItemFound("🐲", "Tè del Drago", "Brucia in gola ma rigenera.\nCura 2 unghie + Fortune +2 (5 turni)", "Maestro del Tè");
+        addLog("🍵🐲 Tè del Drago! 2 unghie curate + Fortuna +2 per 5 turni!", C.gold);
+        showItemFound("🐲", "Tè del Drago", "Brucia in gola ma rigenera.\nCura 2 unghie + Fortuna +2 (5 turni)", "Maestro del Tè");
         setScreen("map"); break;
       }
       case "teOro": {
