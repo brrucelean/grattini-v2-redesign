@@ -13,9 +13,10 @@ const withoutOne = (items, itemId) => {
   return idx < 0 ? items : [...items.slice(0, idx), ...items.slice(idx + 1)];
 };
 
-// Premi del nodo segreto: grattini tier 3 dal grattino classico (niente
-// minigiochi) e i grattatori più forti del tabaccaio
-const SECRET_CARD_IDS = ["puzzle", "boccaDrago", "miliardario", "mahjong"];
+// Premi del nodo segreto: grattini tier 3 a combinazione, gli unici dove
+// "vincente" si vede davvero (il Miliardario ad accumulo può sempre prendere
+// uno STOP), e i grattatori più forti del tabaccaio
+const SECRET_CARD_IDS = ["puzzle", "boccaDrago", "mahjong"];
 const SECRET_GRATTATORI = ["moneta_oro", "plettro", "moneta_argento"];
 
 // Specchio e Zia Carmela riportano a Graffiata le unghie messe peggio

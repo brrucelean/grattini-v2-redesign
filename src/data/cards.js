@@ -68,7 +68,7 @@ export const CARD_TYPES = [
   { id:"maledetto",       name:"Il Maledetto",         emoji:"😈", cost:100, rows:4, cols:4, matchNeeded:3, maxPrize:2000,
     malus:{ type:"nailBleed", desc:"La cedola del diavolo — apre la maledizione!" }, desc:"La cedola del diavolo — rischio totale", tier:4, mechanic:"match",
     theme:{ border:"#990000", bg:"#0a0000" } },
-  { id:"ruota",           name:"La Ruota",             emoji:"🎡", cost:15,  rows:1, cols:3, matchNeeded:3, maxPrize:60,
+  { id:"ruota",           name:"La Ruota",             emoji:"🎡", cost:15,  rows:1, cols:3, matchNeeded:3, maxPrize:65,
     malus:null, desc:"🎰 Ferma i 3 rulli! 3 uguali = JACKPOT!", tier:2, mechanic:"ruota",
     theme:{ border:"#ff2e88", bg:"#1a0012" } },
   { id:"labirinto", name:"Il Labirinto", emoji:"🌀", cost:15, rows:4, cols:4, matchNeeded:0, maxPrize:100,
