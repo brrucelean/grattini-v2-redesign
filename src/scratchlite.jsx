@@ -19,7 +19,7 @@ import { useIsMobile } from "./hooks/useIsMobile.js";
 import { useReducedMotion } from "./hooks/useReducedMotion.js";
 import { NODE_ICONS } from "./data/map.js";
 import { ITEM_DEFS, RELIC_DEFS, GRATTATORE_DEFS } from "./data/items.js";
-import { BIOMES, CEDOLE, BIOME_PALETTE } from "./data/biomes.js";
+import { BIOMES, CEDOLE, BIOME_PALETTE, BOSS_MIN_MONEY } from "./data/biomes.js";
 import { MECH_RULES, CARD_TYPES } from "./data/cards.js";
 import { ASCII_TITLE } from "./data/art.js";
 import { AudioEngine } from "./audio.js";
@@ -50,6 +50,7 @@ import { RunStatsRail, ScratchLogRail } from "./components/ScratchSideRails.jsx"
 // ScratchCell usato solo dentro ScratchCardView — non serve importarlo qui
 import { CARD_VARIANTS } from "./utils/combat.js";
 import { STORAGE_KEYS, getStored, setStored, removeStored } from "./utils/storage.js";
+import { fmtMoney } from "./utils/money.js";
 
 // ─── LAZY CHUNKS — ogni schermata scaricata on-demand ─────────────────────────
 const ScratchCardView  = lazy(() => import("./components/ScratchCardView.jsx").then(m => ({ default: m.ScratchCardView })));
@@ -666,7 +667,7 @@ export default function Grattini() {
               background:"#0a0800", border:`1px solid ${C.gold}44`,
               padding:"2px 8px",
             }}>
-              €{player.money}
+              €{fmtMoney(player.money)}
             </div>
           </div>
 
@@ -1748,15 +1749,9 @@ export default function Grattini() {
           {/* ═══ BOSS ENTRY WARNING ═══ */}
           {isBoss && (() => {
             const bossName = currentNode.bossName || "Il Broker";
-            const BOSS_ENTRY = {
-              "Il Broker":     { min: 200 },
-              "Il Romanaccio": { min: 300 },
-              "Il Napoletano": { min: 500 },
-              "Il Drago d'Oro":{ min: 400 },
-            };
-            const req = BOSS_ENTRY[bossName];
-            if (!req) return null;
-            const canEnter = player.money >= req.min;
+            const minMoney = BOSS_MIN_MONEY[bossName];
+            if (minMoney === undefined) return null;
+            const canEnter = player.money >= minMoney;
             const gateColor = canEnter ? C.green : C.red;
             return (
               <div style={{
@@ -1782,9 +1777,9 @@ export default function Grattini() {
                 </div>
                 <div style={{color: C.text, fontSize: "12px", lineHeight: 1.6}}>
                   <strong style={{color: gateColor, fontSize: "13px"}}>{bossName}</strong> richiede almeno{" "}
-                  <strong style={{color: C.gold}}>€{req.min}</strong>.
+                  <strong style={{color: C.gold}}>€{minMoney}</strong>.
                   {" "}Hai{" "}
-                  <strong style={{color: gateColor}}>€{player.money}</strong>.
+                  <strong style={{color: gateColor}}>€{fmtMoney(player.money)}</strong>.
                 </div>
                 {!canEnter && (
                   <div style={{
@@ -3108,7 +3103,7 @@ export default function Grattini() {
             </div>
             <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:"5px", marginBottom:"16px", textAlign:"left", maxWidth:"380px", margin:"0 auto 16px"}}>
               {[
-                ["💰 Soldi finali", `€${player.money}`, C.gold],
+                ["💰 Soldi finali", `€${fmtMoney(player.money)}`, C.gold],
                 ["🖐️ Unghie vive", `${player.nails.filter(n=>n.state!=="morta").length}/5`, C.green],
                 ["🖐️ Carte grattate", gameStats.cardsScratched, C.magenta],
                 ["✅ Grattate vincenti", gameStats.scratchWins||0, C.green],

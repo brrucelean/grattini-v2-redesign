@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { C, FONT, W } from "../data/theme.js";
 import { NPC_ART, SPR_BIG, NPC_PALETTE, VECCHIO_DIALOGHI } from "../data/art.js";
-import { MACELLAIO_IMPLANTS, GRATTATORE_DEFS } from "../data/items.js";
+import { MACELLAIO_IMPLANTS, CHIRURGO_OSCURO_IMPLANTS, GRATTATORE_DEFS } from "../data/items.js";
 import { S } from "../utils/styles.js";
 import { normalizePortrait } from "../utils/nail.js";
 import { Asset } from "./Asset.jsx";
@@ -29,6 +29,9 @@ const NPC_CAT = {
   zaino:      { label:"OGGETTO",    icon:"🎒",  color:"#888899", danger:0 },
 };
 
+// Grattatori del Mendicante (id → nome da bancarella)
+const MENDICANTE_WARES = { bottone: "Bottone Magico", bullone: "Bullone Sacro", discoRotto: "Disco Rotto" };
+
 // ─── ACTION META — icona + badge + colore per ogni tipo di scelta ─
 function actionMeta(action, label) {
   const a = action || "";
@@ -39,12 +42,12 @@ function actionMeta(action, label) {
   if (a === "leave")                           return { icon:"🚪",  badge:"ESCI",        col:"#555566" };
   if (a.includes("Nail") || a.includes("nail")) return { icon:"🦴",  badge:"UNGHIA",      col:"#ff8800" };
   if (a.includes("baratto"))                   return { icon:"🤝",  badge:"BARATTO",     col:"#ffaa00" };
-  if (a.includes("dona") || a.includes("dona"))return { icon:"🙏",  badge:"DONA",        col:"#66dd88" };
+  if (a.includes("dona"))                      return { icon:"🙏",  badge:"DONA",        col:"#66dd88" };
   if (a.includes("implant") || a.includes("macellaio")) return { icon:"🔧", badge:"IMPIANTO",  col:"#00cccc" };
   if (a.includes("cappello") || a === "useCappello") return { icon:"🎩", badge:"OGGETTO",   col:"#ffcc00" };
   if (a.includes("buy") || a.includes("Buy")
     || a.includes("compra") || a.includes("pagaMulta")
-    || a.includes("te") || l.includes("€"))    return { icon:"💰",  badge:"ACQUISTO",    col:"#ffcc00" };
+    || a.startsWith("te") || l.includes("€"))  return { icon:"💰",  badge:"ACQUISTO",    col:"#ffcc00" };
   if (a.includes("accept") || a.includes("porgi") || a.includes("tocca")) return { icon:"🎲", badge:"RISCHIO", col:"#ff9ec4" };
   if (a.includes("swap") || a.includes("Swap")) return { icon:"🔄", badge:"SCAMBIA",     col:"#88ccff" };
   if (a.includes("vendi") || a.includes("Vendi")) return { icon:"💸", badge:"VENDI",      col:"#66dd88" };
@@ -169,13 +172,15 @@ export function EventView({ node, player, onChoice }) {
       title: "Il Chirurgo Oscuro",
       art: NPC_ART.chirurgo,
       text: "\"Le unghie sono la finestra dell'anima... e le tue fanno schifo. Posso sistemarle. Intervento rapido, dolore relativo.\"",
+      // Prezzi e slot da CHIRURGO_OSCURO_IMPLANTS: qui erano scritti a mano e la
+      // Plastica era rimasta a €10 / 2 slot dopo il ribilanciamento (€6 / 3 slot).
       choices: [
-        { label: "Unghia di Plastica (€10)", action: "implant_plastica", condition: player.money >= 10,
-          disabledNote: `ti mancano €${Math.max(0,10-player.money)}` },
-        { label: "Unghia di Ferro (€25)", action: "implant_ferro", condition: player.money >= 25,
-          disabledNote: `ti mancano €${Math.max(0,25-player.money)}` },
-        { label: "Unghia d'Oro (€50)", action: "implant_oro", condition: player.money >= 50,
-          disabledNote: `ti mancano €${Math.max(0,50-player.money)}` },
+        ...CHIRURGO_OSCURO_IMPLANTS.map(impl => ({
+          label: `${impl.name} (€${impl.cost})`, action: `implant_${impl.id}`,
+          condition: player.money >= impl.cost,
+          disabledNote: `ti mancano €${Math.max(0, impl.cost - player.money)}`,
+          tooltip: impl.desc,
+        })),
         { label: "Vattene!", action: "leave" },
       ],
     },
@@ -185,13 +190,17 @@ export function EventView({ node, player, onChoice }) {
       text: player.money < 5
         ? "\"I soldi non ti servono per avere ciò che ti serve. Le unghie parlano, figliolo... e le tue mi dicono molto.\""
         : "\"Ho attraversato tre mercatini delle pulci e un sogno profetico per trovare questi grattatori. Ora sono tuoi — se li meriti.\"",
+      // Prezzi da GRATTATORE_DEFS (quelli che il gestore fa pagare): il Disco Rotto
+      // era scritto €18 ma costa €22, e con €18-21 si usciva dal nodo senza comprarlo.
       choices: [
-        { label: `🔘 Bottone Magico (€5)`, action: "buyGrat_bottone", condition: player.money >= 5,
-          disabledNote: `ti mancano €${Math.max(0,5-player.money)}`, tooltip: GRATTATORE_DEFS.bottone.desc },
-        { label: `🔩 Bullone Sacro (€7)`, action: "buyGrat_bullone", condition: player.money >= 7,
-          disabledNote: `ti mancano €${Math.max(0,7-player.money)}`, tooltip: GRATTATORE_DEFS.bullone.desc },
-        { label: `💿 Disco Rotto (€18)`, action: "buyGrat_discoRotto", condition: player.money >= 18,
-          disabledNote: `ti mancano €${Math.max(0,18-player.money)}`, tooltip: GRATTATORE_DEFS.discoRotto.desc },
+        ...Object.entries(MENDICANTE_WARES).map(([id, title]) => {
+          const g = GRATTATORE_DEFS[id];
+          return {
+            label: `${g.emoji} ${title} (€${g.cost})`, action: `buyGrat_${id}`,
+            condition: player.money >= g.cost,
+            disabledNote: `ti mancano €${Math.max(0, g.cost - player.money)}`, tooltip: g.desc,
+          };
+        }),
         { label: `🦴 Offri 1 unghia → Bottone Magico gratis`, action: "barattoGrat_bottone",
           condition: player.nails.filter(n => n.state !== "morta").length > 1,
           disabledNote: "non hai unghie da offrire", tooltip: GRATTATORE_DEFS.bottone.desc },
@@ -217,7 +226,7 @@ export function EventView({ node, player, onChoice }) {
       const TESTI = {
         lettore: "\"Le unghie non mentono, ragazzo. Le tue... vedo cose. Grandi o terribili, non so ancora.\"",
         moneta:  "\"Ehi! Quella moneta è mia! ...no aspetta, è tua. Forse. Raccoglila e vedi cosa succede.\"",
-        voce:    "\"...mi senti? Sono qui. Non girартiʼ — ascolta e basta.\"",
+        voce:    "\"...mi senti? Sono qui. Non girarti — ascolta e basta.\"",
       };
       const SCELTE = {
         lettore: [
@@ -269,7 +278,7 @@ export function EventView({ node, player, onChoice }) {
           tooltip: "Paghi, si calma e ti lascia andare." },
         { label: "⚔ Sfidalo apertamente", action: "fight",
           tooltip: "Rischioso: è la legge, ma oggi hai poca scelta." },
-        { label: "🏃 Prova a scappare (30%)", action: "fintotonto" },
+        { label: "🏃 Prova a scappare (20%)", action: "fintotonto" },
       ],
     } : {
       title: "🚔 Poliziotto della Lotteria",
@@ -331,7 +340,7 @@ export function EventView({ node, player, onChoice }) {
       return {
         title: "👵 L'Anziana Maledetta",
         art: NPC_ART.anziana,
-        text: `\"Figliolo mio... avvicina quelle mani. Le unghie non mentono mai — e le tue hanno cose da raccontare.\" (Visita ${visits+1}/3)`,
+        text: `"Figliolo mio... avvicina quelle mani. Le unghie non mentono mai — e le tue hanno cose da raccontare." (Visita ${visits+1}/3)`,
         choices: [
           { label: "Porgi le mani", action: "anzianaTocca" },
           { label: "🙏 Chiedi la benedizione dell'Unghia Sacra (€40)",

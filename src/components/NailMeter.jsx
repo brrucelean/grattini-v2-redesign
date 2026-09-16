@@ -1,6 +1,6 @@
 import { C } from "../data/theme.js";
 import { NAIL_INFO, NAIL_ORDER } from "../data/nails.js";
-import { CHIRURGO_IMPLANT_IDS } from "../data/items.js";
+import { CHIRURGO_IMPLANT_IDS, CHIRURGO_OSCURO_IMPLANTS } from "../data/items.js";
 import { getNailVisual } from "../utils/nail.js";
 
 // ─── NAIL METER — rappresentazione UNIFICATA della vita delle unghie ──
@@ -16,7 +16,8 @@ import { getNailVisual } from "../utils/nail.js";
 // Nessun elemento sotto i 5px sul lato corto.
 
 export const SCRATCH_THRESHOLD = 3;
-export const CHIRURGO_SLOT_MAX = { plastica: 2, ferro: 4, oro: 5 };
+// Slot totali per impianto chirurgo (Plastica 3 dopo il ribilanciamento Beta 5)
+export const CHIRURGO_SLOT_MAX = Object.fromEntries(CHIRURGO_OSCURO_IMPLANTS.map(i => [i.id, i.uses]));
 
 // Catena dei tier "vivi", peggio→meglio (morta è fuori: è lo zero)
 export const TIER_ORDER = ["marcia", "sanguinante", "graffiata", "sana", "kawaii"];
@@ -226,7 +227,7 @@ export function NailScratchBar({ nail, active = false, size = "md", showCount = 
   );
 }
 
-// Slot fissi degli impianti chirurgo (2/4/5) — stesso linguaggio visivo dei tier
+// Slot fissi degli impianti chirurgo (3/4/5) — stesso linguaggio visivo dei tier
 export function NailSlotBar({ nail, chirurgo, active = false, size = "md" }) {
   const s = BAR_SIZES[size] || BAR_SIZES.md;
   const used = nail.implantUses || 0;
@@ -237,7 +238,8 @@ export function NailSlotBar({ nail, chirurgo, active = false, size = "md" }) {
         return (
           <span key={si} style={{
             display: "inline-block",
-            width: `${chirurgo.max === 2 ? s.segW + 4 : chirurgo.max === 4 ? s.segW + 1 : s.segW}px`,
+            // pochi slot = slot più larghi, così la barra ha circa la stessa lunghezza
+            width: `${s.segW + ({ 2: 4, 3: 3, 4: 1 }[chirurgo.max] || 0)}px`,
             height: `${s.segH + 2}px`,
             background: filled ? chirurgo.color : "#111",
             border: `1px solid ${filled ? chirurgo.color : "#2a2a2a"}`,

@@ -6,13 +6,13 @@ import { makeNailCursor, NAIL_CURSOR, getNailVisual } from "../utils/nail.js";
 import { Tooltip } from "./Tooltip.jsx";
 import { VintageBadge } from "./Vintage.jsx";
 import { Asset } from "./Asset.jsx";
-import { NailTierBar, NailScratchBar, NailSlotBar, readNail } from "./NailMeter.jsx";
+import { NailTierBar, NailScratchBar, NailSlotBar, readNail, CHIRURGO_SLOT_MAX } from "./NailMeter.jsx";
 
-// Chirurgo implants: slot totali e colore per tipo
+// Chirurgo implants: slot totali (dai dati) e colore per tipo
 const CHIRURGO_SLOTS = {
-  plastica: { max: 2, color: "#44ddee", label: "PLASTICA" },
-  ferro:    { max: 4, color: "#c0c0d0", label: "FERRO" },
-  oro:      { max: 5, color: "#ffd700", label: "ORO" },
+  plastica: { max: CHIRURGO_SLOT_MAX.plastica, color: "#44ddee", label: "PLASTICA" },
+  ferro:    { max: CHIRURGO_SLOT_MAX.ferro,    color: "#c0c0d0", label: "FERRO" },
+  oro:      { max: CHIRURGO_SLOT_MAX.oro,      color: "#ffd700", label: "ORO" },
 };
 
 function NailSidebarImpl({ nails, activeNail, onSelectNail, locked=false, grattatori=[], equippedGrattatore=null, onEquipGrattatore=null, horizontal=false }) {
@@ -181,7 +181,7 @@ function NailSidebarImpl({ nails, activeNail, onSelectNail, locked=false, gratta
                         </span>
                       </span>
                       {chirurgo ? (
-                        // ─── CHIRURGO: slot fissi (2/4/5) colorati, niente bleeding ───
+                        // ─── CHIRURGO: slot fissi (3/4/5) colorati, niente bleeding ───
                         <span style={{display:"flex", marginTop:"4px"}}>
                           <NailSlotBar nail={n} chirurgo={chirurgo} active={isActive} size="md" />
                         </span>

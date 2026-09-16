@@ -103,7 +103,7 @@ export const VECCHIO_DIALOGHI = [
   },
   { // Visita 3: scelta finale irreversibile
     title: "🧓 Il Vecchio — Ultima Visita",
-    text: "\"È l'ultima volta che ci vediamo, ragazzo. Ho portato due cose. Una ti salverà. L'altra ti condannerà. Scegli.\" Allunga le mani: nella sinistra un bagliore dorato. Nella destra, un'ombra.\"",
+    text: "\"È l'ultima volta che ci vediamo, ragazzo. Ho portato due cose. Una ti salverà. L'altra ti condannerà. Scegli.\" Allunga le mani: nella sinistra un bagliore dorato. Nella destra, un'ombra.",
     choices: [
       { label: "🌟 Mano sinistra (Luce)", action: "vecchio_luce" },
       { label: "🌑 Mano destra (Ombra)", action: "vecchio_ombra" },

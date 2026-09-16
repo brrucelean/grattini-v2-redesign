@@ -8,6 +8,17 @@ export const BIOMES = [
   { id: 3, name: "🇨🇳 Quartiere Cinese", boss: "Il Drago d'Oro", color: "#ff3333", desc: "你好! Lanterne rosse, incenso e grattini con ideogrammi. Qui le regole sono diverse." },
 ];
 
+// ─── SOGLIA D'INGRESSO DEI BOSS ──────────────────────────────
+// € minimi per sfidare il boss. Unica fonte per il controllo all'ingresso e per
+// il pannello dell'anteprima, che per il Drago diceva €400 mentre l'ingresso ne
+// chiedeva 700 (Beta 3): "ACCESSO CONSENTITO", e poi rispedito all'inizio.
+export const BOSS_MIN_MONEY = {
+  "Il Broker":      200,
+  "Il Romanaccio":  300,
+  "Il Napoletano":  500,
+  "Il Drago d'Oro": 700,
+};
+
 // ─── SPRITE DEI BOSS ─────────────────────────────────────────
 // Ogni boss ha la sua chiave sprite. Prima solo il Drago d'Oro aveva un'arte
 // dedicata: Broker, Romanaccio e Napoletano ricadevano tutti sullo stesso

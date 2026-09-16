@@ -3,10 +3,10 @@ import { C } from "../data/theme.js";
 import { NAIL_ORDER } from "../data/nails.js";
 import { NODE_ICONS } from "../data/map.js";
 import { ITEM_DEFS, RELIC_DEFS, GRATTATORE_DEFS, MACELLAIO_IMPLANTS } from "../data/items.js";
-import { BIOMES, BIOME_MODIFIERS } from "../data/biomes.js";
+import { BIOMES, BIOME_MODIFIERS, BOSS_MIN_MONEY } from "../data/biomes.js";
 import { CARD_TYPES, CARD_BALANCE } from "../data/cards.js";
 import { degradeNailObj, healNail, healDamagedNails, isDamagedNail } from "../utils/nail.js";
-import { roundMoney } from "../utils/money.js";
+import { roundMoney, fmtMoney } from "../utils/money.js";
 import { rng, roll, pick } from "../utils/random.js";
 import { generateCard } from "../utils/card.js";
 import { generateMap, generateLabirintoGrid, generateCombinaState, generateTesoroState } from "../utils/map.js";
@@ -85,18 +85,20 @@ export function useNodeHandlers({
     else if (type === "locanda") setScreen("locanda");
     else if (type === "boss") {
       const bossName = currentNode.bossName || "Il Broker";
-      const BOSS_ENTRY = {
-        "Il Broker":             { min: 200, quote: `"€${player.money}? Non sei nemmeno degno del mio tempo. Torna quando hai qualcosa da perdere — minimo €200. Arrivederci."` },
-        "Il Romanaccio":         { min: 300, quote: `"Aho, co' meno de €300 manco te risponno, bello. E nun me fa' arrabbià che chiamo er taxi."` },
-        "Il Napoletano":         { min: 500, quote: `"Guagliò, cu' meno 'e €500 nun te parlo manco pe' sbaglio. Torna quanno tieni 'o ccapo."` },
-        "Il Drago d'Oro":        { min: 700, quote: `"🐲 龙不见穷人. Il Drago non riceve i poveri. Porta almeno €700 o brucerai prima di entrare."` },
+      const min = BOSS_MIN_MONEY[bossName];
+      const money = fmtMoney(player.money);
+      const BOSS_QUOTES = {
+        "Il Broker":      `"€${money}? Non sei nemmeno degno del mio tempo. Torna quando hai qualcosa da perdere — minimo €${min}. Arrivederci."`,
+        "Il Romanaccio":  `"Aho, co' meno de €${min} manco te risponno, bello. E nun me fa' arrabbià che chiamo er taxi."`,
+        "Il Napoletano":  `"Guagliò, cu' meno 'e €${min} nun te parlo manco pe' sbaglio. Torna quanno tieni 'o ccapo."`,
+        "Il Drago d'Oro": `"🐲 龙不见穷人. Il Drago non riceve i poveri. Porta almeno €${min} o brucerai prima di entrare."`,
       };
-      const entry = BOSS_ENTRY[bossName];
+      const entry = min !== undefined && { min, quote: BOSS_QUOTES[bossName] };
       if (entry && player.money < entry.min) {
         addLog(`👑 ${bossName}: ${entry.quote}`, C.red);
         addLog(`❌ Rispedito all'inizio — ti serve almeno €${entry.min}.`, C.orange);
         unlockAchievement("broke");
-        const shortfall = entry.min - player.money;
+        const shortfall = fmtMoney(entry.min - player.money);
         // Modal esplicativo — prima di sbattere il giocatore a inizio mappa
         if (setItemFoundModal) {
           setItemFoundModal({
@@ -104,11 +106,11 @@ export function useNodeHandlers({
             name: `${bossName} ti caccia via`,
             desc:
               `${entry.quote}\n\n` +
-              `💰 Avevi: €${player.money}\n` +
+              `💰 Avevi: €${money}\n` +
               `🎯 Soglia minima: €${entry.min}\n` +
               `📉 Ti mancavano: €${shortfall}\n\n` +
               `Sei stato RISPEDITO all'inizio della mappa.\n` +
-              `Riparti dalla riga 1 — grattini, mappa e nodi visitati azzerati.\n\n` +
+              `Riparti dalla riga 1: il percorso è azzerato, grattini e soldi restano.\n\n` +
               `Prossima volta porta più soldi.`,
             subtitle: "ACCESSO NEGATO",
             buttonLabel: "Torno più forte →",
@@ -147,8 +149,6 @@ export function useNodeHandlers({
       setCombatEnemy({ name: bossName, isBoss: true });
       setScreen("combat");
     }
-    else if (type === "miniboss") setScreen("event");
-    else if (type === "stregone") setScreen("event");
     else setScreen("event");
   };
 
