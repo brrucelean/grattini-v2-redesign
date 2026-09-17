@@ -10,7 +10,7 @@ export const MECH_RULES = {
   collect:     () => `Gratta celle con valori €. Premi INCASSA ORA quando vuoi. 5 celle nascondono 🛑 STOP — se la tocchi perdi tutto.`,
   setteemezzo: () => `Il Banco ha già le sue carte. Gratta le TUE e supera il Banco senza sballare (>7½ = bust). J/Q/K=½ · A=1 · 2-7=faccia.`,
   ruota:       () => `🎰 SLOT MACHINE! Gratta per fermare i 3 rulli uno alla volta. 3 uguali = JACKPOT! 2 uguali = premio piccolo.`,
-  doppioOnulla: () => `🎲 DOPPIO O NULLA! Gratta l'unica cella. ✅ = raddoppi il tuo ultimo premio. ❌ = perdi tutto. 50/50.`,
+  doppioOnulla: () => `🎲 DOPPIO O NULLA! Gratta l'unica cella. ✅ = raddoppi il tuo ultimo premio (fino al premio del biglietto). ❌ = niente.`,
 };
 
 // Valori carte per Sette e Mezzo
@@ -27,7 +27,9 @@ export const CARD_SYMBOLS = {
   boccaDrago:      ["🐉","🔥","☄","⚡","💥","🌋"],
   miliardario:     ["🥂","🚢","✈","🏆","💎","🎩"],
   tredici:         ["1","2","3","4","5","6","7","8","9"],
-  maledetto:       ["💀","☠","🔥","👁","🩸","⛧"],
+  // 16 celle e tris vincente: servono almeno 8 simboli validi (🔥 è riservato
+  // alle trappole) perché una carta perdente possa stare senza tris.
+  maledetto:       ["💀","☠","🔥","👁","🩸","⛧","🦇","🐍","🌑","🥀"],
   ruota:           ["🍒","🍋","🔔","💎","7️⃣","🍀"],
   doppioOnulla:    ["✅","❌"],
   mahjong:         ["🀄","🎴","🏮","🧧","🐲","🐉"],
@@ -66,7 +68,7 @@ export const CARD_TYPES = [
   { id:"maledetto",       name:"Il Maledetto",         emoji:"😈", cost:100, rows:4, cols:4, matchNeeded:3, maxPrize:2000,
     malus:{ type:"nailBleed", desc:"La cedola del diavolo — apre la maledizione!" }, desc:"La cedola del diavolo — rischio totale", tier:4, mechanic:"match",
     theme:{ border:"#990000", bg:"#0a0000" } },
-  { id:"ruota",           name:"La Ruota",             emoji:"🎡", cost:15,  rows:1, cols:3, matchNeeded:3, maxPrize:60,
+  { id:"ruota",           name:"La Ruota",             emoji:"🎡", cost:15,  rows:1, cols:3, matchNeeded:3, maxPrize:65,
     malus:null, desc:"🎰 Ferma i 3 rulli! 3 uguali = JACKPOT!", tier:2, mechanic:"ruota",
     theme:{ border:"#ff2e88", bg:"#1a0012" } },
   { id:"labirinto", name:"Il Labirinto", emoji:"🌀", cost:15, rows:4, cols:4, matchNeeded:0, maxPrize:100,
@@ -79,7 +81,7 @@ export const CARD_TYPES = [
     desc:"Trova le X senza toccare le bombe. Minesweeper style.", mechanic:"tesoro",
     malus:null, tier:3, theme:{ border:"#cc8800", bg:"#1a0e00" } },
   { id:"doppioOnulla", name:"Doppio o Nulla", emoji:"🎲", cost:20, rows:1, cols:1, matchNeeded:1, maxPrize:60,
-    malus:null, desc:"🎲 Gratta 1 cella: vinci = x2-x3, perdi = €0!", tier:2, mechanic:"doppioOnulla",
+    malus:null, desc:"🎲 Gratta 1 cella: ✅ raddoppi l'ultimo premio, ❌ niente!", tier:2, mechanic:"doppioOnulla",
     theme:{ border:"#ff4433", bg:"#1a0705" } },
   { id:"mahjong", name:"Il Mahjong", emoji:"🀄", cost:25, rows:3, cols:3, matchNeeded:3, maxPrize:140,
     malus:null, desc:"🀄 Trova 3 tessere uguali — esclusiva Quartiere Cinese!", tier:3, mechanic:"match",

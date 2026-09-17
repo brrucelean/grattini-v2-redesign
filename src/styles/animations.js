@@ -244,7 +244,7 @@ export const EFFECTS_CSS = `
    diventano cambi di stato istantanei (versione "statica" del gioco).
    I casi che il CSS non può coprire sono gestiti in JS:
    coriandoli e ParticleSystem (canvas) non vengono proprio creati, e il
-   NewsTicker/NpcCommentStrip rendono il testo fermo invece di farlo scorrere
+   il NewsTicker e la striscia LOG rendono il testo fermo invece di farlo scorrere
    (con la sola regola CSS finirebbero fuori schermo). */
 @media (prefers-reduced-motion: reduce) {
   .holo::before, .holo::after, .card3d, .holo-title { animation: none !important; }

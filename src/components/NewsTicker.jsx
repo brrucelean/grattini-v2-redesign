@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo, memo } from "react";
-import { C, FONT } from "../data/theme.js";
 import { TICKER_COLORS, TICKER_LABELS, getNewsPool } from "../data/art.js";
 import { ANIM } from "../styles/animations.js";
 import { useReducedMotion } from "../hooks/useReducedMotion.js";
@@ -68,52 +67,6 @@ function NewsTickerImpl({ currentBiome = 0 }) {
         padding:"2px 6px", whiteSpace:"nowrap",
         animation: reducedMotion ? "none" : ANIM.pulseActive,
       }}>{label}</div>
-    </div>
-  );
-}
-
-
-export function NpcCommentStrip({ comment, commentKey }) {
-  const reducedMotion = useReducedMotion();
-  if (!comment) return null;
-  const duration = Math.max(10, comment.length * 0.1);
-  return (
-    <div style={{
-      width:"100%", flexShrink:0, height:"30px",
-      display:"flex", alignItems:"stretch",
-      background:"#04040a",
-      borderTop:`1px solid ${C.gold}18`,
-      borderBottom:`1px solid ${C.gold}18`,
-      overflow:"hidden",
-    }}>
-      {/* Badge */}
-      <div style={{
-        flexShrink:0, width:"44px",
-        display:"flex", alignItems:"center", justifyContent:"center",
-        borderRight:`1px solid ${C.gold}22`,
-        background:"#08060a", fontSize:"14px", lineHeight:1,
-      }}>🧓</div>
-      {/* Scrolling text */}
-      <div style={{
-        flex:1, position:"relative", overflow:"hidden",
-        maskImage: reducedMotion ? "none" : "linear-gradient(to right, transparent 0%, black 5%, black 95%, transparent 100%)",
-        WebkitMaskImage: reducedMotion ? "none" : "linear-gradient(to right, transparent 0%, black 5%, black 95%, transparent 100%)",
-        display:"flex", alignItems:"center", paddingLeft: reducedMotion ? "8px" : 0,
-      }}>
-        <div key={commentKey} style={reducedMotion ? {
-          whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", lineHeight:"30px",
-          color:C.gold+"bb", fontSize:"11px", fontStyle:"italic",
-          textShadow:`0 0 8px ${C.gold}33`,
-        } : {
-          position:"absolute", left:"100%", top:0, whiteSpace:"nowrap", lineHeight:"30px",
-          animation:`newsTicker ${duration}s linear forwards`,
-          willChange:"transform",
-          color:C.gold+"bb", fontSize:"11px", fontStyle:"italic",
-          textShadow:`0 0 8px ${C.gold}33`,
-        }}>
-          {comment}
-        </div>
-      </div>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { C } from "./theme.js";
+import { makeGrattatore } from "./items.js";
 
 // ─── BIOME DEFINITIONS ──────────────────────────────────────
 export const BIOMES = [
@@ -7,6 +8,17 @@ export const BIOMES = [
   { id: 2, name: "Grattanapoli", boss: "Il Napoletano", color: C.gold, desc: "La capitale assoluta del gratta e vinci. Quattro carte in mano e 'o problema è tuo." },
   { id: 3, name: "🇨🇳 Quartiere Cinese", boss: "Il Drago d'Oro", color: "#ff3333", desc: "你好! Lanterne rosse, incenso e grattini con ideogrammi. Qui le regole sono diverse." },
 ];
+
+// ─── SOGLIA D'INGRESSO DEI BOSS ──────────────────────────────
+// € minimi per sfidare il boss. Unica fonte per il controllo all'ingresso e per
+// il pannello dell'anteprima, che per il Drago diceva €400 mentre l'ingresso ne
+// chiedeva 700 (Beta 3): "ACCESSO CONSENTITO", e poi rispedito all'inizio.
+export const BOSS_MIN_MONEY = {
+  "Il Broker":      200,
+  "Il Romanaccio":  300,
+  "Il Napoletano":  500,
+  "Il Drago d'Oro": 700,
+};
 
 // ─── SPRITE DEI BOSS ─────────────────────────────────────────
 // Ogni boss ha la sua chiave sprite. Prima solo il Drago d'Oro aveva un'arte
@@ -123,11 +135,13 @@ export const CEDOLE = [
     id: "grattarapido",
     name: "Il Grattatore Rapido",
     icon: "⚡",
-    pro: "parti con un Bullone gratis nell'inventario",
+    pro: "parti con un Bullone gratis tra i grattatori",
     contro: "le unghie degradano ogni 2 celle invece di 3",
+    // Il Bullone è un grattatore: messo tra gli oggetti dello zaino era
+    // un id sconosciuto, invisibile e inutilizzabile.
     apply: p => ({
       ...p, fastNailDegradeMeta: true,
-      items: [...p.items, "bullone"],
+      grattatori: [...p.grattatori, makeGrattatore("bullone")],
     }),
   },
   {

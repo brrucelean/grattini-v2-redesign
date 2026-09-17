@@ -1,26 +1,30 @@
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { C } from "../data/theme.js";
 import { NAIL_ORDER } from "../data/nails.js";
 import { NODE_ICONS } from "../data/map.js";
-import { ITEM_DEFS, RELIC_DEFS, GRATTATORE_DEFS, MACELLAIO_IMPLANTS } from "../data/items.js";
-import { BIOMES, BIOME_MODIFIERS } from "../data/biomes.js";
-import { CARD_TYPES, CARD_BALANCE } from "../data/cards.js";
-import { degradeNailObj, healNail } from "../utils/nail.js";
-import { rng, roll, pick } from "../utils/random.js";
+import { ITEM_DEFS } from "../data/items.js";
+import { BIOMES, BIOME_MODIFIERS, BOSS_MIN_MONEY, CEDOLE } from "../data/biomes.js";
+import { CARD_TYPES } from "../data/cards.js";
+import { degradeNailObj, healNail, healDamagedNails, isDamagedNail } from "../utils/nail.js";
+import { roundMoney, fmtMoney } from "../utils/money.js";
+import { roll, pick, shuffle } from "../utils/random.js";
 import { generateCard } from "../utils/card.js";
 import { generateMap, generateLabirintoGrid, generateCombinaState, generateTesoroState } from "../utils/map.js";
 import { AudioEngine } from "../audio.js";
-import { STORAGE_KEYS, setStored } from "../utils/storage.js";
+import { pickNewRelic } from "../utils/hasRelic.js";
+
+// Carte con una schermata dedicata al posto del grattino (meccanica → schermata)
+const MINIGAMES = { labirinto: "labirinto", combina: "grattaCombina", tesoro: "mappaTesor0" };
 
 export function useNodeHandlers({
-  player, currentNode, currentBiome, currentRow,
-  updatePlayer, addLog, triggerNpcComment, unlockAchievement, updateAllTimeStats,
-  consumeGrattatore, handleNailDamage, showItemFound,
+  player, currentNode, currentBiome,
+  updatePlayer, addLog, unlockAchievement, updateAllTimeStats,
+  consumeGrattatore,
   setScreen, setCurrentNode, setVisitedNodes, setCurrentRow, setPreScratchCount,
   setGameStats, setCardSelectMode, setReturnScreen, setScratchingCard, setSelectedCardIdx,
   setCombatEnemy, setCurrentBiome, setMap, setPlayer,
-  setItemFoundModal, setDiscoveredRelics,
-  setLabirintoState, setCombinaState, setTesoroState, setSpecialCardRef,
+  setItemFoundModal, discoverRelic, activeCedola, setPendingCedoleOffer,
+  setLabirintoState, setCombinaState, setTesoroState,
   effectiveFortune, gameStats, isAlive,
 }) {
   const [dreamModal, setDreamModal] = useState(null);
@@ -59,18 +63,20 @@ export function useNodeHandlers({
 
     // Cappello Sbirro attira ladri/spacciatori: 30% chance di intercettazione
     // Plettro (silent) annulla l'intercettazione
-    if (player.cappelloSbirroWorn && !player.equippedGrattatore?.silent && !["ladro","spacciatore","poliziotto","boss","miniboss"].includes(node.type) && roll(0.3)) {
+    const interceptable = !node.secret && !["ladro","spacciatore","poliziotto","boss","miniboss"].includes(node.type);
+    if (player.cappelloSbirroWorn && !player.equippedGrattatore?.silent && interceptable && roll(0.3)) {
       const interceptor = roll(0.5) ? "ladro" : "spacciatore";
       addLog(`🎩 Il cappello sbirro attira attenzione! ${interceptor === "ladro" ? "Un ladro" : "Uno spacciatore"} ti intercetta!`, C.red);
       node._originalType = node._originalType || node.type;
       node.type = interceptor;
     }
-    if (player.cappelloSbirroWorn && player.equippedGrattatore?.silent && !["ladro","spacciatore","poliziotto","boss","miniboss"].includes(node.type) && roll(0.3)) {
+    if (player.cappelloSbirroWorn && player.equippedGrattatore?.silent && interceptable && roll(0.3)) {
       addLog("🎸 Il Plettro ti rende silenzioso — il ladro non ti ha visto!", C.cyan);
     }
 
     setScreen("preScratch");
-    addLog(`Vai verso: ${NODE_ICONS[node.type] || ""} ${node.type}${node.elite ? " ★ELITE" : ""}`, node.elite ? C.orange : C.cyan);
+    const nodeLabel = node.secret ? "🔮 nodo segreto" : `${NODE_ICONS[node.type] || ""} ${node.type}`;
+    addLog(`Vai verso: ${nodeLabel}${node.elite ? " ★ELITE" : ""}`, node.elite ? C.orange : C.cyan);
   };
 
   const enterNode = () => {
@@ -81,18 +87,20 @@ export function useNodeHandlers({
     else if (type === "locanda") setScreen("locanda");
     else if (type === "boss") {
       const bossName = currentNode.bossName || "Il Broker";
-      const BOSS_ENTRY = {
-        "Il Broker":             { min: 200, quote: `"€${player.money}? Non sei nemmeno degno del mio tempo. Torna quando hai qualcosa da perdere — minimo €200. Arrivederci."` },
-        "Il Romanaccio":         { min: 300, quote: `"Aho, co' meno de €300 manco te risponno, bello. E nun me fa' arrabbià che chiamo er taxi."` },
-        "Il Napoletano":         { min: 500, quote: `"Guagliò, cu' meno 'e €500 nun te parlo manco pe' sbaglio. Torna quanno tieni 'o ccapo."` },
-        "Il Drago d'Oro":        { min: 700, quote: `"🐲 龙不见穷人. Il Drago non riceve i poveri. Porta almeno €700 o brucerai prima di entrare."` },
+      const min = BOSS_MIN_MONEY[bossName];
+      const money = fmtMoney(player.money);
+      const BOSS_QUOTES = {
+        "Il Broker":      `"€${money}? Non sei nemmeno degno del mio tempo. Torna quando hai qualcosa da perdere — minimo €${min}. Arrivederci."`,
+        "Il Romanaccio":  `"Aho, co' meno de €${min} manco te risponno, bello. E nun me fa' arrabbià che chiamo er taxi."`,
+        "Il Napoletano":  `"Guagliò, cu' meno 'e €${min} nun te parlo manco pe' sbaglio. Torna quanno tieni 'o ccapo."`,
+        "Il Drago d'Oro": `"🐲 龙不见穷人. Il Drago non riceve i poveri. Porta almeno €${min} o brucerai prima di entrare."`,
       };
-      const entry = BOSS_ENTRY[bossName];
+      const entry = min !== undefined && { min, quote: BOSS_QUOTES[bossName] };
       if (entry && player.money < entry.min) {
         addLog(`👑 ${bossName}: ${entry.quote}`, C.red);
         addLog(`❌ Rispedito all'inizio — ti serve almeno €${entry.min}.`, C.orange);
         unlockAchievement("broke");
-        const shortfall = entry.min - player.money;
+        const shortfall = fmtMoney(entry.min - player.money);
         // Modal esplicativo — prima di sbattere il giocatore a inizio mappa
         if (setItemFoundModal) {
           setItemFoundModal({
@@ -100,11 +108,11 @@ export function useNodeHandlers({
             name: `${bossName} ti caccia via`,
             desc:
               `${entry.quote}\n\n` +
-              `💰 Avevi: €${player.money}\n` +
+              `💰 Avevi: €${money}\n` +
               `🎯 Soglia minima: €${entry.min}\n` +
               `📉 Ti mancavano: €${shortfall}\n\n` +
               `Sei stato RISPEDITO all'inizio della mappa.\n` +
-              `Riparti dalla riga 1 — grattini, mappa e nodi visitati azzerati.\n\n` +
+              `Riparti dalla riga 1: il percorso è azzerato, grattini e soldi restano.\n\n` +
               `Prossima volta porta più soldi.`,
             subtitle: "ACCESSO NEGATO",
             buttonLabel: "Torno più forte →",
@@ -143,8 +151,6 @@ export function useNodeHandlers({
       setCombatEnemy({ name: bossName, isBoss: true });
       setScreen("combat");
     }
-    else if (type === "miniboss") setScreen("event");
-    else if (type === "stregone") setScreen("event");
     else setScreen("event");
   };
 
@@ -168,9 +174,28 @@ export function useNodeHandlers({
       return;
     }
     setSelectedCardIdx(idx);
+    setPreScratchCount(c => c + 1);
+    // returnScreen è già stato impostato dal chiamante (handlePreScratch → "preScratch",
+    // handleShopScratch → "shop"). Non sovrascriverlo qui.
+
+    // Labirinto, Gratta & Combina e Mappa del Tesoro hanno una schermata loro e
+    // NON passano da scratchingCard: quello apre il grattino a tutto schermo, che
+    // copriva il minigioco e, con matchNeeded 0, vinceva alla prima cella.
+    const minigame = MINIGAMES[card.mechanic];
+    if (minigame) {
+      if (card.mechanic === "labirinto") setLabirintoState({ pos: [0, 0], revealed: new Set(), prize: 0, grid: generateLabirintoGrid(), done: false });
+      else if (card.mechanic === "combina") setCombinaState(generateCombinaState());
+      else setTesoroState(generateTesoroState());
+      updatePlayer(p => {
+        const nc = [...p.scratchCards]; nc.splice(idx, 1); return {...p, scratchCards: nc};
+      });
+      setScreen(minigame);
+      return;
+    }
+
     // Impianti a vincita garantita (Anziana: sacra | Macellaio: neonato/marcione/baddie)
     // Se attivi, rigenera la carta come vincente — il moltiplicatore del premio verrà
-    // applicato in ScratchCardView.calcPrize (vedi implantMult).
+    // applicato in ScratchCardView (IMPLANT_PRIZE_MULT).
     const activeNail = player.nails[player.activeNail];
     const guaranteedImplants = ["sacra", "neonato", "marcione", "baddie"];
     if (activeNail && guaranteedImplants.includes(activeNail.implant) && (activeNail.implantUses || 0) > 0 && !card.isWinner) {
@@ -182,56 +207,23 @@ export function useNodeHandlers({
       addLog(`${activeNail.implant === "sacra" ? "✨" : "🔮"} L'impianto garantisce la vincita su questa grattata!`, C.gold);
     }
     setScratchingCard(card);
-    setPreScratchCount(c => c + 1);
-    // returnScreen è già stato impostato dal chiamante (handlePreScratch → "preScratch",
-    // handleShopScratch → "shop"). Non sovrascriverlo qui.
-
-    // Route special mechanic cards to dedicated screens
-    if (card.mechanic === "labirinto") {
-      setSpecialCardRef(card);
-      // Remove from hand immediately
-      updatePlayer(p => {
-        const nc = [...p.scratchCards]; nc.splice(idx, 1); return {...p, scratchCards: nc};
-      });
-      // Generate 4x4 grid
-      const grid = generateLabirintoGrid();
-      setLabirintoState({ pos: [0, 0], revealed: new Set(), prize: 0, grid, done: false });
-      setScreen("labirinto");
-    } else if (card.mechanic === "combina") {
-      setSpecialCardRef(card);
-      updatePlayer(p => {
-        const nc = [...p.scratchCards]; nc.splice(idx, 1); return {...p, scratchCards: nc};
-      });
-      const cs = generateCombinaState();
-      setCombinaState(cs);
-      setScreen("grattaCombina");
-    } else if (card.mechanic === "tesoro") {
-      setSpecialCardRef(card);
-      updatePlayer(p => {
-        const nc = [...p.scratchCards]; nc.splice(idx, 1); return {...p, scratchCards: nc};
-      });
-      const ts = generateTesoroState();
-      setTesoroState(ts);
-      setScreen("mappaTesor0");
-    } else {
-      setScreen("scratch");
-    }
+    setScreen("scratch");
   };
 
   const handleRest = (room) => {
     if (player.money < room.cost) return;
     // Floor option: half-heal nails, 50% thief fight
     if (room.isFloor) {
+      const sanaIdx = NAIL_ORDER.indexOf("sana");
       updatePlayer(p => {
         const nails = p.nails.map(n => {
-          if (n.state === "morta") return n; // dead stays dead on floor
           const idx = NAIL_ORDER.indexOf(n.state);
-          if (idx < 0) return n;
-          // Move halfway toward "sana" (index 4)
-          const sanaIdx = NAIL_ORDER.indexOf("sana");
+          // Le morte restano morte; Sana, Kawaii e gli stati fuori catena restano
+          // com'erano (prima una Kawaii dormendo per terra tornava Sana).
+          if (n.state === "morta" || idx < 0 || idx >= sanaIdx) return n;
+          // A metà strada verso Sana
           const steps = Math.max(1, Math.floor((sanaIdx - idx) / 2));
-          const newIdx = Math.min(idx + steps, sanaIdx);
-          return {...n, state: NAIL_ORDER[newIdx], scratchCount: Math.floor(n.scratchCount / 2)};
+          return {...n, state: NAIL_ORDER[Math.min(idx + steps, sanaIdx)], scratchCount: Math.floor(n.scratchCount / 2)};
         });
         return {...p, nails, grattaMania: false, grattaManiaTurns: 0};
       });
@@ -250,37 +242,22 @@ export function useNodeHandlers({
       return;
     }
     updatePlayer(p => {
-      const nails = [...p.nails];
-      // Suite: heal ALL nails (including dead) first, then kawaii
+      let nails;
       if (room.kawaii) {
-        nails.forEach((n, i) => {
-          nails[i] = {...n, state: "kawaii", scratchCount: 0};
-        });
+        // Manicure: tutte (anche le morte) almeno Kawaii — Piede e Pollice Verde valgono di più e restano
+        nails = p.nails.map(n => ({...n, state: n.state === "morta" ? "kawaii" : healNail(n.state, "kawaii"), scratchCount: 0}));
       } else {
-        // Non-suite: heal damaged nails first (priority: damaged > dead)
-        let healed = 0;
-        // First pass: heal damaged non-dead nails
-        for (let i = 0; i < nails.length && healed < room.heals; i++) {
-          if (nails[i].state !== "sana" && nails[i].state !== "kawaii" && nails[i].state !== "morta") {
-            nails[i] = {...nails[i], state: "sana", scratchCount: 0};
-            healed++;
-          }
-        }
-        // Second pass: heal dead nails with remaining slots
-        for (let i = 0; i < nails.length && healed < room.heals; i++) {
-          if (nails[i].state === "morta") {
-            nails[i] = {...nails[i], state: "sana", scratchCount: 0};
-            healed++;
-          }
-        }
-        // Always reset scratchCount on alive nails (so you don't degrade right after resting)
-        for (let i = 0; i < nails.length; i++) {
-          if (nails[i].state !== "morta") {
-            nails[i] = {...nails[i], scratchCount: 0};
-          }
-        }
+        // Prima le danneggiate, poi con gli slot rimasti le morte
+        const damaged = p.nails.filter(isDamagedNail).length;
+        let revives = Math.max(0, room.heals - damaged);
+        nails = healDamagedNails(p.nails, room.heals).map(n => {
+          if (n.state !== "morta") return {...n, scratchCount: 0}; // appena riposate: niente degrado immediato
+          if (revives <= 0) return n;
+          revives--;
+          return {...n, state: "sana", scratchCount: 0};
+        });
       }
-      return {...p, money: p.money - room.cost, nails, grattaMania: false, grattaManiaTurns: 0};
+      return {...p, money: roundMoney(p.money - room.cost), nails, grattaMania: false, grattaManiaTurns: 0};
     });
 
     addLog(`Hai riposato nella ${room.name}. Unghie curate!`, C.green);
@@ -289,14 +266,16 @@ export function useNodeHandlers({
     // Bettola thief risk
     if (room.risk === "ladri" && roll(0.25)) {
       addLog("Un ladro ti deruba nel sonno!", C.red);
-      updatePlayer(p => {
-        const items = [...p.items];
-        if (items.length > 0) {
-          const stolen = items.splice(Math.floor(rng()*items.length), 1)[0];
-          addLog(`Ti ha rubato: ${ITEM_DEFS[stolen]?.name || "qualcosa"}!`, C.red);
-        }
-        return {...p, items};
-      });
+      if (player.items.length > 0) {
+        const stolen = pick(player.items);
+        updatePlayer(p => {
+          const items = [...p.items];
+          const idx = items.indexOf(stolen);
+          if (idx >= 0) items.splice(idx, 1);
+          return {...p, items};
+        });
+        addLog(`Ti ha rubato: ${ITEM_DEFS[stolen]?.name || "qualcosa"}!`, C.red);
+      }
     }
 
     // ─── SOGNI ALLA LOCANDA (20% chance) ─────────────────────────
@@ -433,15 +412,7 @@ export function useNodeHandlers({
     if (result.won) {
       setGameStats(s => ({...s, combatsWon: (s.combatsWon || 0) + 1}));
       updatePlayer(p => {
-        const nails = [...p.nails];
-        // Apply heals from combat
-        let healed = 0;
-        for (let i = 0; i < nails.length && healed < (result.nailHeals || 0); i++) {
-          if (nails[i].state !== "sana" && nails[i].state !== "kawaii" && nails[i].state !== "morta") {
-            nails[i] = {...nails[i], state: healNail(nails[i].state, "sana"), scratchCount: 0};
-            healed++;
-          }
-        }
+        const nails = healDamagedNails(p.nails, result.nailHeals || 0);
         // WIN: guadagna un'unghia dal nemico (ripristina la prima morta)
         if (result.winNail) {
           const deadIdx = nails.findIndex(n => n.state === "morta");
@@ -465,18 +436,10 @@ export function useNodeHandlers({
       // nuovo bioma), li uniamo in un solo popup invece di farli gareggiare.
       let foundRelic = null;
       if (currentNode?.type === "boss" || (currentNode?.type === "miniboss" && roll(0.25))) {
-        const owned = new Set((player?.relics || []).map(r => r.id));
-        const available = Object.entries(RELIC_DEFS).filter(([id]) => !owned.has(id));
-        if (available.length > 0) {
-          const [relicId, relicDef] = pick(available);
-          updatePlayer(p => ({...p, relics: [...(p.relics || []), {id: relicId, ...relicDef}]}));
-          // Salva come scoperta nella collezione meta
-          setDiscoveredRelics(prev => {
-            if (prev.includes(relicId)) return prev;
-            const next = [...prev, relicId];
-            setStored(STORAGE_KEYS.relicsDiscovered, next);
-            return next;
-          });
+        const relicDef = pickNewRelic(player);
+        if (relicDef) {
+          updatePlayer(p => ({...p, relics: [...(p.relics || []), relicDef]}));
+          discoverRelic(relicDef.id);  // collezione meta
           foundRelic = relicDef;
           addLog(`${relicDef.emoji} RELIQUIA TROVATA: ${relicDef.name}! ${relicDef.desc}`, C.gold);
           // Miniboss: nessun bioma da sbloccare dopo, quindi il popup della
@@ -541,15 +504,13 @@ export function useNodeHandlers({
           }
           // Victory! unlock achievements
           unlockAchievement("first_win");
-          setPlayer(p => {
-            if (p && p.nails.every(n => n.state !== "morta" || p.nails.filter(x => x.state !== "morta").length === p.nails.length)) {
-              // Check untouchable: no nails are dead
-              if (p.nails.every(n => n.state !== "morta")) unlockAchievement("untouchable");
-            }
-            return p;
-          });
+          // Intoccabile: nessuna unghia morta a fine run
+          if (player.nails.every(n => n.state !== "morta")) unlockAchievement("untouchable");
           updateAllTimeStats({...gameStats, _isWin: true});
-          setScreen("victory");
+          // Il Broker offre 3 cedole per la prossima run (la schermata esisteva
+          // ma non veniva mai aperta: la meta-progressione era irraggiungibile)
+          setPendingCedoleOffer(shuffle(CEDOLE.filter(c => c.id !== activeCedola)).slice(0, 3));
+          setScreen("cedole");
         }
         return;
       }

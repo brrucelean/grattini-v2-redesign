@@ -103,7 +103,7 @@ export const VECCHIO_DIALOGHI = [
   },
   { // Visita 3: scelta finale irreversibile
     title: "🧓 Il Vecchio — Ultima Visita",
-    text: "\"È l'ultima volta che ci vediamo, ragazzo. Ho portato due cose. Una ti salverà. L'altra ti condannerà. Scegli.\" Allunga le mani: nella sinistra un bagliore dorato. Nella destra, un'ombra.\"",
+    text: "\"È l'ultima volta che ci vediamo, ragazzo. Ho portato due cose. Una ti salverà. L'altra ti condannerà. Scegli.\" Allunga le mani: nella sinistra un bagliore dorato. Nella destra, un'ombra.",
     choices: [
       { label: "🌟 Mano sinistra (Luce)", action: "vecchio_luce" },
       { label: "🌑 Mano destra (Ombra)", action: "vecchio_ombra" },
@@ -111,28 +111,6 @@ export const VECCHIO_DIALOGHI = [
   },
 ];
 
-// ─── NPC ART: sprite piccoli (legacy, usati nelle icone) ────
-export const NPC_ART = {
-  tabaccaio: `  ╭──╮\n  │°°│\n  │‿ │\n  ╰┬─╯\n  ═╪═\n   Ω`,
-  ladro:     `  ╭──╮\n  │><│\n  │~ │\n  ╰┬─╯\n  /│\\\n   🔪`,
-  spacciatore:`  ╭──╮\n  │$$│\n  │═ │\n  ╰┬─╯\n  /│\\\n   ☘`,
-  chirurgo:  `  ╭──╮\n  │⊕⊕│\n  │_ │\n  ╰┬─╯\n  /│\\\n   ✂`,
-  locanda:   `  ╭──╮\n  │^^│\n  │u │\n  ╰┬─╯\n  /│\\\n   ☾`,
-  mendicante:`  ╭──╮\n  │;;│\n  │○ │\n  ╰┬─╯\n  /│\\\n   🙏`,
-  miniboss:  `  ╭──╮\n  │██│\n  │▼ │\n  ╰┬─╯\n ╔╪╗\n  ☠`,
-  boss:      `╭────╮\n│ ◉◉ │\n│ ▬▬ │\n╰─┬──╯\n╔═╪══╗\n║ 💼 ║`,
-  evento:    `  ╭──╮\n  │??│\n  │  │\n  ╰──╯`,
-  zaino:     `  ┌──┐\n  │▓▓│\n  │▓▓│\n  └┬┬┘`,
-  stregone:   `  ╭──╮\n  │∞∞│\n  │≈ │\n  ╰┬─╯\n  )│(\n   🔮`,
-  poliziotto: `  ╭──╮\n  │★★│\n  │≋ │\n  ╰┬─╯\n  /│\\\n   🚔`,
-  anziana:    `  ╭──╮\n  │..│\n  │ω │\n  ╰┬─╯\n  )│(\n   👵`,
-  sacerdote:  `  ╭──╮\n  │✝✝│\n  │_ │\n  ╰┬─╯\n  /│\\\n   ⛪`,
-  bambino:    `  ╭──╮\n  │◕◕│\n  │◡ │\n  ╰┬─╯\n  /│\\\n   👦`,
-  streamer:   `  ╭──╮\n  │◕◕│\n  │▽ │\n  ╰┬─╯\n  /│\\\n   📱`,
-  macellaio:  `  ╭──╮\n  │☠☠│\n  │_ │\n  ╰┬─╯\n  /│\\\n   🔪`,
-  vecchio:    `  ╭──╮\n  │∴∴│\n  │~ │\n  ╰┬─╯\n  )│(\n   🧓`,
-  maestroTe:  `  ╭──╮\n  │tè│\n  │~ │\n  ╰┬─╯\n  /│\\\n   🍵`,
-};
 // ─── SPR_BIG: ritratti grandi ASCII (~16 righe, mono-width) ──
 // REGOLE ART DIRECTION v2.1:
 //  · solo caratteri single-width (no emoji, no CJK dentro i frame)

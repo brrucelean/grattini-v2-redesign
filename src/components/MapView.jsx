@@ -288,7 +288,7 @@ export function MapView({ map, currentRow, visitedNodes, onSelectNode, reachable
                 fontSize:FS.xs, letterSpacing:"2px",
                 padding:"1px 6px",
                 boxShadow:`0 0 6px ${biomeColor}`,
-              }}>BIOMA {currentBiome + 1}/4</span>
+              }}>BIOMA {currentBiome + 1}/{BIOMES.length}</span>
               <span style={{
                 background:`${biomeColor}22`,
                 border:`1px solid ${biomeColor}55`,
@@ -619,6 +619,7 @@ export function MapView({ map, currentRow, visitedNodes, onSelectNode, reachable
             const label = node.type === "boss"
               ? (node.bossName || "BOSS")
               : effectivelyHidden ? "???"
+              : isSecret ? "segreto"
               : node.type;
 
             const tooltip = effectivelyHidden

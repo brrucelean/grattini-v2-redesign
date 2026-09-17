@@ -120,7 +120,7 @@ function RoomTile({ room, canAfford, onClick }) {
           {room.cost > 0 ? `€${room.cost}` : "GRATIS"}
         </div>
         <div style={{color: accent, fontSize: "10px", letterSpacing: "1px", fontWeight: "bold"}}>
-          +{room.heals} UNGHIE
+          {room.isFloor ? "CURA A METÀ" : `+${room.heals} ${room.heals === 1 ? "UNGHIA" : "UNGHIE"}`}
         </div>
       </div>
     </div>

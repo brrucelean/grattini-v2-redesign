@@ -4,14 +4,40 @@ import { ITEM_DEFS, GRATTATORE_DEFS } from "../data/items.js";
 import { CARD_TYPES } from "../data/cards.js";
 import { TABACCAIO_LINES } from "../data/art.js";
 import { rng } from "../utils/random.js";
+import { fmtMoney } from "../utils/money.js";
+import { cardPrice, itemPrice } from "../utils/shop.js";
 import { S } from "../utils/styles.js";
 import { Btn } from "./Btn.jsx";
 import { Tooltip } from "./Tooltip.jsx";
 import { Asset } from "./Asset.jsx";
 import { VintageBadge } from "./Vintage.jsx";
 import { ANIM } from "../styles/animations.js";
+import { useIsMobile } from "../hooks/useIsMobile.js";
 
+// ─── SLOT MACHINE ────────────────────────────────────────────
+// 6 simboli su 3 rulli: 777 esce 1 volta su 216, un altro tris 5, una coppia 90.
+// Resa media di un giro = (100 + 5·50 + 90·5) / 216 = €3,70: a €1 a giro l'RTP
+// era del 370% e tirare la leva stampava soldi all'infinito. A €4 torna al
+// 92,6%, in linea con i grattini di fascia media.
 const SLOT_SYMBOLS = ["🍋","🍒","🔔","💎","7️⃣","⭐"];
+const SLOT_SPIN_COST = 4;
+const SLOT_PRIZES = { superjackpot: 100, jackpot: 50, small: 5 };
+
+function rollSlot() {
+  const reel = () => SLOT_SYMBOLS[Math.floor(rng() * SLOT_SYMBOLS.length)];
+  const reels = [reel(), reel(), reel()];
+  const [r1, r2, r3] = reels;
+  if (r1 === "7️⃣" && r2 === "7️⃣" && r3 === "7️⃣") {
+    return { reels, type: "superjackpot", prize: SLOT_PRIZES.superjackpot, text: `🎆 SUPER JACKPOT! Tre sette! +€${SLOT_PRIZES.superjackpot}!` };
+  }
+  if (r1 === r2 && r2 === r3) {
+    return { reels, type: "jackpot", prize: SLOT_PRIZES.jackpot, text: `🎉 JACKPOT! Tre ${r1}! +€${SLOT_PRIZES.jackpot}!` };
+  }
+  if (r1 === r2 || r2 === r3 || r1 === r3) {
+    return { reels, type: "small", prize: SLOT_PRIZES.small, text: `✨ Piccola vincita! Due uguali! +€${SLOT_PRIZES.small}` };
+  }
+  return { reels, type: "lose", prize: 0, text: "💨 Niente. Solo fumo e rimpianti." };
+}
 
 // ─── Helper: color per rarità ───────────────────────────────
 const rarityAccent = (rarity, vip = false) => {
@@ -171,7 +197,7 @@ function ProductTile({ emoji, assetId, name, subtitle, cost, maxPrize, accent, c
               background: canAfford ? `${C.gold}18` : `${C.red}18`,
               border: `1px solid ${canAfford ? C.gold : C.red}55`,
               padding: "1px 5px",
-            }}>€{cost}</span>
+            }}>€{fmtMoney(cost)}</span>
             {subtitle && (
               <span style={{color: accent.c, fontSize: FS.xs, letterSpacing: "0.5px"}}>
                 {subtitle}
@@ -239,56 +265,48 @@ function SectionHeader({ icon, label, count, accent = C.gold, subtitle, scrollHi
 
 export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeave, onScratch, onSlotResult, currentRow=0, currentBiome=0, wideDesk=false }) {
   const punchline = useRef(TABACCAIO_LINES[Math.floor(rng() * TABACCAIO_LINES.length)]);
-  const [vw, setVw] = useState(window.innerWidth);
-  useEffect(() => {
-    const h = () => setVw(window.innerWidth);
-    window.addEventListener("resize", h);
-    return () => window.removeEventListener("resize", h);
-  }, []);
-  const mobile = vw < 600;
+  const { isMobile: mobile } = useIsMobile(600);
 
   // ─── SLOT MACHINE STATE ────────────────────────────────────────
   const [slotReels, setSlotReels] = useState(["🎰","🎰","🎰"]);
   const [slotSpinning, setSlotSpinning] = useState(false);
   const [slotResult, setSlotResult] = useState(null);
   const slotIntervalRef = useRef(null);
+  // Esito deciso alla leva e accreditato a fine animazione — o subito, se si
+  // esce dal negozio mentre i rulli girano (il giro è già stato pagato).
+  const pendingSpinRef = useRef(null);
+  const onSlotResultRef = useRef(onSlotResult);
+  onSlotResultRef.current = onSlotResult;
+
+  const settleSpin = () => {
+    const spin = pendingSpinRef.current;
+    pendingSpinRef.current = null;
+    if (spin?.prize > 0) onSlotResultRef.current({ type: "win", amount: spin.prize, prizeType: spin.type });
+    return spin;
+  };
+
+  useEffect(() => () => {
+    clearInterval(slotIntervalRef.current);
+    settleSpin();
+  }, []);
 
   const spinSlot = () => {
-    if (slotSpinning || player.money < 1) return;
-    onSlotResult({ type: "pay", amount: 1 });
+    if (slotSpinning || player.money < SLOT_SPIN_COST) return;
+    onSlotResult({ type: "pay", amount: SLOT_SPIN_COST });
+    pendingSpinRef.current = rollSlot();
     setSlotResult(null);
     setSlotSpinning(true);
     let ticks = 0;
     const maxTicks = 22;
     slotIntervalRef.current = setInterval(() => {
-      setSlotReels([
-        SLOT_SYMBOLS[Math.floor(rng() * SLOT_SYMBOLS.length)],
-        SLOT_SYMBOLS[Math.floor(rng() * SLOT_SYMBOLS.length)],
-        SLOT_SYMBOLS[Math.floor(rng() * SLOT_SYMBOLS.length)],
-      ]);
+      setSlotReels(rollSlot().reels);
       ticks++;
       if (ticks >= maxTicks) {
         clearInterval(slotIntervalRef.current);
-        const r1 = SLOT_SYMBOLS[Math.floor(rng() * SLOT_SYMBOLS.length)];
-        const r2 = SLOT_SYMBOLS[Math.floor(rng() * SLOT_SYMBOLS.length)];
-        const r3 = SLOT_SYMBOLS[Math.floor(rng() * SLOT_SYMBOLS.length)];
-        setSlotReels([r1, r2, r3]);
+        const spin = settleSpin();
+        setSlotReels(spin.reels);
         setSlotSpinning(false);
-        let type = "lose", prize = 0, text = "Nessun premio. Meglio così.";
-        if (r1 === "7️⃣" && r2 === "7️⃣" && r3 === "7️⃣") {
-          type = "superjackpot"; prize = 100;
-          text = "🎆 SUPER JACKPOT! Tre sette! +€100!";
-        } else if (r1 === r2 && r2 === r3) {
-          type = "jackpot"; prize = 50;
-          text = `🎉 JACKPOT! Tre ${r1}! +€50!`;
-        } else if (r1 === r2 || r2 === r3 || r1 === r3) {
-          type = "small"; prize = 5;
-          text = `✨ Piccola vincita! Due uguali! +€5`;
-        } else {
-          text = "💨 Niente. Solo fumo e rimpianti.";
-        }
-        setSlotResult({ text, prize, type });
-        if (prize > 0) onSlotResult({ type: "win", amount: prize });
+        setSlotResult(spin);
       }
     }, 80);
   };
@@ -337,8 +355,7 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
 
   const shopItems = ["cerotto","disinfettante","sigaretta"];
   const shopGrattatori = ["bottone","bullone"];
-  const mediumItemsPool = ["sigarettaErba","cremaRinforzante"].filter(() => true);
-  const mediumItems = player.money >= 8 ? stock(mediumItemsPool, 0.50, 2) : [];
+  const mediumItems = player.money >= 8 ? stock(["sigarettaErba","cremaRinforzante"], 0.50, 2) : [];
   const mediumGrattatori = player.money >= 10 ? stock(["unghiaFinta","coltelloAffilato"], 0.55, 2) : [];
   const sottoBanco = player.money >= 15 ? stock(["giornalettoPorno"], 0.30, 1) : [];
   const rareItems = player.money >= 15 ? stock(["cappelloSbirro","smalto"], 0.30, 1) : [];
@@ -363,6 +380,10 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
 
   const allGrattatoriIds = [...shopGrattatori, ...mediumGrattatori, ...rareGrattatori, ...legendaryGrattatori, ...vipGrattatori];
   const allConsumabili = [...shopItems, ...mediumItems, ...rareItems, ...sottoBanco];
+
+  // Prezzo mostrato = prezzo pagato (sconti e cedola Monopolio inclusi)
+  const priceOfCard = (c) => cardPrice(player, currentBiome, c);
+  const priceOfItem = (def) => itemPrice(player, currentBiome, def.cost);
 
   return (
     <div style={{
@@ -475,6 +496,7 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
           {shopCards.map(c => {
             const rar = cardRarity(c);
             const accent = rarityAccent(rar);
+            const price = priceOfCard(c);
             return (
               <ProductTile
                 key={c.id}
@@ -482,10 +504,10 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
                 assetId={`card-${c.id}`}
                 name={c.name}
                 subtitle={accent.label}
-                cost={c.cost}
+                cost={price}
                 maxPrize={c.maxPrize}
                 accent={accent}
-                canAfford={player.money >= c.cost}
+                canAfford={player.money >= price}
                 onClick={() => onBuyCard(c.id)}
                 tooltip={`${c.desc} · Max: €${c.maxPrize}${c.malus ? ` · ⚠ ${c.malus.desc}` : ""}`}
                 shimmer={rar === "leggendaria" || rar === "rarissimo"}
@@ -506,6 +528,7 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
             if (!g) return null;
             const isVip = id === "portaChiavi";
             const accent = rarityAccent(g.rarity, isVip);
+            const price = priceOfItem(g);
             return (
               <ProductTile
                 key={id}
@@ -513,9 +536,9 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
                 assetId={`item-${id}`}
                 name={g.name}
                 subtitle={`${g.maxUses === 99 ? "∞" : g.maxUses} usi`}
-                cost={g.cost}
+                cost={price}
                 accent={accent}
-                canAfford={player.money >= g.cost}
+                canAfford={player.money >= price}
                 onClick={() => onBuyGrattatore(id)}
                 tooltip={`${g.desc} · ${g.maxUses === 99 ? "∞" : g.maxUses} uso/i · Rarità: ${g.rarity}`}
                 badgeLabel={accent.label}
@@ -538,6 +561,7 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
                 const item = ITEM_DEFS[id];
                 if (!item) return null;
                 const accent = rarityAccent(item.rarity);
+                const price = priceOfItem(item);
                 return (
                   <ProductTile
                     key={id}
@@ -545,9 +569,9 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
                     assetId={`item-${id}`}
                     name={item.name}
                     subtitle={accent.label}
-                    cost={item.cost}
+                    cost={price}
                     accent={accent}
-                    canAfford={player.money >= item.cost}
+                    canAfford={player.money >= price}
                     onClick={() => onBuyItem(id)}
                     tooltip={`${item.desc} · Rarità: ${item.rarity}`}
                     shimmer={item.rarity === "leggendaria"}
@@ -577,6 +601,7 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
               <ScrollRow bg="#030200">
                 {vipCards.map(c => {
                   const accent = rarityAccent("leggendaria", true);
+                  const price = priceOfCard(c);
                   return (
                     <ProductTile
                       key={c.id}
@@ -584,10 +609,10 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
                       assetId={`card-${c.id}`}
                       name={c.name}
                       subtitle="VIP"
-                      cost={c.cost}
+                      cost={price}
                       maxPrize={c.maxPrize}
                       accent={accent}
-                      canAfford={player.money >= c.cost}
+                      canAfford={player.money >= price}
                       onClick={() => onBuyCard(c.id)}
                       tooltip={`${c.desc} · Max €${c.maxPrize}`}
                       badgeLabel="VIP"
@@ -596,19 +621,22 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
                   );
                 })}
                 {vipItems.map(id => {
-                  const item = ITEM_DEFS[id];
+                  const isGrattatore = !ITEM_DEFS[id];
+                  const item = ITEM_DEFS[id] || GRATTATORE_DEFS[id];
                   if (!item) return null;
                   const accent = rarityAccent("leggendaria", true);
+                  const price = priceOfItem(item);
                   return (
                     <ProductTile
                       key={id}
                       emoji={item.emoji}
+                      assetId={`item-${id}`}
                       name={item.name}
                       subtitle="VIP"
-                      cost={item.cost}
+                      cost={price}
                       accent={accent}
-                      canAfford={player.money >= item.cost}
-                      onClick={() => onBuyItem(id)}
+                      canAfford={player.money >= price}
+                      onClick={() => (isGrattatore ? onBuyGrattatore(id) : onBuyItem(id))}
                       tooltip={`${item.desc} · Rarità: ${item.rarity}`}
                       badgeLabel="VIP"
                       shimmer
@@ -621,7 +649,7 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
         )}
 
         {/* ═══ SLOT MACHINE ═══ */}
-        <SectionHeader icon="🎰" label="Slot Machine" accent={C.magenta} subtitle="€1 a giro · tre 7️⃣ = €100" />
+        <SectionHeader icon="🎰" label="Slot Machine" accent={C.magenta} subtitle={`€${SLOT_SPIN_COST} a giro · tre 7️⃣ = €${SLOT_PRIZES.superjackpot}`} />
         <div style={{
           background: "#0a0010",
           border: `2px solid ${C.magenta}55`,
@@ -637,11 +665,11 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
             marginBottom: "10px", color: C.dim,
             flexWrap: "wrap",
           }}>
-            <span><span style={{color: C.gold, fontWeight: "bold"}}>7️⃣7️⃣7️⃣</span> = €100</span>
+            <span><span style={{color: C.gold, fontWeight: "bold"}}>7️⃣7️⃣7️⃣</span> = €{SLOT_PRIZES.superjackpot}</span>
             <span style={{opacity: 0.5}}>·</span>
-            <span><span style={{color: C.gold, fontWeight: "bold"}}>XXX</span> = €50</span>
+            <span><span style={{color: C.gold, fontWeight: "bold"}}>XXX</span> = €{SLOT_PRIZES.jackpot}</span>
             <span style={{opacity: 0.5}}>·</span>
-            <span><span style={{color: C.green, fontWeight: "bold"}}>XX?</span> = €5</span>
+            <span><span style={{color: C.green, fontWeight: "bold"}}>XX?</span> = €{SLOT_PRIZES.small}</span>
           </div>
 
           {/* Reels */}
@@ -699,17 +727,17 @@ export function ShopView({ player, onBuyCard, onBuyItem, onBuyGrattatore, onLeav
           <div style={{textAlign: "center"}}>
             <Btn
               onClick={spinSlot}
-              disabled={slotSpinning || player.money < 1}
-              variant={player.money >= 1 && !slotSpinning ? "gold" : "normal"}
+              disabled={slotSpinning || player.money < SLOT_SPIN_COST}
+              variant={player.money >= SLOT_SPIN_COST && !slotSpinning ? "gold" : "normal"}
               style={{
                 fontSize: "13px", minWidth: "170px", letterSpacing: "2px",
                 boxShadow: slotSpinning ? "none" : `0 0 10px ${C.gold}66`,
               }}>
-              {slotSpinning ? "⠿ GIRANDO..." : "🎰 TIRA LA LEVA — €1"}
+              {slotSpinning ? "⠿ GIRANDO..." : `🎰 TIRA LA LEVA — €${SLOT_SPIN_COST}`}
             </Btn>
           </div>
 
-          {player.money < 1 && (
+          {player.money < SLOT_SPIN_COST && (
             <div style={{textAlign: "center", color: C.red, fontSize: "10px", marginTop: "8px", letterSpacing: "1px"}}>
               ⚠ SEI IN BOLLETTA — la slot ti guarda storto
             </div>

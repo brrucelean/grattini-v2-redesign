@@ -1,5 +1,6 @@
 import { NAIL_ORDER, NAIL_INFO } from "../data/nails.js";
 import { CHIRURGO_IMPLANT_IDS } from "../data/items.js";
+import { assetUrl } from "../assets/registry.js";
 
 export function nailStateIndex(state) { return NAIL_ORDER.indexOf(state); }
 
@@ -87,8 +88,6 @@ export const IMPLANT_VISUALS = {
   baddie:    { emoji:"💋", color:"#ff4477", glow:"0 0 12px #ff447799, inset 0 0 10px #aa224466", bg:"linear-gradient(145deg,#2a0811 0%,#55112a 50%,#2a0811 100%)" },
   neonato:   { emoji:"👶", color:"#ffc0cb", glow:"0 0 8px #ffc0cb88", bg:"linear-gradient(145deg,#2a1016 0%,#55202c 50%,#2a1016 100%)" },
   marcione:  { emoji:"🧟", color:"#6b8e23", glow:"0 0 8px #6b8e2388, inset 0 0 8px #44551144", bg:"linear-gradient(145deg,#111808 0%,#223010 50%,#111808 100%)" },
-  velenosa:  { emoji:"☠️", color:"#88ff44", glow:"0 0 10px #88ff4488, inset 0 0 8px #449922", bg:"linear-gradient(145deg,#0a1f08 0%,#15401a 50%,#0a1f08 100%)" },
-  parassita: { emoji:"🪱", color:"#ff6fae", glow:"0 0 10px #ff6fae88, inset 0 0 8px #cc447755", bg:"linear-gradient(145deg,#220a16 0%,#4a1430 50%,#220a16 100%)" },
 };
 
 // Emoji default per stato "base" (quando non c'è impianto)
@@ -200,6 +199,28 @@ export function degradeNailObj(nail, amount=1) {
 // o un 🌿 POLLICE VERDE (×2.5) non vengono "curati" verso Sana (×1.0).
 export function healNail(state, target) {
   return nailRank(target) > nailRank(state) ? target : state;
+}
+
+// Unghia viva peggiore di Sana: è quella che una cura deve sistemare.
+// Kawaii, Piede e Pollice Verde valgono PIÙ di Sana: contarle come
+// "danneggiate" sprecava la cura su di loro o le riportava a Sana.
+export function isDamagedNail(nail) {
+  return !!nail && nail.state !== "morta" && nailRank(nail.state) < nailRank("sana");
+}
+
+// Cura verso `target` tutte le unghie vive, senza declassare quelle migliori.
+export function healAliveNails(nails, target = "sana") {
+  return nails.map(n => n.state === "morta" ? n : {...n, state: healNail(n.state, target), scratchCount: 0});
+}
+
+// Cura verso `target` le prime `count` unghie danneggiate.
+export function healDamagedNails(nails, count, target = "sana") {
+  let left = count;
+  return nails.map(n => {
+    if (left <= 0 || !isDamagedNail(n)) return n;
+    left--;
+    return {...n, state: healNail(n.state, target), scratchCount: 0};
+  });
 }
 
 // Trova l'indice dell'unghia più degradata (rank più basso).
@@ -320,12 +341,9 @@ export function makeNailCursor(nailState = "sana") {
   return `url("data:image/svg+xml,${encodeURIComponent(svg)}") 10 0, pointer`;
 }
 
-export const NAIL_CURSOR = makeNailCursor("sana");
-
 // ─── CURSORE = SPRITE DEL DITO ───────────────────────────────
 // Usa lo sprite PNG (cursor-<stato>) come cursore del mouse, con hotspot
 // sulla punta dell'unghia. Fallback all'hand SVG se lo sprite manca.
-import { assetUrl } from "../assets/registry.js";
 const CURSOR_STATE_ALIAS = { scheletro: "morta" };
 export function nailCursor(nailState = "sana") {
   const key = CURSOR_STATE_ALIAS[nailState] || nailState;

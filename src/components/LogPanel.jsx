@@ -1,6 +1,5 @@
 import { useEffect, useRef } from "react";
 import { C } from "../data/theme.js";
-import { S } from "../utils/styles.js";
 import { VintageBadge } from "./Vintage.jsx";
 
 // Auto-scroll al fondo quando le dependencies cambiano
@@ -8,19 +7,6 @@ function useAutoScroll(deps) {
   const ref = useRef(null);
   useEffect(() => { if (ref.current) ref.current.scrollTop = ref.current.scrollHeight; }, deps);
   return ref;
-}
-
-export function LogPanel({ log }) {
-  const ref = useAutoScroll([log]);
-  if (log.length === 0) return null;
-  return (
-    <div ref={ref} style={{...S.panel, maxHeight:"100px", overflowY:"auto", padding:"6px 10px",
-      background:"#08080f", fontSize:"11px"}}>
-      {log.slice(-8).map((l,i) => (
-        <div key={i} style={{color: l.color || C.dim, marginBottom:"2px"}}>{l.text}</div>
-      ))}
-    </div>
-  );
 }
 
 export function LogSidebar({ log }) {

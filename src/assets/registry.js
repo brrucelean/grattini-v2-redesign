@@ -25,14 +25,3 @@ export function hasAsset(id) {
   return !!assetUrl(id);
 }
 
-// Risolve un id "grezzo" (es. "fintoMilionario" o "cerotto") provando i prefissi
-// di categoria, così i call-site possono passare solo l'id senza sapere il prefisso.
-// Ritorna la chiave completa esistente (es. "card-fintoMilionario") o null.
-const ASSET_PREFIXES = ["", "card-", "item-", "spr-", "nail-", "hud-", "combat-"];
-export function resolveAsset(id) {
-  if (!id) return null;
-  for (const p of ASSET_PREFIXES) {
-    if (ASSETS[p + id]) return p + id;
-  }
-  return null;
-}

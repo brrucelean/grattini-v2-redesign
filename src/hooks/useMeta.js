@@ -25,6 +25,15 @@ export function useMeta() {
     });
   }, []);
 
+  const discoverRelic = useCallback((relicId) => {
+    setDiscoveredRelics(prev => {
+      if (prev.includes(relicId)) return prev;
+      const next = [...prev, relicId];
+      setStored(STORAGE_KEYS.relicsDiscovered, next);
+      return next;
+    });
+  }, []);
+
   const unlockAchievement = useCallback((id) => {
     setAchievements(prev => {
       if (prev[id]) return prev; // already unlocked
@@ -58,7 +67,7 @@ export function useMeta() {
     achievementToast, setAchievementToast,
     showTrophies, setShowTrophies,
     showReliquie, setShowReliquie,
-    discoveredRelics, setDiscoveredRelics,
+    discoveredRelics, setDiscoveredRelics, discoverRelic,
     enabledRelics, setEnabledRelics,
     showAllTimeStats, setShowAllTimeStats,
     unlockAchievement,

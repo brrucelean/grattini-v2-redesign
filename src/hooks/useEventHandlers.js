@@ -1,14 +1,30 @@
 import { C, MAX_ITEMS } from "../data/theme.js";
-import { ITEM_DEFS, MACELLAIO_IMPLANTS, RELIC_DEFS, GRATTATORE_DEFS } from "../data/items.js";
+import { ITEM_DEFS, MACELLAIO_IMPLANTS, CHIRURGO_OSCURO_IMPLANTS, GRATTATORE_DEFS, makeGrattatore } from "../data/items.js";
 import { CARD_TYPES } from "../data/cards.js";
-import { degradeNailObj, healNail, findWorstNailIdx, findWorstAliveIdx } from "../utils/nail.js";
+import { degradeNailObj, healNail, healAliveNails, healDamagedNails, isDamagedNail, findWorstNailIdx, findWorstAliveIdx } from "../utils/nail.js";
 import { rng, roll, pick } from "../utils/random.js";
 import { generateCard } from "../utils/card.js";
+import { pickNewRelic } from "../utils/hasRelic.js";
 import { AudioEngine } from "../audio.js";
+
+// Toglie UNA copia dell'oggetto: il Cappello si consuma uno alla volta
+const withoutOne = (items, itemId) => {
+  const idx = items.indexOf(itemId);
+  return idx < 0 ? items : [...items.slice(0, idx), ...items.slice(idx + 1)];
+};
+
+// Premi del nodo segreto: grattini tier 3 a combinazione, gli unici dove
+// "vincente" si vede davvero (il Miliardario ad accumulo può sempre prendere
+// uno STOP), e i grattatori più forti del tabaccaio
+const SECRET_CARD_IDS = ["puzzle", "boccaDrago", "mahjong"];
+const SECRET_GRATTATORI = ["moneta_oro", "plettro", "moneta_argento"];
+
+// Specchio e Zia Carmela riportano a Graffiata le unghie messe peggio
+const isBelowGraffiata = (n) => n.state === "sanguinante" || n.state === "marcia";
 
 export function useEventHandlers({
   player, currentNode, currentBiome = 0, effectiveFortune = 0,
-  updatePlayer, addLog, unlockAchievement, showItemFound,
+  updatePlayer, addLog, unlockAchievement, showItemFound, discoverRelic,
   setScreen, setCombatEnemy, setGameStats, setCellaProgress,
   setItemFoundModal, setSmokeChoiceModal,
   setScratchingCard, setReturnScreen,
@@ -177,39 +193,21 @@ export function useEventHandlers({
         setScreen("map");
         break;
       }
-      case "implant_plastica": {
-        updatePlayer(p => {
-          const nails = [...p.nails];
-          const worst = findWorstNailIdx(nails);
-          nails[worst] = {...nails[worst], state:"sana", implant:"plastica", implantUses:2, scratchCount:0};
-          return {...p, money: p.money - 10, nails};
-        });
-        setGameStats(s => { const n = (s._chirurgoUses || 0) + 1; if (n >= 3) unlockAchievement("surgeon"); return {...s, _chirurgoUses: n}; });
-        addLog("Unghia di Plastica impiantata! 2 slot, 50% premio. Non sanguina.", C.cyan);
-        setScreen("map");
-        break;
-      }
-      case "implant_ferro": {
-        updatePlayer(p => {
-          const nails = [...p.nails];
-          const worst = findWorstNailIdx(nails);
-          nails[worst] = {...nails[worst], state:"sana", implant:"ferro", implantUses:4, scratchCount:0};
-          return {...p, money: p.money - 25, nails};
-        });
-        setGameStats(s => { const n = (s._chirurgoUses || 0) + 1; if (n >= 3) unlockAchievement("surgeon"); return {...s, _chirurgoUses: n}; });
-        addLog("Unghia di Ferro impiantata! 4 slot, 100% premio. Non sanguina. Attira ladri!", C.cyan);
-        setScreen("map");
-        break;
-      }
+      case "implant_plastica":
+      case "implant_ferro":
       case "implant_oro": {
+        // Costo e slot da CHIRURGO_OSCURO_IMPLANTS (prima scritti a mano: la
+        // Plastica costava ancora €10 per 2 slot invece di €6 per 3)
+        const impl = CHIRURGO_OSCURO_IMPLANTS.find(x => x.id === action.replace("implant_", ""));
+        if (!impl || player.money < impl.cost) { setScreen("map"); break; }
         updatePlayer(p => {
           const nails = [...p.nails];
           const worst = findWorstNailIdx(nails);
-          nails[worst] = {...nails[worst], state:"sana", implant:"oro", implantUses:5, scratchCount:0};
-          return {...p, money: p.money - 50, nails};
+          nails[worst] = {...nails[worst], state:"sana", implant: impl.id, implantUses: impl.uses, scratchCount:0};
+          return {...p, money: p.money - impl.cost, nails};
         });
         setGameStats(s => { const n = (s._chirurgoUses || 0) + 1; if (n >= 3) unlockAchievement("surgeon"); return {...s, _chirurgoUses: n}; });
-        addLog("Unghia d'Oro impiantata! 5 slot, 150% premio. Non sanguina. ALTO PERICOLO LADRI!", C.gold);
+        addLog(`${impl.emoji} ${impl.name} impiantata! ${impl.desc}`, impl.id === "oro" ? C.gold : C.cyan);
         setScreen("map");
         break;
       }
@@ -218,9 +216,7 @@ export function useEventHandlers({
           const nails = [...p.nails];
           const idx = nails.findIndex(n => n.state !== "morta");
           if (idx >= 0) nails[idx] = {...nails[idx], state: "morta", scratchCount: 0};
-          const def = GRATTATORE_DEFS["bottone"];
-          const newGrat = { id:"bottone", name:def.name, emoji:def.emoji, effect:def.effect, value:def.value, usesLeft:def.maxUses };
-          return {...p, nails, grattatori:[...p.grattatori, newGrat]};
+          return {...p, nails, grattatori:[...p.grattatori, makeGrattatore("bottone")]};
         });
         addLog("🦴 Hai pagato con un'unghia. Il Mendicante ti consegna il Bottone Magico.", C.cyan);
         {
@@ -239,8 +235,7 @@ export function useEventHandlers({
         const gratId = action.replace("buyGrat_", "");
         const def = GRATTATORE_DEFS[gratId];
         if (def && player.money >= def.cost) {
-          const newGrat = { id: gratId, name: def.name, emoji: def.emoji, effect: def.effect, value: def.value, usesLeft: def.maxUses };
-          updatePlayer(p => ({...p, money: p.money - def.cost, grattatori: [...p.grattatori, newGrat]}));
+          updatePlayer(p => ({...p, money: p.money - def.cost, grattatori: [...p.grattatori, makeGrattatore(gratId)]}));
           addLog(`Comprato grattatore: ${def.emoji} ${def.name}!`, C.cyan);
           setItemFoundModal({
             emoji: def.emoji, name: def.name,
@@ -259,8 +254,7 @@ export function useEventHandlers({
         } else if (roll(0.4)) {
           const gratId = pick(["bottone","bullone","unghiaFinta"]);
           const def = GRATTATORE_DEFS[gratId];
-          const newGrat = { id: gratId, name: def.name, emoji: def.emoji, effect: def.effect, value: def.value, usesLeft: def.maxUses };
-          updatePlayer(p => ({...p, grattatori: [...p.grattatori, newGrat]}));
+          updatePlayer(p => ({...p, grattatori: [...p.grattatori, makeGrattatore(gratId)]}));
           addLog(`Hai trovato un grattatore: ${def.emoji} ${def.name}!`, C.cyan);
           setItemFoundModal({ emoji: def.emoji, name: def.name, desc: def.desc, subtitle: "Grattatore trovato", rarity: def.rarity });
           setScreen("map");
@@ -307,19 +301,12 @@ export function useEventHandlers({
           addLog(`🐀 Un ratto bianco esce dal tombino, ti guarda fisso e sputa €${tip} ai tuoi piedi. Poi sparisce.`, C.gold);
           setItemFoundModal({ emoji: "🐀", name: `Il Ratto Profeta`, desc: `"Tieni, umano." Ti lascia €${tip} e sussurra qualcosa sui numeri del lotto prima di sparire nella fogna.`, subtitle: "Evento Misterioso" });
         } else if (outcome === "specchio") {
-          // 🪞 Specchio incrinato — cura tutte le unghie peggiori di "graffiata"
-          let healed = 0;
-          updatePlayer(p => {
-            const nails = p.nails.map(n => {
-              if (n.state === "sanguinante" || n.state === "marcia") {
-                healed++;
-                return {...n, state: healNail(n.state, "graffiata")};
-              }
-              return n;
-            });
-            return {...p, nails};
-          });
+          // 🪞 Specchio incrinato — cura tutte le unghie peggiori di "graffiata".
+          // Il conteggio viene dallo stato attuale: contarle DENTRO l'updater non
+          // funziona (gira dopo), e lo specchio finiva sempre nel ramo "niente da curare".
+          const healed = player.nails.filter(isBelowGraffiata).length;
           if (healed > 0) {
+            updatePlayer(p => ({...p, nails: p.nails.map(n => isBelowGraffiata(n) ? {...n, state: "graffiata"} : n)}));
             addLog(`🪞 Specchio incrinato sul muro. Il tuo riflesso sanguina al posto tuo. ${healed} unghia/e curata/e.`, C.cyan);
             setItemFoundModal({ emoji: "🪞", name: "Specchio del Sacrificio", desc: `Il tuo riflesso assorbe il dolore. ${healed} unghia/e tornano graffiate. Lo specchio ora ha una crepa rossa.`, subtitle: "Evento Misterioso" });
           } else {
@@ -396,15 +383,9 @@ export function useEventHandlers({
           const sgrats = ["bottone","bullone","unghiaFinta"];
           const gratId = pick(sgrats);
           const def = GRATTATORE_DEFS[gratId];
-          if (def && player.money >= 0) {
-            const newGrat = { id: gratId, name: def.name, emoji: def.emoji, effect: def.effect, value: def.value, usesLeft: def.maxUses };
-            updatePlayer(p => ({...p, money: p.money + 30, grattatori: [...p.grattatori, newGrat]}));
-            addLog(`⌚ Un tipo in giacca lurida ti afferra la mano: "Senti che bel Rolex?". È un fake. Ma ti lascia €30 e ${def.emoji} ${def.name}.`, C.gold);
-            setItemFoundModal({ emoji: "⌚", name: "Il Tipo coi Rolex Falsi", desc: `+€30 in tasca\n+${def.emoji} ${def.name} (grattatore)\n\n"Te lo dico io, fratè: di sti tempi solo i fake sono onesti."`, subtitle: "Periferia Nord" });
-          } else {
-            updatePlayer(p => ({...p, money: p.money + 25}));
-            addLog(`⌚ Il tipo ti molla €25 e scappa.`, C.gold);
-          }
+          updatePlayer(p => ({...p, money: p.money + 30, grattatori: [...p.grattatori, makeGrattatore(gratId)]}));
+          addLog(`⌚ Un tipo in giacca lurida ti afferra la mano: "Senti che bel Rolex?". È un fake. Ma ti lascia €30 e ${def.emoji} ${def.name}.`, C.gold);
+          setItemFoundModal({ emoji: "⌚", name: "Il Tipo coi Rolex Falsi", desc: `+€30 in tasca\n+${def.emoji} ${def.name} (grattatore)\n\n"Te lo dico io, fratè: di sti tempi solo i fake sono onesti."`, subtitle: "Periferia Nord" });
         } else if (outcome === "tassista") {
           // 🚕 Bioma 1 — Tassista Romano Strozzino (Centro Slot)
           // Doppia faccia: +€40 ma -1 stato unghia attiva (corsa veloce e spericolata)
@@ -420,17 +401,12 @@ export function useEventHandlers({
         } else if (outcome === "ziaCarmela") {
           // 🥐 Bioma 2 — Zia Carmela coi Cornetti (Grattanapoli)
           // Cura tutte le unghie peggiori di "graffiata" + €15 in tasca (cornetto rosso fortuna)
-          let healed = 0;
-          updatePlayer(p => {
-            const nails = p.nails.map(n => {
-              if (n.state === "sanguinante" || n.state === "marcia") {
-                healed++;
-                return {...n, state: healNail(n.state, "graffiata")};
-              }
-              return n;
-            });
-            return {...p, nails, money: p.money + 15, fortune: (p.fortune||0) + 1, fortuneTurns: Math.max(p.fortuneTurns||0, 5)};
-          });
+          const healed = player.nails.filter(isBelowGraffiata).length;
+          updatePlayer(p => ({
+            ...p,
+            nails: p.nails.map(n => isBelowGraffiata(n) ? {...n, state: "graffiata"} : n),
+            money: p.money + 15, fortune: (p.fortune||0) + 1, fortuneTurns: Math.max(p.fortuneTurns||0, 5),
+          }));
           addLog(`🥐 Zia Carmela ti mette in mano un cornetto: "Tie', guagliò, ros' fa bbene!" ${healed > 0 ? `${healed} unghia/e curata/e ·` : ""} +€15 · +1 Fortuna 5t.`, C.gold);
           setItemFoundModal({ emoji: "🥐", name: "Zia Carmela coi Cornetti", desc: `${healed > 0 ? `${healed} unghia/e curata/e\n` : ""}+€15 in tasca\n+1 Fortuna per 5 turni\n\n"E nun pensà a niente, guagliò. 'O cornetto fa o' miracolo."`, subtitle: "Grattanapoli" });
         } else if (outcome === "monaco") {
@@ -439,7 +415,7 @@ export function useEventHandlers({
           updatePlayer(p => {
             const nails = [...p.nails];
             if (nails[p.activeNail].state !== "morta") {
-              nails[p.activeNail] = {...nails[p.activeNail], state: "sana", scratchCount: 0};
+              nails[p.activeNail] = {...nails[p.activeNail], state: healNail(nails[p.activeNail].state, "sana"), scratchCount: 0};
             }
             return {...p, nails, fortune: (p.fortune||0) + 3, fortuneTurns: Math.max(p.fortuneTurns||0, 6)};
           });
@@ -448,8 +424,37 @@ export function useEventHandlers({
         }
         setScreen("map"); break;
       }
+      // ── NODO SEGRETO 🔮: si apre solo con la Fortuna, un premio a scelta ──
+      // Prima era un "Evento Misterioso" qualsiasi: le ricompense uniche
+      // promesse dal tooltip della mappa non esistevano.
+      case "segreto_reliquia": {
+        const relic = pickNewRelic(player);
+        if (relic) {
+          updatePlayer(p => ({...p, relics: [...(p.relics || []), relic]}));
+          discoverRelic(relic.id);
+          addLog(`🔮 ${relic.emoji} RELIQUIA TROVATA: ${relic.name}! ${relic.desc}`, C.gold);
+          setItemFoundModal({ emoji: relic.emoji, name: `RELIQUIA: ${relic.name}`, desc: `${relic.desc}\n\nEffetto permanente per tutta la run!`, subtitle: "Nodo Segreto", rarity: relic.rarity });
+        }
+        setScreen("map"); break;
+      }
+      case "segreto_biglietto": {
+        const type = CARD_TYPES.find(t => t.id === pick(SECRET_CARD_IDS));
+        const card = {...generateCard(type.id, 0, 0, true), owned: true};
+        updatePlayer(p => ({...p, scratchCards: [...p.scratchCards, card]}));
+        addLog(`🔮 ${type.emoji} ${type.name} con l'angolo già grattato: è VINCENTE.`, C.gold);
+        setItemFoundModal({ emoji: type.emoji, name: type.name, desc: `Grattino vincente sicuro.\n${type.desc}`, subtitle: "Nodo Segreto" });
+        setScreen("map"); break;
+      }
+      case "segreto_grattatore": {
+        const gratId = pick(SECRET_GRATTATORI);
+        const def = GRATTATORE_DEFS[gratId];
+        updatePlayer(p => ({...p, grattatori: [...p.grattatori, makeGrattatore(gratId)]}));
+        addLog(`🔮 Sotto il bancone: ${def.emoji} ${def.name}!`, C.cyan);
+        setItemFoundModal({ emoji: def.emoji, name: def.name, desc: def.desc, subtitle: "Nodo Segreto", rarity: def.rarity });
+        setScreen("map"); break;
+      }
       case "acceptEventPaid": {
-        updatePlayer(p => ({...p, money: p.money - 10, fortune: p.fortune + 2, fortuneTurns: 4}));
+        updatePlayer(p => ({...p, money: p.money - 10, fortune: p.fortune + 2, fortuneTurns: Math.max(p.fortuneTurns || 0, 4)}));
         addLog("Lettura accurata! +2 FORTUNA per 4 turni.", C.magenta);
         setItemFoundModal({ emoji: "🔮", name: "Lettura Garantita", desc: "+2 FORTUNA per 4 turni. Hai pagato bene.", subtitle: "Evento" });
         setScreen("map"); break;
@@ -457,17 +462,18 @@ export function useEventHandlers({
       case "acceptEventNail": {
         updatePlayer(p => {
           const nails = [...p.nails];
-          const idx = nails.findIndex(n => n.state !== "morta" && n.state !== "sana");
+          // Si offre prima un'unghia già rovinata, poi una Sana (mai Kawaii/Piede/Pollice Verde)
+          const idx = nails.findIndex(isDamagedNail);
           const target = idx >= 0 ? idx : nails.findIndex(n => n.state === "sana");
           if (target >= 0) nails[target] = degradeNailObj(nails[target]);
-          return {...p, nails, fortune: p.fortune + 2, fortuneTurns: 5};
+          return {...p, nails, fortune: p.fortune + 2, fortuneTurns: Math.max(p.fortuneTurns || 0, 5)};
         });
         addLog("Hai offerto sangue. +2 FORTUNA per 5 turni — ma un'unghia peggiora.", C.magenta);
         setItemFoundModal({ emoji: "🩸", name: "Patto di Sangue", desc: "+2 FORTUNA per 5 turni. Un'unghia si degrada. Le stelle ricordano.", subtitle: "Evento", buttonLabel: "Accetto... →" });
         setScreen("map"); break;
       }
       case "useCappello": {
-        updatePlayer(p => ({...p, items: p.items.filter(i => i !== "cappelloSbirro"), cappelloSbirroWorn: false}));
+        updatePlayer(p => ({...p, items: withoutOne(p.items, "cappelloSbirro"), cappelloSbirroWorn: false}));
         addLog("🎩 Il cappello funziona! Il poliziotto ti saluta militarmente e sparisce.", C.green);
         setScreen("map"); break;
       }
@@ -523,14 +529,10 @@ export function useEventHandlers({
       case "anzianaTocca": {
         updatePlayer(p => ({...p, anzianaVisits: (p.anzianaVisits || 0) + 1}));
         if (roll(0.5)) {
+          const ONE_UP = { marcia: "sanguinante", sanguinante: "graffiata" };
           updatePlayer(p => ({
             ...p,
-            nails: p.nails.map(n => {
-              if (n.state === "morta") return n;
-              if (n.state === "marcia") return {...n, state: "sanguinante"};
-              if (n.state === "sanguinante") return {...n, state: "graffiata"};
-              return {...n, state: "sana"};
-            }),
+            nails: p.nails.map(n => n.state === "morta" ? n : {...n, state: ONE_UP[n.state] || healNail(n.state, "sana")}),
           }));
           addLog("👵 Le sue dita fredde... guariscono! Tutte le unghie migliorano di 1 stato.", C.green);
           showItemFound("👵", "Benedizione dell'Anziana", "Tutte le unghie risalgono di 1 stato grazie alla sua magia.", "Guarigione");
@@ -558,7 +560,7 @@ export function useEventHandlers({
         break;
       }
       case "anzianaSacra": {
-        // Spec: l'Anziana trasforma un dito in Unghia Sacra (1 uso = vincita x5 garantita).
+        // L'Anziana trasforma un dito in Unghia Sacra (1 uso = vincita ×3 garantita).
         // Una sola volta per run (flag anzianaSacraGiven).
         updatePlayer(p => {
           const nails = [...p.nails];
@@ -599,11 +601,13 @@ export function useEventHandlers({
           const nails = [...p.nails];
           const active = p.activeNail;
           if (nails[active].state !== "morta") nails[active] = {...nails[active], smalto: (nails[active].smalto || 0) + 3};
-          return {...p, money: p.money - 5, fortune: p.fortune + 1, fortuneTurns: 3, nails};
+          return {...p, money: p.money - 5, fortune: p.fortune + 1, fortuneTurns: Math.max(p.fortuneTurns || 0, 3), nails};
         });
-        addLog("⛪ +FORTUNA + unghia attiva protetta 3 turni! \"La fede protegge, figliolo.\"", C.magenta);
+        addLog("⛪ +FORTUNA + unghia attiva protetta da 3 danni! \"La fede protegge, figliolo.\"", C.magenta);
         showItemFound("⛪", "Benedizione", "FORTUNA +1 per 3 turni + unghia protetta da 3 danni.", "Sacerdote della Fortuna");
-        break;
+        // Una donazione per visita: restando nell'evento si poteva donare
+        // all'infinito, accumulando Fortuna e smalto per €5 alla volta.
+        setScreen("map"); break;
       }
       case "dona15": {
         updatePlayer(p => {
@@ -614,11 +618,11 @@ export function useEventHandlers({
               nails[i] = {...nails[i], smalto: (nails[i].smalto || 0) + 3}; protected2++;
             }
           }
-          return {...p, money: p.money - 15, fortune: p.fortune + 2, fortuneTurns: 5, nails};
+          return {...p, money: p.money - 15, fortune: p.fortune + 2, fortuneTurns: Math.max(p.fortuneTurns || 0, 5), nails};
         });
         addLog("⛪ +2 FORTUNA + 2 unghie protette! \"La Provvidenza ti guarda.\"", C.magenta);
         showItemFound("⛪", "Grande Benedizione", "FORTUNA +2 per 5 turni + 2 unghie protette da 3 danni.", "Sacerdote della Fortuna");
-        break;
+        setScreen("map"); break;
       }
       case "dona30": {
         updatePlayer(p => {
@@ -626,45 +630,35 @@ export function useEventHandlers({
           for (let i = 0; i < nails.length; i++) {
             if (nails[i].state !== "morta") nails[i] = {...nails[i], smalto: (nails[i].smalto || 0) + 3};
           }
-          return {...p, money: p.money - 30, fortune: p.fortune + 3, fortuneTurns: 8, nails};
+          return {...p, money: p.money - 30, fortune: p.fortune + 3, fortuneTurns: Math.max(p.fortuneTurns || 0, 8), nails};
         });
         addLog("⛪ +3 FORTUNA + TUTTE le unghie protette! \"La grazia scende su di te!\"", C.gold);
         showItemFound("⛪", "Grazia Divina", "FORTUNA +3 per 8 turni + TUTTE le unghie protette da 3 danni!", "Sacerdote della Fortuna");
-        break;
+        setScreen("map"); break;
       }
       case "teVerde": {
         updatePlayer(p => {
           const nails = [...p.nails];
           const worst = findWorstAliveIdx(nails);
           if (nails[worst].state !== "morta") nails[worst] = {...nails[worst], state: healNail(nails[worst].state, "sana")};
-          return {...p, money: p.money - 5, fortune: p.fortune + 1, fortuneTurns: 3, nails};
+          return {...p, money: p.money - 5, fortune: p.fortune + 1, fortuneTurns: Math.max(p.fortuneTurns || 0, 3), nails};
         });
-        addLog("🍵 Tè Verde! Unghia curata + Fortune +1 per 3 turni.", C.green);
-        showItemFound("🍵", "Tè Verde", "Una tazza calma e rigenerante.\nCura 1 unghia + Fortune +1 (3 turni)", "Maestro del Tè");
+        addLog("🍵 Tè Verde! Unghia curata + Fortuna +1 per 3 turni.", C.green);
+        showItemFound("🍵", "Tè Verde", "Una tazza calma e rigenerante.\nCura 1 unghia + Fortuna +1 (3 turni)", "Maestro del Tè");
         setScreen("map"); break;
       }
       case "teDrago": {
-        updatePlayer(p => {
-          const nails = [...p.nails];
-          let healed = 0;
-          for (let i = 0; i < nails.length && healed < 2; i++) {
-            if (nails[i].state !== "morta" && nails[i].state !== "sana" && nails[i].state !== "kawaii") {
-              nails[i] = {...nails[i], state: "sana", scratchCount: 0}; healed++;
-            }
-          }
-          return {...p, money: p.money - 15, fortune: p.fortune + 2, fortuneTurns: 5, nails};
-        });
-        addLog("🍵🐲 Tè del Drago! 2 unghie curate + Fortune +2 per 5 turni!", C.gold);
-        showItemFound("🐲", "Tè del Drago", "Brucia in gola ma rigenera.\nCura 2 unghie + Fortune +2 (5 turni)", "Maestro del Tè");
+        updatePlayer(p => ({...p, money: p.money - 15, fortune: p.fortune + 2, fortuneTurns: Math.max(p.fortuneTurns || 0, 5), nails: healDamagedNails(p.nails, 2)}));
+        addLog("🍵🐲 Tè del Drago! 2 unghie curate + Fortuna +2 per 5 turni!", C.gold);
+        showItemFound("🐲", "Tè del Drago", "Brucia in gola ma rigenera.\nCura 2 unghie + Fortuna +2 (5 turni)", "Maestro del Tè");
         setScreen("map"); break;
       }
       case "teOro": {
         updatePlayer(p => {
-          const nails = [...p.nails];
-          for (let i = 0; i < nails.length; i++) {
-            if (nails[i].state !== "morta") nails[i] = {...nails[i], state: "sana", scratchCount: 0};
+          const nails = healAliveNails(p.nails);
+          if (nails[p.activeNail].state !== "morta") {
+            nails[p.activeNail] = {...nails[p.activeNail], smalto: (nails[p.activeNail].smalto || 0) + 3};
           }
-          nails[p.activeNail] = {...nails[p.activeNail], smalto: (nails[p.activeNail].smalto || 0) + 3};
           return {...p, money: p.money - 40, nails};
         });
         addLog("🍵👑 Tè d'Oro Imperiale! TUTTE le unghie sane + smalto su unghia attiva!", C.gold);
@@ -709,10 +703,10 @@ export function useEventHandlers({
           nails: [...p.nails, { state: "piede", scratchCount: 0, implant: null, implantUses: 0 }],
         }));
         unlockAchievement("piede");
-        addLog("🦶 L'UNGHIA DEL PIEDE! Disgustosa, gialla, orrenda... ma x5 moltiplicatore!", C.gold);
+        addLog("🦶 L'UNGHIA DEL PIEDE! Disgustosa, gialla, orrenda... ma x3 moltiplicatore!", C.gold);
         setItemFoundModal({
           emoji: "🦶", name: "Unghia del Piede",
-          desc: "Fa schifo. Puzza. È gialla e spessa. Ma moltiplica i premi x5. Si degrada a Graffiata al primo danno.",
+          desc: "Fa schifo. Puzza. È gialla e spessa. Ma moltiplica i premi x3. Si degrada a Graffiata al primo danno.",
           subtitle: "Segreto sbloccato"
         });
         break;
@@ -819,7 +813,7 @@ export function useEventHandlers({
         setScreen("map"); break;
       }
       case "cappelloVsLadro": {
-        updatePlayer(p => ({...p, items: p.items.filter(i => i !== "cappelloSbirro"), cappelloSbirroWorn: false}));
+        updatePlayer(p => ({...p, items: withoutOne(p.items, "cappelloSbirro"), cappelloSbirroWorn: false}));
         addLog("🎩 Il ladro scappa vedendo il cappello! Ma il cappello si consuma.", C.green);
         setScreen("map"); break;
       }
@@ -828,13 +822,7 @@ export function useEventHandlers({
         addLog("🧓 Il Vecchio ti legge le unghie. +1 Fortuna per 3 turni.", C.gold);
         setScreen("map"); break;
       case "vecchio_dono":
-        updatePlayer(p => {
-          const visits = (p.vecchioVisits || 0) + 1;
-          const nails = [...p.nails];
-          const damaged = nails.findIndex(n => n.state !== "sana" && n.state !== "kawaii" && n.state !== "morta");
-          if (damaged >= 0) nails[damaged] = {...nails[damaged], state: "sana", scratchCount: 0};
-          return {...p, vecchioVisits: visits, nails};
-        });
+        updatePlayer(p => ({...p, vecchioVisits: (p.vecchioVisits || 0) + 1, nails: healDamagedNails(p.nails, 1)}));
         addLog("🧓 Il Vecchio cura un'unghia con un tocco. \"Ricordati di me.\"", C.green);
         setScreen("map"); break;
       case "vecchio_lore":
@@ -842,21 +830,14 @@ export function useEventHandlers({
         addLog("🧓 \"Le unghie sono l'ultima cosa che resta di chi eravamo. Ogni grattata è una preghiera... o una bestemmia.\"", C.gold);
         setScreen("map"); break;
       case "vecchio_luce":
-        updatePlayer(p => {
-          const nails = [...p.nails];
-          for (let i = 0; i < nails.length; i++) {
-            if (nails[i].state !== "morta") nails[i] = {...nails[i], state: "sana", scratchCount: 0};
-          }
-          return {...p, vecchioVisits: 3, nails, fortune: p.fortune + 3, fortuneTurns: p.fortuneTurns + 5};
-        });
-        addLog("🌟 Una luce dorata avvolge le tue mani. Tutte le unghie risplendono. +3 Fortuna permanente!", C.gold);
+        updatePlayer(p => ({...p, vecchioVisits: 3, nails: healAliveNails(p.nails), fortune: p.fortune + 3, fortuneTurns: p.fortuneTurns + 5}));
+        addLog("🌟 Una luce dorata avvolge le tue mani. Tutte le unghie risplendono. +3 Fortuna per 5 turni!", C.gold);
         unlockAchievement("vecchio_luce");
         setScreen("map"); break;
       case "buyGuantoBoss": {
         const def = GRATTATORE_DEFS["guantoBoss"];
         if (!def || player.money < 60) { setScreen("map"); break; }
-        const newGrat = { id: "guantoBoss", name: def.name, emoji: def.emoji, effect: def.effect, usesLeft: def.maxUses };
-        updatePlayer(p => ({...p, money: p.money - 60, grattatori: [...p.grattatori, newGrat]}));
+        updatePlayer(p => ({...p, money: p.money - 60, grattatori: [...p.grattatori, makeGrattatore("guantoBoss")]}));
         addLog(`🧤 Hai comprato il ${def.name}! Protezione garantita contro il boss del bioma.`, C.gold);
         setItemFoundModal({
           emoji: def.emoji, name: def.name,
@@ -872,8 +853,7 @@ export function useEventHandlers({
           const nails = [...p.nails];
           const idx = nails.findIndex(n => n.state !== "morta");
           if (idx >= 0) nails[idx] = {...nails[idx], state: "morta", scratchCount: 0};
-          const newGrat = { id: "guantoBoss", name: def.name, emoji: def.emoji, effect: def.effect, usesLeft: def.maxUses };
-          return {...p, money: p.money - 20, nails, grattatori: [...p.grattatori, newGrat]};
+          return {...p, money: p.money - 20, nails, grattatori: [...p.grattatori, makeGrattatore("guantoBoss")]};
         });
         addLog(`🦴 Hai ceduto un'unghia + €20. Il Guantaio ti consegna il ${def.name}.`, C.cyan);
         setItemFoundModal({
@@ -889,7 +869,7 @@ export function useEventHandlers({
           const sacrifice = nails.findIndex(n => n.state !== "morta");
           if (sacrifice >= 0) nails[sacrifice] = {...nails[sacrifice], state: "morta"};
           for (let i = 0; i < nails.length; i++) {
-            if (nails[i].state !== "morta" && i !== sacrifice) nails[i] = {...nails[i], state: "kawaii"};
+            if (nails[i].state !== "morta" && i !== sacrifice) nails[i] = {...nails[i], state: healNail(nails[i].state, "kawaii")};
           }
           return {...p, vecchioVisits: 3, nails, money: p.money + 200};
         });

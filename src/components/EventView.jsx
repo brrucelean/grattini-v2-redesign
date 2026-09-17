@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { C, FONT, W } from "../data/theme.js";
-import { NPC_ART, SPR_BIG, NPC_PALETTE, VECCHIO_DIALOGHI } from "../data/art.js";
-import { MACELLAIO_IMPLANTS, GRATTATORE_DEFS } from "../data/items.js";
-import { S } from "../utils/styles.js";
+import { SPR_BIG, NPC_PALETTE, VECCHIO_DIALOGHI } from "../data/art.js";
+import { MACELLAIO_IMPLANTS, CHIRURGO_OSCURO_IMPLANTS, GRATTATORE_DEFS } from "../data/items.js";
 import { normalizePortrait } from "../utils/nail.js";
+import { pickNewRelic } from "../utils/hasRelic.js";
 import { Asset } from "./Asset.jsx";
 import { hasAsset } from "../assets/registry.js";
 import { Tooltip } from "./Tooltip.jsx";
+import { AudioEngine } from "../audio.js";
 
 // ─── NPC CATEGORIES ─────────────────────────────────────────────
 // Ogni tipo NPC ha categoria, icona e colore primario per UI
@@ -29,22 +30,29 @@ const NPC_CAT = {
   zaino:      { label:"OGGETTO",    icon:"🎒",  color:"#888899", danger:0 },
 };
 
+// Tono base della "voce" a blip, per NPC (gli altri 220 Hz)
+const TALK_PITCH = { mendicante: 140, spacciatore: 180, bambino: 320, anziana: 160, boss: 100 };
+
+// Grattatori del Mendicante (id → nome da bancarella)
+const MENDICANTE_WARES = { bottone: "Bottone Magico", bullone: "Bullone Sacro", discoRotto: "Disco Rotto" };
+
 // ─── ACTION META — icona + badge + colore per ogni tipo di scelta ─
 function actionMeta(action, label) {
   const a = action || "";
   const l = label  || "";
+  if (a.startsWith("segreto_"))                return { icon:"🔮",  badge:"SEGRETO",     col:"#ff9ec4" };
   if (a === "fight" || a.includes("defy"))     return { icon:"⚔️",  badge:"COMBATTI",   col:"#ff3355" };
   if (a.includes("bribe"))                     return { icon:"🕊️",  badge:"CALMA",       col:"#66dd88" };
   if (a.includes("flee") || a.includes("fintotonto")) return { icon:"🏃",  badge:"SCAPPA",     col:"#ff8800" };
   if (a === "leave")                           return { icon:"🚪",  badge:"ESCI",        col:"#555566" };
   if (a.includes("Nail") || a.includes("nail")) return { icon:"🦴",  badge:"UNGHIA",      col:"#ff8800" };
   if (a.includes("baratto"))                   return { icon:"🤝",  badge:"BARATTO",     col:"#ffaa00" };
-  if (a.includes("dona") || a.includes("dona"))return { icon:"🙏",  badge:"DONA",        col:"#66dd88" };
+  if (a.includes("dona"))                      return { icon:"🙏",  badge:"DONA",        col:"#66dd88" };
   if (a.includes("implant") || a.includes("macellaio")) return { icon:"🔧", badge:"IMPIANTO",  col:"#00cccc" };
   if (a.includes("cappello") || a === "useCappello") return { icon:"🎩", badge:"OGGETTO",   col:"#ffcc00" };
   if (a.includes("buy") || a.includes("Buy")
     || a.includes("compra") || a.includes("pagaMulta")
-    || a.includes("te") || l.includes("€"))    return { icon:"💰",  badge:"ACQUISTO",    col:"#ffcc00" };
+    || a.startsWith("te") || l.includes("€"))  return { icon:"💰",  badge:"ACQUISTO",    col:"#ffcc00" };
   if (a.includes("accept") || a.includes("porgi") || a.includes("tocca")) return { icon:"🎲", badge:"RISCHIO", col:"#ff9ec4" };
   if (a.includes("swap") || a.includes("Swap")) return { icon:"🔄", badge:"SCAMBIA",     col:"#88ccff" };
   if (a.includes("vendi") || a.includes("Vendi")) return { icon:"💸", badge:"VENDI",      col:"#66dd88" };
@@ -102,7 +110,6 @@ export function EventView({ node, player, onChoice }) {
   const events = {
     ladro: {
       title: "Ladro di Dita",
-      art: NPC_ART.ladro,
       text: player.cappelloSbirroWorn
         ? "\"CAZZO UNO SBIRRO! Scusa capo, non ti avevo riconosciuto!\" 💨 Sparisce in un lampo."
         : "\"Fermo lì, bello. Le tue cose o le tue unghie — scegli in fretta, che ho fretta pure io.\"",
@@ -120,7 +127,6 @@ export function EventView({ node, player, onChoice }) {
       if (player.snitchedOn) {
         return {
           title: "Lo Spacciatore — SA TUTTO",
-          art: NPC_ART.spacciatore,
           text: "\"TU... TU SEI IL RATTO! Mi hai venduto ai gendarmi?! Ora ti strappo le unghie una a una.\"",
           choices: [
             { label: "⚔ Combatti! (ti ha scoperto)", action: "fight" },
@@ -132,7 +138,6 @@ export function EventView({ node, player, onChoice }) {
       if (node.angry) {
         return {
           title: "Lo Spacciatore — NERVOSO",
-          art: NPC_ART.spacciatore,
           text: "\"Chi sei?! Chi ti manda?! Stai zitto e allontanati, o qui finisce male...\" Ha una mano in tasca. Non sembra un bluff.",
           choices: [
             { label: `🕊️ Calmalo con €15`, action: "bribeSpacciatore",
@@ -145,7 +150,6 @@ export function EventView({ node, player, onChoice }) {
       }
       return {
         title: "Lo Spacciatore",
-        art: NPC_ART.spacciatore,
         text: player.cappelloSbirroWorn
           ? "\"Psst... ho roba buo— CAZZO UNO SBIRRO!! AIUTOOOOO!\" 💨 Sparisce in tre secondi. Non lascia nemmeno la ricevuta."
           : player.bluffsBought > 0
@@ -167,31 +171,35 @@ export function EventView({ node, player, onChoice }) {
     })(),
     chirurgo: {
       title: "Il Chirurgo Oscuro",
-      art: NPC_ART.chirurgo,
       text: "\"Le unghie sono la finestra dell'anima... e le tue fanno schifo. Posso sistemarle. Intervento rapido, dolore relativo.\"",
+      // Prezzi e slot da CHIRURGO_OSCURO_IMPLANTS: qui erano scritti a mano e la
+      // Plastica era rimasta a €10 / 2 slot dopo il ribilanciamento (€6 / 3 slot).
       choices: [
-        { label: "Unghia di Plastica (€10)", action: "implant_plastica", condition: player.money >= 10,
-          disabledNote: `ti mancano €${Math.max(0,10-player.money)}` },
-        { label: "Unghia di Ferro (€25)", action: "implant_ferro", condition: player.money >= 25,
-          disabledNote: `ti mancano €${Math.max(0,25-player.money)}` },
-        { label: "Unghia d'Oro (€50)", action: "implant_oro", condition: player.money >= 50,
-          disabledNote: `ti mancano €${Math.max(0,50-player.money)}` },
+        ...CHIRURGO_OSCURO_IMPLANTS.map(impl => ({
+          label: `${impl.name} (€${impl.cost})`, action: `implant_${impl.id}`,
+          condition: player.money >= impl.cost,
+          disabledNote: `ti mancano €${Math.max(0, impl.cost - player.money)}`,
+          tooltip: impl.desc,
+        })),
         { label: "Vattene!", action: "leave" },
       ],
     },
     mendicante: {
       title: "Mendicante Mistico",
-      art: NPC_ART.mendicante,
       text: player.money < 5
         ? "\"I soldi non ti servono per avere ciò che ti serve. Le unghie parlano, figliolo... e le tue mi dicono molto.\""
         : "\"Ho attraversato tre mercatini delle pulci e un sogno profetico per trovare questi grattatori. Ora sono tuoi — se li meriti.\"",
+      // Prezzi da GRATTATORE_DEFS (quelli che il gestore fa pagare): il Disco Rotto
+      // era scritto €18 ma costa €22, e con €18-21 si usciva dal nodo senza comprarlo.
       choices: [
-        { label: `🔘 Bottone Magico (€5)`, action: "buyGrat_bottone", condition: player.money >= 5,
-          disabledNote: `ti mancano €${Math.max(0,5-player.money)}`, tooltip: GRATTATORE_DEFS.bottone.desc },
-        { label: `🔩 Bullone Sacro (€7)`, action: "buyGrat_bullone", condition: player.money >= 7,
-          disabledNote: `ti mancano €${Math.max(0,7-player.money)}`, tooltip: GRATTATORE_DEFS.bullone.desc },
-        { label: `💿 Disco Rotto (€18)`, action: "buyGrat_discoRotto", condition: player.money >= 18,
-          disabledNote: `ti mancano €${Math.max(0,18-player.money)}`, tooltip: GRATTATORE_DEFS.discoRotto.desc },
+        ...Object.entries(MENDICANTE_WARES).map(([id, title]) => {
+          const g = GRATTATORE_DEFS[id];
+          return {
+            label: `${g.emoji} ${title} (€${g.cost})`, action: `buyGrat_${id}`,
+            condition: player.money >= g.cost,
+            disabledNote: `ti mancano €${Math.max(0, g.cost - player.money)}`, tooltip: g.desc,
+          };
+        }),
         { label: `🦴 Offri 1 unghia → Bottone Magico gratis`, action: "barattoGrat_bottone",
           condition: player.nails.filter(n => n.state !== "morta").length > 1,
           disabledNote: "non hai unghie da offrire", tooltip: GRATTATORE_DEFS.bottone.desc },
@@ -200,7 +208,6 @@ export function EventView({ node, player, onChoice }) {
     },
     zaino: {
       title: "Zaino Abbandonato",
-      art: NPC_ART.zaino,
       text: "\"...\" Lo zaino non parla. Ma qualcosa dentro si muove. Forse. Lo apri?",
       choices: [
         { label: "Apri lo zaino!", action: "openBag" },
@@ -211,13 +218,13 @@ export function EventView({ node, player, onChoice }) {
       const visits = player.vecchioVisits || 0;
       if (visits < 3 && node._isVecchio) {
         const d = VECCHIO_DIALOGHI[visits];
-        return { ...d, art: NPC_ART.vecchio, _isVecchio: true };
+        return { ...d, _isVecchio: true };
       }
       const v = eventoVariant.current;
       const TESTI = {
         lettore: "\"Le unghie non mentono, ragazzo. Le tue... vedo cose. Grandi o terribili, non so ancora.\"",
         moneta:  "\"Ehi! Quella moneta è mia! ...no aspetta, è tua. Forse. Raccoglila e vedi cosa succede.\"",
-        voce:    "\"...mi senti? Sono qui. Non girартiʼ — ascolta e basta.\"",
+        voce:    "\"...mi senti? Sono qui. Non girarti — ascolta e basta.\"",
       };
       const SCELTE = {
         lettore: [
@@ -245,11 +252,10 @@ export function EventView({ node, player, onChoice }) {
           { label: "Ignora e scappa", action: "leave" },
         ],
       };
-      return { title: "Evento Misterioso", art: NPC_ART.evento, text: TESTI[v], choices: SCELTE[v] };
+      return { title: "Evento Misterioso", text: TESTI[v], choices: SCELTE[v] };
     })(),
     miniboss: {
       title: "Mini Boss del Tabacchino",
-      art: NPC_ART.miniboss,
       text: "\"Ehi tu! Pensavi di passare senza fermarti?! Sfidami a grattare — se sei così bravo. Chi vince si prende un'unghia dell'altro. Regole semplici.\"",
       choices: [
         { label: "⚔ Accetta la sfida!", action: "fight" },
@@ -259,7 +265,6 @@ export function EventView({ node, player, onChoice }) {
     poliziotto: node.angry ? {
       // NPC volatile: già sul piede di guerra quando lo incontri (deciso in mappa).
       title: "🚔 Poliziotto — SOSPETTOSO",
-      art: NPC_ART.poliziotto,
       text: "\"Fermo lì! Ho ricevuto una segnalazione su di lei. Ho tutto il diritto di procedere come mi pare, e oggi non sono dell'umore giusto.\"",
       choices: [
         { label: "🎩 Mostra il Cappello Sbirro", action: "useCappello",
@@ -269,11 +274,10 @@ export function EventView({ node, player, onChoice }) {
           tooltip: "Paghi, si calma e ti lascia andare." },
         { label: "⚔ Sfidalo apertamente", action: "fight",
           tooltip: "Rischioso: è la legge, ma oggi hai poca scelta." },
-        { label: "🏃 Prova a scappare (30%)", action: "fintotonto" },
+        { label: "🏃 Prova a scappare (20%)", action: "fintotonto" },
       ],
     } : {
       title: "🚔 Poliziotto della Lotteria",
-      art: NPC_ART.poliziotto,
       text: player.giornalettoRead
         ? "\"Ma che... COSA HA IN TASCA?! Un GIORNALETTO?! Atti osceni in luogo pubblico! Multa raddoppiata e che vergogna, a lei!\""
         : player.snitchedOn
@@ -307,7 +311,6 @@ export function EventView({ node, player, onChoice }) {
       if (visits >= 3) {
         return {
           title: "👵 L'Anziana Maledetta",
-          art: NPC_ART.anziana,
           text: "\"Ho dato. Ho guarito. Ho anche pianto un po'. Ora basta — le mie mani hanno un limite settimanale. Vattene!\"",
           choices: [{ label: "Ok nonna, scusa...", action: "leave" }],
         };
@@ -315,7 +318,6 @@ export function EventView({ node, player, onChoice }) {
       if (allMax) {
         return {
           title: "👵 L'Anziana Maledetta",
-          art: NPC_ART.anziana,
           text: "\"Che belle mani... troppo belle. Fanno male solo a guardarle. NON È GIUSTO!\" *STRAPP* Ti strappa 2 unghie per gelosia morbosa!",
           choices: [{ label: "NOOOO NONNA!", action: "anzianaStrappaGelosia" }],
         };
@@ -323,15 +325,13 @@ export function EventView({ node, player, onChoice }) {
       if (alive <= 1) {
         return {
           title: "👵 L'Anziana Maledetta",
-          art: NPC_ART.anziana,
           text: "\"Madonna santa... guarda in che stato. Vieni qui, figliolo.\" Ti mette in mano un'unghia tolta da chi sa dove. Non chiedi.",
           choices: [{ label: "Grazie nonnina 🥺", action: "anzianaRegala" }],
         };
       }
       return {
         title: "👵 L'Anziana Maledetta",
-        art: NPC_ART.anziana,
-        text: `\"Figliolo mio... avvicina quelle mani. Le unghie non mentono mai — e le tue hanno cose da raccontare.\" (Visita ${visits+1}/3)`,
+        text: `"Figliolo mio... avvicina quelle mani. Le unghie non mentono mai — e le tue hanno cose da raccontare." (Visita ${visits+1}/3)`,
         choices: [
           { label: "Porgi le mani", action: "anzianaTocca" },
           { label: "🙏 Chiedi la benedizione dell'Unghia Sacra (€40)",
@@ -345,7 +345,6 @@ export function EventView({ node, player, onChoice }) {
     })(),
     sacerdote: {
       title: "⛪ Il Sacerdote della Fortuna",
-      art: NPC_ART.sacerdote,
       text: "\"Figliolo... la Provvidenza sorride a chi dona senza calcolo. Ogni centesimo che offri torna moltiplicato — in modi che la matematica non spiega.\"",
       choices: [
         { label: "Dona €5 — Fortuna +1 per 3 turni", action: "dona5",
@@ -367,7 +366,6 @@ export function EventView({ node, player, onChoice }) {
       }, 0);
       return {
         title: "👦 Il Bambino Collezionista",
-        art: NPC_ART.bambino,
         text: hasGrattate
           ? `"OHHH! Quelli già grattati valgono ORO per me! ${grattedCards.length} pezzi — circa €${totalValue}. Hai idea di quanto siano rari questi?!"`
           : player.scratchCards.length > 0
@@ -393,7 +391,6 @@ export function EventView({ node, player, onChoice }) {
       const cards = player.scratchCards || [];
       return {
         title: "📱 Streamer Scratch",
-        art: NPC_ART.streamer,
         text: cards.length > 0
           ? "\"OHH GUYS!! Questo tizio sta per GRATTARE IN LIVE!! 🔴 Chat impazzisce! Scegli una carta — se vinci è x1.5 e diventiamo VIRALI!\""
           : "\"Volevo fare un video ma non hai nemmeno UN grattino?! 😤 Content zero. Boring. Vattene prima che mi fai perdere follower.\"",
@@ -412,7 +409,6 @@ export function EventView({ node, player, onChoice }) {
       const hasImplant = activeNailObj?.implant && MACELLAIO_IMPLANTS.some(x => x.id === activeNailObj.implant);
       return {
         title: "🔪 Il Chirurgo Macellaio",
-        art: NPC_ART.macellaio,
         text: alive.length === 0
           ? '"Niente da operare. Anzi, non so neanche come sei ancora vivo. Vattene."'
           : hasImplant
@@ -434,7 +430,6 @@ export function EventView({ node, player, onChoice }) {
     })(),
     stregone: {
       title: "🧙 Lo Stregone della Doppia Mano",
-      art: NPC_ART.stregone,
       text: player.skills?.includes("ambidestri")
         ? (player.nails?.some(n => n.state === "piede")
           ? "\"Vedo che hai trovato IL PIEDE... 🦶 Non lavartelo MAI. Il suo potere è nel disgusto.\""
@@ -491,7 +486,19 @@ export function EventView({ node, player, onChoice }) {
     })(),
   };
 
-  const ev = events[node.type] || events.evento;
+  // Nodo segreto 🔮 (aperto con la Fortuna): una stanza con tre premi, se ne prende uno
+  const segreto = {
+    title: "🔮 Il Retrobottega",
+    text: "\"Pochi trovano questa porta. Sul bancone ci sono tre cose: prendine UNA, e non tornare.\"",
+    choices: [
+      { label: "🧿 La teca di vetro — una reliquia per tutta la run", action: "segreto_reliquia",
+        condition: !!pickNewRelic(player), disabledNote: "hai già tutte le reliquie" },
+      { label: "🎫 Il biglietto con l'angolo grattato — vincente sicuro", action: "segreto_biglietto" },
+      { label: "🥇 L'attrezzo sotto il bancone — un grattatore raro", action: "segreto_grattatore" },
+      { label: "Esci senza toccare niente", action: "leave" },
+    ],
+  };
+  const ev = node.secret ? segreto : events[node.type] || events.evento;
   const bigArt = SPR_BIG[node.type];
   const pal = NPC_PALETTE[node.type] || [C.text, C.dim, C.gold];
   const cat = NPC_CAT[node.type] || NPC_CAT.evento;
@@ -519,29 +526,14 @@ export function EventView({ node, player, onChoice }) {
     return () => clearInterval(id);
   }, []);
 
-  // Talk sound
-  const talkSoundRef = useRef(null);
+  // Voce a blip mentre il testo si scrive. Passa dall'AudioEngine: prima ogni
+  // evento apriva un AudioContext suo (mai chiuso) che ignorava volume e muto.
   useEffect(() => {
-    if (typedChars >= fullText.length) return;
-    if (typedChars % 2 !== 0) return;
+    if (typedChars >= fullText.length || typedChars % 2 !== 0) return;
     const ch = fullText[typedChars];
     if (ch === " " || ch === "\n") return;
-    try {
-      const ctx = talkSoundRef.current || new (window.AudioContext || window.webkitAudioContext)();
-      talkSoundRef.current = ctx;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      const basePitch = node.type === "mendicante" ? 140 : node.type === "spacciatore" ? 180
-        : node.type === "bambino" ? 320 : node.type === "anziana" ? 160
-        : node.type === "boss" ? 100 : 220;
-      osc.frequency.value = basePitch + (ch.charCodeAt(0) % 8) * 15;
-      osc.type = "square";
-      gain.gain.value = 0.05;
-      osc.connect(gain).connect(ctx.destination);
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 0.04);
-    } catch {}
-  }, [typedChars]);
+    AudioEngine.talkBlip((TALK_PITCH[node.type] || 220) + (ch.charCodeAt(0) % 8) * 15);
+  }, [typedChars]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const cb = cornerBrackets(accent, 13, -3, 2);
   const cbInner = cornerBrackets(pal[1], 8, -2, 1);

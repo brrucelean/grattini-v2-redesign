@@ -201,7 +201,7 @@ export const ENEMY_COMBAT_POOLS = {
 // ─── V2 DUELLO HP: statistiche nemico ────────────────────────
 // Il combat non è più "gara a chi fa più soldi": è un duello a HP.
 // Il player usa le unghie come vita; il nemico ha una barra HP (rossa)
-// + uno scudo (blu) che accumula quando gioca carte DIFESA.
+// + uno scudo (blu) che sale quando gioca carte DIFESA e si azzera a ogni turno.
 // I valori sono un punto di partenza da tarare (balance pass successivo).
 // BALANCE PASS (audit 2026-07): il danno del player era troppo alto rispetto
 // agli HP → i nemici morivano al turno 1 e la FURIA (turno 3) non scattava mai.
@@ -231,21 +231,3 @@ export const EFFECT_DAMAGE = {
   stealMoney:  16,  // Furto! — danno + rubi soldi
 };
 
-// ─── TAUNTS ─────────────────────────────────────────────────
-export const TAUNTS = [
-  { text:"\"Quelle unghie fanno schifo, nemmeno mia nonna gratta così male!\"",
-    respond:"\"Le mie unghie ti STRAPPERANNO la faccia!\"",
-    rewardMoney:15, riskDamage:1, winChance:0.55 },
-  { text:"\"Hai la faccia di uno che perde sempre alla lotteria!\"",
-    respond:"\"Stavolta vinco IO, stronzo!\"",
-    rewardMoney:20, riskDamage:1, winChance:0.5 },
-  { text:"\"Scommetto che non hai neanche i soldi per un Poveraccio!\"",
-    respond:"\"Ho più soldi di quanti ne vedrai MAI!\"",
-    rewardMoney:25, riskDamage:1, winChance:0.45 },
-  { text:"\"Guarda quelle unghie... sembrano i denti di mio nonno!\"",
-    respond:"\"Queste unghie ti faranno PIANGERE!\"",
-    rewardMoney:10, riskDamage:0, winChance:0.6 },
-  { text:"\"Ancora qui? Pensavo fossi già scappato col culo tra le gambe!\"",
-    respond:"\"Io non scappo MAI! Adesso paghi!\"",
-    rewardMoney:30, riskDamage:2, winChance:0.4 },
-];

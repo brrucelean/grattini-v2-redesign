@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { C, FONT } from "../data/theme.js";
+import { FONT } from "../data/theme.js";
 import { SPR_BIG } from "../data/art.js";
 import { AudioEngine } from "../audio.js";
 import { CornerBrackets } from "./Vintage.jsx";

@@ -151,6 +151,19 @@ export function generateMap(biomeIdx = 0) {
     chosen.type = "guantaio";
   }
 
+  // ── PRIMA SCELTA: garantisci sempre almeno 1 tabaccaio in rows[1] ─
+  // Il giocatore parte senza soldi e con poche carte: deve sempre poter
+  // andare a comprare materiale fin dal primo step. Prima delle quote qui sotto:
+  // dopo, poteva trasformare in tabaccaio una delle due locande garantite.
+  const firstRow = rows[1] || [];
+  if (firstRow.length > 0 && !firstRow.some(n => n.type === "tabaccaio")) {
+    // candidato sostituibile: niente NPC rari (segreti ed elite arrivano dopo)
+    const cand = firstRow.find(n =>
+      !["poliziotto","anziana","bambino","streamer","macellaio","maestroTe","miniboss","guantaio"].includes(n.type)
+    ) || firstRow[0];
+    if (cand) cand.type = "tabaccaio";
+  }
+
   // ── Garantisci almeno 2 tabaccai, 2 locande, 1 sacerdote ────
   // IMPORTANTE: rispetta MIN_ROW_GAP anche quando si forzano le quote, per
   // evitare di ri-introdurre cluster (es. 2 tabaccai su righe adiacenti).
@@ -175,10 +188,8 @@ export function generateMap(biomeIdx = 0) {
     // ordinati per row più lontana dalle occorrenze esistenti, così si sparpagliano
     const cands = midRows.filter(n =>
       !exclude.includes(n.type) && n.type !== type &&
-      n.type !== "boss" && n.type !== "start" &&
-      // non toccare NPC rari / elite / segreti / vecchio
-      !["poliziotto","anziana","bambino","streamer","macellaio","maestroTe","miniboss","guantaio"].includes(n.type) &&
-      !n.elite && !n.secret && !n._isVecchio
+      // non toccare NPC rari / miniboss / guantaio
+      !["poliziotto","anziana","bambino","streamer","macellaio","maestroTe","miniboss","guantaio"].includes(n.type)
     );
     // prima prova con gap rispettato
     for (const c of cands) {
@@ -197,50 +208,6 @@ export function generateMap(biomeIdx = 0) {
     const cand = midRows.find(n => n.x > 0.6 && n.type !== "tabaccaio" && n.type !== "locanda" && !["poliziotto","anziana","bambino","streamer","miniboss","guantaio"].includes(n.type));
     if (cand) cand.type = "sacerdote";
   }
-
-  // ── PRIMA SCELTA: garantisci sempre almeno 1 tabaccaio in rows[1] ─
-  // Il giocatore parte senza soldi e con poche carte: deve sempre poter
-  // andare a comprare materiale fin dal primo step.
-  const firstRow = rows[1] || [];
-  if (firstRow.length > 0 && !firstRow.some(n => n.type === "tabaccaio")) {
-    // candidato sostituibile: niente NPC rari/elite/segreti/boss
-    const cand = firstRow.find(n =>
-      n.type !== "boss" && n.type !== "start" && n.type !== "tabaccaio" &&
-      !["poliziotto","anziana","bambino","streamer","macellaio","maestroTe","miniboss","guantaio"].includes(n.type) &&
-      !n.elite && !n.secret && !n._isVecchio
-    ) || firstRow.find(n =>
-      n.type !== "boss" && n.type !== "start" && !n.elite && !n.secret && !n._isVecchio
-    );
-    if (cand) cand.type = "tabaccaio";
-  }
-
-  // ── Nodi SEGRETI: 2 per mappa, visibili solo con Fortuna ────
-  const secretCandidates = rows.slice(2, 8).flat().filter(n =>
-    n.type !== "boss" && n.type !== "start" && n.x < 0.15
-  );
-  shuffle(secretCandidates).slice(0, 2).forEach(n => { n.secret = true; n.type = "evento"; });
-
-  // ── Nodi ELITE: 1-2 per mappa, rischio/premio raddoppiato ──
-  const eliteCandidates = rows.slice(3, 9).flat().filter(n =>
-    n.type === "miniboss" || n.type === "ladro" || n.type === "tabaccaio"
-  );
-  shuffle(eliteCandidates).slice(0, 2).forEach(n => { n.elite = true; });
-
-  // ── Il Vecchio: 1 nodo evento per mappa diventa "Il Vecchio" ──
-  const vecchioCandidates = rows.slice(2, 9).flat().filter(n => n.type === "evento" && !n.elite && !n.secret);
-  if (vecchioCandidates.length > 0) {
-    shuffle(vecchioCandidates)[0]._isVecchio = true;
-  }
-
-  // ── NPC VOLATILI: spacciatore/poliziotto hanno il 25% di chance di
-  // essere già arrabbiati quando li incontri (deciso in generazione, non
-  // ad ogni visita) — offrono bribe/combatti/scappa invece delle scelte
-  // normali. Fissato in generazione così è coerente per tutta la run.
-  rows.flat().forEach(n => {
-    if ((n.type === "spacciatore" || n.type === "poliziotto") && roll(0.25)) {
-      n.angry = true;
-    }
-  });
 
   // ── Connessioni: no incroci garantiti, 2-3 uscite per nodo ──
   // Algoritmo: indice primario = floor(i*(n-1)/(m-1)), monotono.
@@ -297,6 +264,43 @@ export function generateMap(biomeIdx = 0) {
       connections[currSorted[ownerI].id].push(nextNode.id);
     });
   }
+
+  // ── Nodi SEGRETI: 2 per mappa, visibili solo con Fortuna ────
+  // Scelti DOPO i collegamenti. Un segreto bloccato non si può cliccare: se era
+  // l'unica uscita di un nodo (succede nel passaggio da 4 a 3 nodi per riga)
+  // la run restava bloccata senza Fortuna — nel 60% delle mappe c'era un nodo
+  // così. E non sovrascrivono Guantaio né le quote garantite di tabaccai e
+  // locande (prima li cancellavano nel 4-7% delle mappe).
+  const soleExits = new Set(
+    Object.values(connections).filter(outs => outs.length === 1).map(outs => outs[0])
+  );
+  const secretCandidates = rows.slice(2, 8).flat().filter(n =>
+    n.x < 0.15 && !soleExits.has(n.id) &&
+    !["guantaio", "tabaccaio", "locanda", "sacerdote"].includes(n.type)
+  );
+  shuffle(secretCandidates).slice(0, 2).forEach(n => { n.secret = true; n.type = "evento"; });
+
+  // ── Nodi ELITE: 1-2 per mappa, rischio/premio raddoppiato ──
+  const eliteCandidates = rows.slice(3, 9).flat().filter(n =>
+    n.type === "miniboss" || n.type === "ladro" || n.type === "tabaccaio"
+  );
+  shuffle(eliteCandidates).slice(0, 2).forEach(n => { n.elite = true; });
+
+  // ── Il Vecchio: 1 nodo evento per mappa diventa "Il Vecchio" ──
+  const vecchioCandidates = rows.slice(2, 9).flat().filter(n => n.type === "evento" && !n.elite && !n.secret);
+  if (vecchioCandidates.length > 0) {
+    shuffle(vecchioCandidates)[0]._isVecchio = true;
+  }
+
+  // ── NPC VOLATILI: spacciatore/poliziotto hanno il 25% di chance di
+  // essere già arrabbiati quando li incontri (deciso in generazione, non
+  // ad ogni visita) — offrono bribe/combatti/scappa invece delle scelte
+  // normali. Fissato in generazione così è coerente per tutta la run.
+  rows.flat().forEach(n => {
+    if ((n.type === "spacciatore" || n.type === "poliziotto") && roll(0.25)) {
+      n.angry = true;
+    }
+  });
 
   return { rows, connections };
 }

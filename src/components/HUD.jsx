@@ -1,4 +1,4 @@
-import { useState, useEffect, memo } from "react";
+import { useState, memo } from "react";
 import { C } from "../data/theme.js";
 import { BIOME_PALETTE } from "../data/biomes.js";
 import { AudioEngine } from "../audio.js";
@@ -10,6 +10,7 @@ import { NewsTicker } from "./NewsTicker.jsx";
 import { Asset } from "./Asset.jsx";
 import { ANIM, LOOP } from "../styles/animations.js";
 import { NailPipRow } from "./NailMeter.jsx";
+import { useIsMobile } from "../hooks/useIsMobile.js";
 
 // ─── SCALA HUD ───────────────────────────────────────────────────
 // Una sola tabella di misure per tutta la barra. Prima ogni pastiglia si
@@ -76,12 +77,7 @@ function HUDImpl({ player, onOpenInventory, inventoryOpen = false, moneyBling = 
   const [vol, setVol] = useState(AudioEngine.getVolume());
   // ── Responsive: traccia larghezza viewport per nascondere elementi non-critici
   //   quando il canvas 16:9 diventa stretto (es. schermi piccoli / finestre ridotte)
-  const [vw, setVw] = useState(typeof window !== "undefined" ? window.innerWidth : 1600);
-  useEffect(() => {
-    const onR = () => setVw(window.innerWidth);
-    window.addEventListener("resize", onR);
-    return () => window.removeEventListener("resize", onR);
-  }, []);
+  const { vw } = useIsMobile();
   const compact = vw < 900;   // sotto 900px nascondi ticker nel panel
   const mobile  = vw < 600;   // mobile: layout single-row compatto
   const u = mobile ? HUD_SCALE.mobile : HUD_SCALE.desk;   // scala unica della barra
@@ -185,7 +181,7 @@ function HUDImpl({ player, onOpenInventory, inventoryOpen = false, moneyBling = 
             {/* Stessa pip del combattimento (NailMeter): mostra lo stato REALE di
                 ogni unghia, non 5 tacche anonime tutte dello stesso colore. */}
             <NailPipRow nails={player.nails} size="sm" gap={2} />
-            <span style={{color:viteColor, fontSize:`${u.fsValue}px`, fontWeight:"bold"}}>{aliveNails}/5</span>
+            <span style={{color:viteColor, fontSize:`${u.fsValue}px`, fontWeight:"bold"}}>{aliveNails}/{player.nails.length}</span>
           </HudPill>
           {/* Volume icona (no slider) */}
           <HudPill u={u} color={C.dim}
@@ -221,10 +217,6 @@ function HUDImpl({ player, onOpenInventory, inventoryOpen = false, moneyBling = 
   }
 
   // ── DESKTOP HUD: layout completo ────────────────────────────────
-  // Divider Vintage fra gruppi del HUD
-  const Sep = () => (
-    <span style={{color:C.dim+"66", fontSize:"10px", userSelect:"none", margin:"0 2px"}}>│</span>
-  );
   return (
     <div style={{...S.panel, display:"flex", justifyContent:"space-between", alignItems:"center",
       flexWrap:"wrap", gap:"8px", padding:"10px 14px", background: bioPal.hudBg, border: `2px solid ${bioPal.border}66`,
@@ -288,7 +280,7 @@ function HUDImpl({ player, onOpenInventory, inventoryOpen = false, moneyBling = 
                 e HUD mobile: colore = stato dell'unghia, riempimento = grattate
                 rimaste, ✕ tratteggiato = morta, ◆ = unghia nera. */}
             <NailPipRow nails={player.nails} size="md" gap={3} />
-            <span style={{color:viteColor, fontSize:`${u.fsValue}px`, fontWeight:"bold"}}>{aliveNails}/5</span>
+            <span style={{color:viteColor, fontSize:`${u.fsValue}px`, fontWeight:"bold"}}>{aliveNails}/{player.nails.length}</span>
           </HudPill>
         </Tooltip>
         <Tooltip text={`🔊 volume musicale — alzalo e GODITI l'8-bit bro`}>
