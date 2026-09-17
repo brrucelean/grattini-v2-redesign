@@ -4,6 +4,9 @@ node_modules/
 # Build output
 dist/
 
+# Report di rollup-plugin-visualizer (npm run analyze)
+.stats/
+
 # macOS
 .DS_Store
 

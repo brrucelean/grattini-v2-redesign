@@ -5,12 +5,17 @@ import { ticketLayoutPlugin } from "./vite-plugin-ticket-layout.js";
 
 export default defineConfig({
   // ticketLayoutPlugin è apply:"serve" — vive solo nel dev server
-  // visualizer scrive dist/stats.html — non ha alcun effetto sul bundle spedito
+  // visualizer: solo con ANALYZE=1 e fuori da dist/, altrimenti i report
+  // finivano su gh-pages (stats.html era pubblico). Uso: npm run analyze
   plugins: [
     react(),
     ticketLayoutPlugin(),
-    visualizer({ filename: "dist/stats.html", gzipSize: true, brotliSize: true }),
-    visualizer({ filename: "dist/stats.json", template: "raw-data", gzipSize: true, brotliSize: true }),
+    ...(process.env.ANALYZE
+      ? [
+          visualizer({ filename: ".stats/stats.html", gzipSize: true, brotliSize: true }),
+          visualizer({ filename: ".stats/stats.json", template: "raw-data", gzipSize: true, brotliSize: true }),
+        ]
+      : []),
   ],
   base: "./",  // path relativi — necessario per itch.io
   // PORT permette a piu' dev server (es. due sessioni) di convivere
