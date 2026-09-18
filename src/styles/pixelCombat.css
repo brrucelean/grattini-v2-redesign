@@ -1,0 +1,158 @@
+/* Combat pilot for GRATTINI VISUAL SYSTEM v1. Activated with ?visual=pixel. */
+.px-combat,
+.px-combat * {
+  box-sizing: border-box;
+  image-rendering: pixelated;
+}
+
+.px-combat {
+  --px-void: #09070d;
+  --px-ink: #17121d;
+  --px-panel: #21192a;
+  --px-paper: #f4e7be;
+  --px-red: #e63b32;
+  --px-yellow: #f6d547;
+  --px-green: #4fbf68;
+  --px-cyan: #34c8d8;
+  width: 640px !important;
+  min-width: 640px !important;
+  height: 720px !important;
+  flex: none !important;
+  gap: 8px !important;
+  padding: 8px !important;
+  margin: 0 auto !important;
+  overflow: hidden !important;
+  border: 2px solid var(--px-paper) !important;
+  border-radius: 0 !important;
+  background: var(--px-void) !important;
+  box-shadow: 4px 4px 0 #000 !important;
+  font-family: "Courier New", monospace !important;
+  font-smooth: never;
+  -webkit-font-smoothing: none;
+}
+
+.px-combat > div[aria-hidden] { filter: none !important; }
+
+.px-enemy {
+  height: 112px !important;
+  min-height: 112px !important;
+  flex: none !important;
+  gap: 8px !important;
+  padding: 8px !important;
+  border: 2px solid var(--px-red) !important;
+  border-radius: 0 !important;
+  background: var(--px-ink) !important;
+  box-shadow: 4px 4px 0 #000 !important;
+  transition: none !important;
+}
+
+.px-enemy-portrait {
+  width: 88px !important;
+  min-height: 88px !important;
+  padding: 0 !important;
+  border: 2px solid var(--px-paper) !important;
+  border-radius: 0 !important;
+  background: #09070d !important;
+  box-shadow: none !important;
+}
+
+.px-enemy-portrait img {
+  width: 84px !important;
+  height: 84px !important;
+  object-fit: cover !important;
+  filter: contrast(1.35) saturate(.7) !important;
+  animation: none !important;
+}
+
+.px-enemy-portrait > div:first-child { display: none !important; }
+.px-enemy-stats { gap: 8px !important; }
+.px-enemy-stats * { border-radius: 0 !important; text-shadow: none !important; box-shadow: none !important; }
+
+.px-player-strip {
+  height: 40px !important;
+  flex: none !important;
+  padding: 4px 8px !important;
+  border: 2px solid var(--px-yellow) !important;
+  border-radius: 0 !important;
+  background: var(--px-panel) !important;
+  box-shadow: none !important;
+}
+
+.px-center { position: relative !important; overflow: hidden !important; }
+.px-turn { overflow: hidden !important; gap: 8px !important; }
+.px-turn-title {
+  height: 24px !important;
+  flex: none !important;
+  line-height: 24px !important;
+  color: var(--px-paper) !important;
+  background: var(--px-ink) !important;
+  border-left: 8px solid var(--px-yellow) !important;
+  text-align: left !important;
+  padding-left: 8px !important;
+}
+
+.px-intents {
+  height: 40px !important;
+  flex: none !important;
+  gap: 4px !important;
+  padding: 4px 8px !important;
+  justify-content: flex-start !important;
+  border: 2px solid var(--px-cyan) !important;
+  border-radius: 0 !important;
+  background: var(--px-panel) !important;
+}
+.px-intents span { border-radius: 0 !important; box-shadow: none !important; text-shadow: none !important; animation: none !important; }
+
+.px-ticket-grid {
+  width: 448px !important;
+  height: 400px !important;
+  min-height: 400px !important;
+  flex: none !important;
+  align-self: flex-start !important;
+  grid-template-columns: repeat(3, 144px) !important;
+  grid-template-rows: repeat(3, 128px) !important;
+  gap: 8px !important;
+  padding: 0 !important;
+}
+
+.px-ticket {
+  min-height: 0 !important;
+  height: 128px !important;
+  border: 2px solid var(--px-paper) !important;
+  border-radius: 0 !important;
+  box-shadow: 4px 4px 0 #000 !important;
+  background: var(--px-panel) !important;
+}
+.px-ticket[data-category="COMBATTIMENTO"] { border-color: var(--px-red) !important; }
+.px-ticket[data-category="DIFESA"] { border-color: var(--px-cyan) !important; }
+.px-ticket[data-category="DENARO"] { border-color: var(--px-yellow) !important; }
+.px-ticket canvas { filter: none !important; image-rendering: pixelated !important; }
+.px-ticket > div { gap: 4px !important; }
+.px-ticket img { filter: none !important; image-rendering: pixelated !important; }
+
+.px-combat-log {
+  position: absolute !important;
+  left: 456px !important;
+  top: 80px !important;
+  width: 168px !important;
+  height: 400px !important;
+  max-height: 400px !important;
+  padding: 8px !important;
+  overflow: hidden !important;
+  border: 2px solid var(--px-paper) !important;
+  background: var(--px-ink) !important;
+  color: var(--px-paper) !important;
+}
+.px-combat-log::before {
+  content: "DIARIO";
+  display: block;
+  margin: -8px -8px 8px;
+  padding: 6px 8px;
+  color: #09070d;
+  background: var(--px-paper);
+  font-weight: 900;
+}
+
+@media (max-width: 760px), (max-height: 760px) {
+  .px-combat { margin: 0 !important; }
+}

@@ -16,6 +16,7 @@ import { NailDisplay } from "./NailDisplay.jsx";
 import { Asset } from "./Asset.jsx";
 import { hasAsset } from "../assets/registry.js";
 import { ANIM } from "../styles/animations.js";
+import "../styles/pixelCombat.css";
 
 // Nomi categoria abbreviati — COMBATTIMENTO è troppo lungo per le card strette
 const CAT_SHORT = { COMBATTIMENTO: "ATTACCO", DIFESA: "DIFESA", DENARO: "DENARO" };
@@ -36,7 +37,7 @@ function enemySpriteKey(enemy) {
 
 
 // ─── COMBAT CARD SCRATCH ─────────────────────────────────────
-export function CombatCardScratch({ cell, onRevealed, catColors, disabled, nailState = "sana", onDeadAttempt }) {
+export function CombatCardScratch({ cell, onRevealed, catColors, disabled, nailState = "sana", onDeadAttempt, pixelMode = false }) {
   const canvasRef = useRef(null);
   const drawing = useRef(false);
   const revealed = useRef(false);
@@ -145,7 +146,7 @@ export function CombatCardScratch({ cell, onRevealed, catColors, disabled, nailS
   };
 
   return (
-    <div style={{
+    <div className={pixelMode ? "px-ticket" : undefined} data-category={cell.category} style={{
       position:"relative", borderRadius:"0", overflow:"hidden",
       border: disabled ? `2px solid #333` : `2px solid ${C.gold}`,
       // Sfondo OPACO scuro — niente bleeding del contenuto
@@ -380,7 +381,7 @@ function TimingBar({ mode = "attack", speed = 1.5, onResult, perfectWiden = 0 })
 
 
 // ─── COMBAT COMPONENT — DUELLO HP ────────────────────────────
-export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onCellScratch, onGrattatoreConsumed, onCombo, onVariantRevealed }) {
+export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onCellScratch, onGrattatoreConsumed, onCombo, onVariantRevealed, pixelMode = false }) {
   // Nome mostrato all'utente: usa il flavor (displayName) se presente, altrimenti
   // la specie. Le lookup stats/pool/sprite restano su enemy.name (la specie).
   const enemyLabel = enemy.displayName || enemy.name;
@@ -860,7 +861,7 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
 
   // ─── RENDER ───────────────────────────────────────────────
   return (
-    <div style={{
+    <div className={pixelMode ? "px-combat" : undefined} data-phase={phase} style={{
       position: "relative", flex: 1, minHeight: 0, width: "100%",
       // Il cabinet si porta dietro il proprio tetto W.content invece di dipendere
       // da chi lo monta: così il combattimento usa la larghezza desktop anche se
@@ -908,7 +909,7 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
       })}
 
       {/* ── SCHEDA NEMICO — readout CRT compatto orizzontale ── */}
-      <div style={{
+      <div className={pixelMode ? "px-enemy" : undefined} style={{
         display: "flex", alignItems: "stretch", gap: "12px",
         border: `2px solid ${perfectHit ? "#ffffff" : C.red}`, borderRadius: "4px", padding: "9px 12px",
         background: "#160308",
@@ -919,7 +920,7 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
         transition: "transform 0.1s, box-shadow 0.12s, border-color 0.12s",
       }}>
         {/* Schermo "mostro" CRT — ritratto sprite del nemico, riquadro compatto a sinistra */}
-        <div style={{
+        <div className={pixelMode ? "px-enemy-portrait" : undefined} style={{
           flexShrink: 0, width: "150px", minHeight: "150px", alignSelf: "stretch",
           background: "#0a0400", border: `2px solid ${C.red}88`, borderRadius: "4px",
           padding: "5px", boxShadow: `inset 0 0 22px #000, 0 0 12px ${C.red}33`,
@@ -959,7 +960,7 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
           )}
         </div>
         {/* Colonna stat — nome + barre HP/scudo */}
-        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "center", gap: "7px" }}>
+        <div className={pixelMode ? "px-enemy-stats" : undefined} style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "center", gap: "7px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px" }}>
             <div style={{ fontWeight: "bold", fontSize: "15px", color: C.red, letterSpacing: "1px",
               textShadow: `0 0 8px ${C.red}66`, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -997,7 +998,7 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
       </div>
 
       {/* ── HUD player: unghie (vita) + bottino — striscia ottone ── */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px",
+      <div className={pixelMode ? "px-player-strip" : undefined} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px",
         padding: "5px 12px", border: `1px solid ${C.gold}44`, borderRadius: "4px",
         background: "linear-gradient(180deg, rgba(40,30,4,0.5), rgba(10,8,2,0.5))",
         boxShadow: `inset 0 0 14px rgba(0,0,0,0.5)` }}>
@@ -1020,7 +1021,7 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
       </div>
 
       {/* ── AREA CENTRALE per fase ── */}
-      <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: "8px", overflow: "hidden" }}>
+      <div className={pixelMode ? "px-center" : undefined} style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: "8px", overflow: "hidden" }}>
 
         {phase === "intro" && (
           <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "16px", textAlign: "center" }}>
@@ -1046,12 +1047,12 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
         )}
 
         {phase === "player" && (
-          <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: "6px", overflowY: "auto" }}>
-            <div style={{ textAlign: "center", fontSize: "12px", color: C.gold, letterSpacing: "1px" }}>
+          <div className={pixelMode ? "px-turn" : undefined} style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: "6px", overflowY: "auto" }}>
+            <div className={pixelMode ? "px-turn-title" : undefined} style={{ textAlign: "center", fontSize: "12px", color: C.gold, letterSpacing: "1px" }}>
               TURNO {turn} — GRATTA 3 DELLE 9 CARTE <span style={{ color: C.dim }}>({revealedIdxs.length}/3)</span>
             </div>
             {/* Telegrafo: cosa farà il nemico ad ogni scambio (attacca / difende / cura) */}
-            <div style={{
+            <div className={pixelMode ? "px-intents" : undefined} style={{
               display: "flex", justifyContent: "center", alignItems: "center", gap: "8px", fontSize: "11px",
               padding: "6px 8px", borderRadius: "6px",
               background: "#0c0c14", border: `1px solid ${C.dim}44`,
@@ -1093,7 +1094,7 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
                 ✝ UNGHIA MORTA — seleziona un'unghia sana dalla colonna UNGHIE per grattare
               </div>
             )}
-            <div style={{
+            <div className={pixelMode ? "px-ticket-grid" : undefined} style={{
               display: "grid",
               // minmax(0,160px): sotto quella soglia le colonne si comportano
               // come 1fr (si dividono lo spazio disponibile, comportamento
@@ -1122,12 +1123,13 @@ export function CombatView({ enemy, player, onEnd, onNailDamage, onNailHeal, onC
                     disabled={locked}
                     nailState={activeNailState}
                     onDeadAttempt={warnDeadNail}
+                    pixelMode={pixelMode}
                   />
                 );
               })}
             </div>
             {/* Log live dello scambio (cresce man mano) */}
-            <div ref={logScrollRef} style={{ display: "flex", flexDirection: "column", gap: "2px", fontSize: "11px", maxHeight: "160px", overflowY: "auto" }}>
+            <div className={pixelMode ? "px-combat-log" : undefined} ref={logScrollRef} style={{ display: "flex", flexDirection: "column", gap: "2px", fontSize: "11px", maxHeight: "160px", overflowY: "auto" }}>
               {log.map((l, i) => (
                 <div key={i} style={{ color: l.color }}>{l.text}</div>
               ))}
